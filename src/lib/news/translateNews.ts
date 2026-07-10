@@ -1,3 +1,7 @@
+/**
+ * RSS·GDELT 뉴스 한국어 번역.
+ * Telegram OSINT 텍스트는 이 경로에 절대 넣지 않음 — @see src/lib/licensing/telegramOsintPolicy.ts
+ */
 import { isKoreanTranslationEnabled, mapPool, translateTextToKorean } from "@/lib/koreanTranslate";
 import type { HeroBreakingItem, NewsStreamItem, NewsStreamPayload } from "@/lib/news/types";
 

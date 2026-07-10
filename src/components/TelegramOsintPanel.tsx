@@ -145,6 +145,9 @@ export function TelegramOsintPanel({
           ))}
         </ul>
       )}
+      <p className="border-t border-sky-300/10 px-3 py-2 text-[10px] leading-4 text-slate-500">
+        Raw 피드 전용 · Intel 뉴스·AI 요약 컨텍스트와 분리
+      </p>
     </div>
   );
 }

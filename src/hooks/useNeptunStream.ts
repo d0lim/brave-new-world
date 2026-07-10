@@ -25,7 +25,6 @@ type StreamEnvelope =
   | { type: "heartbeat"; ts: string };
 
 const EMPTY_ALERTS: NeptunAlerts = { raions: [], oblasts: [] };
-const REST_POLL_MS = 5000;
 const STUB_POLL_MS = 120_000;
 const RECONNECT_BASE_MS = 2000;
 const RECONNECT_MAX_MS = 30000;

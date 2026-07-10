@@ -3,6 +3,7 @@ import { buildNewsStream } from "@/lib/news/pipeline";
 import { translateNewsStreamPayload } from "@/lib/news/translateNews";
 import type { NewsStreamPayload, NewsTheater } from "@/lib/news/types";
 
+/** RSS/GDELT only — Telegram OSINT must stay on /api/telegram-alerts (telegramOsintPolicy) */
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 

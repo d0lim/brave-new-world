@@ -18,14 +18,11 @@ import type { HeroBreakingItem, NewsStreamItem, NewsStreamPayload, NewsTheater }
 import {
   flyTargetForTheater,
   matchesTheaterFilter,
-  telegramRegionToTheater,
   THEATER_CHIP_LABELS,
   THEATER_CHIP_ORDER,
   type IntelTheaterFilter,
   type MapFlyTarget,
 } from "@/lib/news/theaterMap";
-import type { TelegramAlert } from "@/lib/telegramAlerts";
-import { TELEGRAM_REGION_LABELS } from "@/lib/telegramAlerts";
 
 export type BottomIntelStackHandle = {
   openNewsPanel: (theater?: IntelTheaterFilter) => void;
@@ -52,7 +49,6 @@ const HERO_STATUS_LABELS: Record<HeroBreakingItem["heroStatus"], string> = {
 
 type NewsStreamContextValue = {
   payload: NewsStreamPayload | null;
-  telegramAlerts: TelegramAlert[];
   refresh: () => void;
   showTier3: boolean;
   setShowTier3: (v: boolean) => void;
@@ -118,21 +114,13 @@ export function NewsStreamProvider({
   onTheaterFilterChange,
 }: NewsStreamProviderProps) {
   const [payload, setPayload] = useState<NewsStreamPayload | null>(null);
-  const [telegramAlerts, setTelegramAlerts] = useState<TelegramAlert[]>([]);
   const [showTier3, setShowTier3] = useState(false);
 
   const refresh = useCallback(async () => {
     try {
-      const [newsRes, tgRes] = await Promise.all([
-        fetch("/api/news-stream", { cache: "no-store" }),
-        fetch("/api/telegram-alerts", { cache: "no-store" }),
-      ]);
+      const newsRes = await fetch("/api/news-stream", { cache: "no-store" });
       const data = (await newsRes.json()) as NewsStreamPayload;
       setPayload(newsRes.ok ? data : { ...emptyPayload(), error: data.error });
-      if (tgRes.ok) {
-        const tg = (await tgRes.json()) as { alerts?: TelegramAlert[] };
-        setTelegramAlerts(tg.alerts ?? []);
-      }
     } catch {
       setPayload((prev) => prev ?? emptyPayload());
     }
@@ -149,7 +137,6 @@ export function NewsStreamProvider({
     <NewsStreamContext.Provider
       value={{
         payload,
-        telegramAlerts,
         refresh,
         showTier3,
         setShowTier3,
@@ -188,7 +175,7 @@ export function IntelCompactBar({
           <HoverHint
             placement="top"
             title="Intel 뉴스"
-            detail="전체 화면 뉴스·속보·Telegram OSINT를 Tier별로 봅니다."
+            detail="전체 화면 Tier별 검증 보도·속보를 봅니다. Telegram OSINT는 별도 패널입니다."
           >
             <button
               type="button"
@@ -385,7 +372,7 @@ function IntelSheetTabBar({
       <HoverHint
         placement="bottom"
         title="뉴스"
-        detail="Tier별 검증 보도·속보·Telegram OSINT 목록"
+        detail="Tier별 검증 보도·관영매체 속보 (RSS/GDELT)"
       >
         <button
           type="button"
@@ -434,7 +421,6 @@ export const IntelNewsSheet = forwardRef<BottomIntelStackHandle, IntelNewsSheetP
   function IntelNewsSheet({ open, onClose, onOpen, onFlyToMap }, ref) {
     const {
       payload,
-      telegramAlerts,
       refresh,
       showTier3,
       setShowTier3,
@@ -476,9 +462,6 @@ export const IntelNewsSheet = forwardRef<BottomIntelStackHandle, IntelNewsSheetP
       ) ?? [];
     const tier3Items =
       payload?.stateMedia.filter((i) => matchesTheaterFilter(i.theater, theaterFilter)) ?? [];
-    const filteredTelegram = telegramAlerts.filter((alert) =>
-      matchesTheaterFilter(telegramRegionToTheater(alert.region), theaterFilter),
-    );
     const showHero =
       hero != null &&
       (theaterFilter === "all" || matchesTheaterFilter(hero.theater, theaterFilter));
@@ -616,17 +599,9 @@ export const IntelNewsSheet = forwardRef<BottomIntelStackHandle, IntelNewsSheetP
                       onFlyToTheater={onFlyToMap ? flyToTheater : undefined}
                     />
                   ) : null}
-                  {filteredTelegram.length > 0 ? (
-                    <TelegramSection
-                      alerts={filteredTelegram}
-                      delay={4}
-                      onFlyToTheater={onFlyToMap ? flyToTheater : undefined}
-                    />
-                  ) : null}
                   {tier1Items.length === 0 &&
                   tier2Items.length === 0 &&
-                  tier3Items.length === 0 &&
-                  filteredTelegram.length === 0 ? (
+                  tier3Items.length === 0 ? (
                     <p className="py-8 text-center text-sm text-slate-500">
                       {theaterFilter === "all"
                         ? "표시할 뉴스가 없습니다."
@@ -661,64 +636,6 @@ export const IntelNewsSheet = forwardRef<BottomIntelStackHandle, IntelNewsSheetP
 
 /** @deprecated use NewsStreamProvider + IntelCompactBar + IntelNewsSheet */
 export const BottomIntelStack = IntelNewsSheet;
-
-function TelegramSection({
-  alerts,
-  delay,
-  onFlyToTheater,
-}: {
-  alerts: TelegramAlert[];
-  delay: number;
-  onFlyToTheater?: (theater: NewsTheater) => void;
-}) {
-  return (
-    <section
-      className="intel-tier-section overflow-hidden rounded-xl border border-cyan-400/20 bg-cyan-950/10"
-      style={{ animationDelay: `${delay * 70}ms` }}
-    >
-      <div className="border-b border-cyan-400/15 bg-cyan-950/25 px-4 py-2.5">
-        <p className="text-xs font-semibold text-cyan-50/95">Telegram OSINT · 속보</p>
-        <p className="mt-0.5 text-[11px] text-cyan-100/50">
-          공개 채널 실시간 · 한국어 번역 기본
-        </p>
-      </div>
-      <ul className="divide-y divide-cyan-400/10">
-        {alerts.slice(0, 40).map((alert) => {
-          const theater = telegramRegionToTheater(alert.region);
-          return (
-            <li key={alert.id} className="relative">
-              {onFlyToTheater ? (
-                <div className="absolute right-3 top-3 z-10">
-                  <FlyToMapButton onClick={() => onFlyToTheater(theater)} />
-                </div>
-              ) : null}
-              <a
-                href={alert.messageUrl || `https://t.me/${alert.channelUsername}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="block px-4 py-3 pr-20 transition hover:bg-white/5"
-              >
-              <span className="text-[11px] text-cyan-200/70">
-                @{alert.channelUsername} · {TELEGRAM_REGION_LABELS[alert.region]}
-              </span>
-              <p className="mt-1 text-sm leading-5 text-slate-100">{alert.text}</p>
-              <span className="mt-1 block text-[10px] text-slate-500">
-                {formatTelegramAge(alert.receivedAt)}
-              </span>
-            </a>
-          </li>
-          );
-        })}
-      </ul>
-    </section>
-  );
-}
-
-function formatTelegramAge(iso: string): string {
-  const ts = Date.parse(iso);
-  if (!Number.isFinite(ts)) return "";
-  return formatAge(Math.max(0, Math.round((Date.now() - ts) / 60_000)));
-}
 
 function TierSection({
   tier,
@@ -796,7 +713,7 @@ function AnalysisPanel({
       <div className="border-b border-violet-400/15 px-4 py-2.5">
         <p className="text-xs font-semibold text-violet-100">분석 · AI 상관관계</p>
         <p className="mt-0.5 text-[11px] text-violet-200/55">
-          지도 레이어 · 증시 · 뉴스 교차 분석
+          RSS·GDELT 뉴스 · 지도 레이어 · 증시 교차 분석 (Telegram OSINT 제외)
         </p>
       </div>
       <div className="space-y-2 px-4 py-3 text-sm leading-6 text-slate-300">

@@ -12,6 +12,10 @@ import {
   IRONSIGHT_ATTRIBUTION_KO,
   IRONSIGHT_POLICY,
 } from "@/lib/licensing/ironsightPolicy";
+import {
+  TELEGRAM_OSINT_ABSOLUTE_RULE_KO,
+  TELEGRAM_OSINT_CHECKLIST,
+} from "@/lib/licensing/telegramOsintPolicy";
 import { NEWS_LAYER_SOURCE_CATALOG } from "@/data/sourceCatalog";
 
 type MethodologySourcesPanelProps = {
@@ -125,6 +129,16 @@ export function MethodologySourcesPanel({ open, onClose }: MethodologySourcesPan
                 MIT
               </a>
             </div>
+          </section>
+
+          <section className="rounded-xl border border-cyan-900/35 bg-cyan-950/15 p-3">
+            <h3 className="text-sm font-medium text-cyan-100">Telegram OSINT — LLM 분리</h3>
+            <p className="mt-2 text-[12px] leading-5 text-sky-100/80">{TELEGRAM_OSINT_ABSOLUTE_RULE_KO}</p>
+            <ul className="mt-2.5 list-disc space-y-1 pl-4 text-[11px] leading-5 text-sky-100/70">
+              {TELEGRAM_OSINT_CHECKLIST.map((item) => (
+                <li key={item}>{item}</li>
+              ))}
+            </ul>
           </section>
 
           <section className="rounded-xl border border-sky-300/12 bg-black/20 p-3">

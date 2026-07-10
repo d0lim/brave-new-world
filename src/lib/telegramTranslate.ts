@@ -1,3 +1,7 @@
+/**
+ * Telegram raw 피드 표시용 한국어 변환.
+ * 뉴스 LLM·요약 파이프라인과 분리 — @see src/lib/licensing/telegramOsintPolicy.ts
+ */
 import type { TelegramAlert } from "@/lib/telegramAlerts";
 import { isKoreanTranslationEnabled, mapPool, translateTextToKorean } from "@/lib/koreanTranslate";
 

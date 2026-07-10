@@ -1,3 +1,7 @@
+/**
+ * RSS·GDELT 뉴스 스트림 빌드.
+ * Telegram OSINT는 절대 포함하지 않음 — @see src/lib/licensing/telegramOsintPolicy.ts
+ */
 import { ALL_NEWS_FEEDS, isFeedItemRelevant, type NewsFeedDef } from "@/lib/news/feedCatalog";
 import { classifyMediaTier } from "@/lib/news/mediaTiers";
 import { fetchRssFeed } from "@/lib/news/rssParser";

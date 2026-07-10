@@ -54,7 +54,6 @@ import {
   type TelegramAlertsPayload,
 } from "@/lib/telegramAlerts";
 import type { TzevaAdomAlert, TzevaAdomPayload } from "@/lib/tzevaAdom";
-import { neptunTypeLabel } from "@/lib/neptunDisplay";
 import {
   formatNeptunLocation,
   getNeptunTypeMeta,
@@ -4805,8 +4804,8 @@ export function GlobeDashboard({
             )}
           </div>
         )}
-        {/* 중앙 하단 Intel Stack이 Telegram·GDELT 플로팅 패널을 대체 */}
-        {false && showTelegramOsint && !selected && !regionNavSelection && (
+        {/* Telegram OSINT — Intel 뉴스 스트림과 분리된 raw 피드 전용 패널 */}
+        {showTelegramOsint && !selected && !regionNavSelection && (
           <TelegramOsintPanel
             alerts={telegramAlerts}
             live={telegramLive}

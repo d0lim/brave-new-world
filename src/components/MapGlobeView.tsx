@@ -21,12 +21,11 @@ import {
   buildPointsGeoJson,
   buildPolygonsGeoJson,
   buildRingsGeoJson,
-  type GlobeLayerProps,
 } from "@/lib/mapGlobeLayers";
 
 /**
- * GlobeLayerProps(Record)와 intersection/extends하면 index signature가 콜백 타입을 unknown으로 넓힙니다.
- * 명시 필드 + [key: string]: unknown 패턴으로 레이어 props는 허용하면서 콜백 시그니처를 유지합니다.
+ * GlobeLayerProps(Record)와 intersection하면 index signature가 콜백을 unknown으로 넓힙니다.
+ * 명시 필드 + [key: string]: unknown 으로 레이어 props는 허용하고 콜백 시그니처를 유지합니다.
  */
 export interface MapGlobeViewProps {
   mapStyleUrl: string;
@@ -48,12 +47,11 @@ export const MapGlobeView = forwardRef<MapGlobeMethods, MapGlobeViewProps>(funct
   props,
   ref,
 ) {
-  const {
-    mapStyleUrl,
-    backgroundColor = "#02040a",
-    onGlobeReady,
-    onGlobeMouseMove,
-  } = props;
+  const { mapStyleUrl, backgroundColor = "#02040a" } = props;
+  const onGlobeReady = props.onGlobeReady as (() => void) | undefined;
+  const onGlobeMouseMove = props.onGlobeMouseMove as
+    | ((coords: { lat: number; lng: number } | null) => void)
+    | undefined;
 
   const mapRef = useRef<MapRef>(null);
   const changeListenersRef = useRef(new Set<() => void>());

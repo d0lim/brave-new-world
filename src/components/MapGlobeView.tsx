@@ -24,16 +24,18 @@ import {
   type GlobeLayerProps,
 } from "@/lib/mapGlobeLayers";
 
-type MapGlobeViewOwnProps = {
+/**
+ * GlobeLayerProps(Record)와 intersection/extends하면 index signature가 콜백 타입을 unknown으로 넓힙니다.
+ * 명시 필드 + [key: string]: unknown 패턴으로 레이어 props는 허용하면서 콜백 시그니처를 유지합니다.
+ */
+export interface MapGlobeViewProps {
   mapStyleUrl: string;
   backgroundColor?: string;
   onGlobeReady?: () => void;
   /** 빈 바다·지도 위 커서 좌표 (해역명 툴팁 등) */
   onGlobeMouseMove?: (coords: { lat: number; lng: number } | null) => void;
-};
-
-/** GlobeLayerProps의 index signature 때문에 콜백은 OwnProps에서 읽어야 타입이 유지됩니다. */
-export type MapGlobeViewProps = MapGlobeViewOwnProps & GlobeLayerProps;
+  [key: string]: unknown;
+}
 
 const INTERACTIVE_LAYERS = [
   "map-points",
@@ -46,8 +48,12 @@ export const MapGlobeView = forwardRef<MapGlobeMethods, MapGlobeViewProps>(funct
   props,
   ref,
 ) {
-  const { mapStyleUrl, backgroundColor = "#02040a" } = props;
-  const { onGlobeReady, onGlobeMouseMove } = props as MapGlobeViewOwnProps;
+  const {
+    mapStyleUrl,
+    backgroundColor = "#02040a",
+    onGlobeReady,
+    onGlobeMouseMove,
+  } = props;
 
   const mapRef = useRef<MapRef>(null);
   const changeListenersRef = useRef(new Set<() => void>());

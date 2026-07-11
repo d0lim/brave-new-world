@@ -1,0 +1,75 @@
+---
+description: react-globe.gl / Three.js / MapLibre 3D 지정학 대시보드 성능 아키텍처 (60FPS·VRAM·DOM Grave 방지)
+globs: src/components/Globe*.tsx,src/components/MapLibre*.tsx,src/lib/globe*.ts,src/lib/neptun*.ts,src/lib/viewportCull.ts,src/lib/placeLod.ts,src/lib/staticGlobe.ts,src/hooks/useGlobe*.ts,src/hooks/useNeptun*.ts,src/hooks/useCameraViewport.ts
+alwaysApply: false
+---
+
+# 3D Globe 성능 아키텍처 (필수 준수)
+
+Intel 내장 GPU·5년 전 사무용 PC에서 **60FPS·VRAM 누수 0**을 목표로 한다. 성능 타협 금지.
+
+## 1. DOM Grave 방지 · 라벨
+
+- 수천 포인트를 `htmlElementsData` / CSS2DRenderer로 렌더하지 않는다.
+- 텍스트는 `labelsData`(three-globe 캔버스) 또는 MapLibre symbol layer. Draw call O(1) 유지.
+- **줌아웃**: 주요 도시 라벨 **10개 미만** (`filterMajorCityLabels`, global tier ≤ 9).
+- **zoom > 6** (또는 village tier)에서만 정착지·세부 POI HTML 허용.
+
+## 2. 뷰포트 컬링
+
+- 지구 뒤편·θ > 80°: `isWithinViewCone()` (`viewportCull.ts`)로 GPU 전달 전 제외.
+- `useCameraViewport` / `filterCenter` + `layerAltitude`로 **활성 데이터 배열을 사전 slice**.
+- 카메라 드래그 중 LOD·필터 교체 금지 → idle debounce 후 갱신.
+
+## 3. NEPTUN 궤적
+
+- Arc 좌표 **N ≤ 12** (`neptunMaxPathPoints`, `neptunFlightArc.ts`).
+- `elevatedCache` / arc buffer pool 재사용 — 매 프레임 geometry 재생성 금지.
+- `isCameraMoving` 동안 궤적·애니메이션 **freeze**.
+
+## 4. GC · dispose · 스트리밍
+
+- 스트림 JSON: 통째 `JSON.parse` 후 전체 state 교체 금지 → envelope 단위 merge (`useNeptunStream`).
+- 레이어 OFF / 언마운트: `threeDispose.ts`로 geometry·material·texture `dispose()`.
+- `public/data/{lite,full}` 프로필 분리. village는 영역 JSON 동적 fetch.
+
+## 5. Throttle / Debounce
+
+- 상수: `src/lib/globePerformance.ts` — **최소 150ms**.
+- 마우스 드래그·휠 중 GDELT/AIS/히트맵 재계산 금지.
+
+## 6. 로컬 오버레이 상호 배타 (`localOverlayPolicy.ts`)
+
+- 우측 하단 경보: **GDELT 패널 XOR 로컬 패널** — 동시 표시 금지.
+- GDELT 레이어 ON → 로컬 패널 즉시 OFF.
+- **실패 시 fallback 금지**: GDELT 오류 → GDELT 패널 닫음 (로컬 자동 오픈 X). 로컬 loadError → 로컬 패널 닫음.
+- 기본값: 패널 모두 OFF. 레이어 켠 뒤 데이터 OK일 때만 해당 패널 오픈.
+
+## Draw Call · 배칭
+
+```typescript
+// ❌ BAD — 포인트마다 Mesh
+points.map(p => new Mesh(geo, mat))
+
+// ✅ GOOD — BufferGeometry + Points / InstancedMesh 단일 draw call
+<Points positions={mergedFloat32} />
+```
+
+## dispose 클린업 (레이어 OFF 시)
+
+```typescript
+useEffect(() => {
+  return () => {
+    disposeGeometry(geometry);
+    disposeMaterial(material);
+  };
+}, []);
+```
+
+## 참조 파일
+
+- `src/lib/globePerformance.ts` — throttle 상수
+- `src/lib/localOverlayPolicy.ts` — 우측 하단 경보 패널 상호 배타 (GDELT ↔ 로컬, 실패 시 fallback 금지)
+- `src/lib/viewportCull.ts` — hemisphere culling
+- `src/hooks/useCameraViewport.ts` — filterCenter + altitude → LOD/zoom
+- `src/lib/neptunFlightArc.ts` — arc buffer pool

@@ -1,0 +1,254 @@
+[
+  {
+    "id": "combat-me-gaza",
+    "kind": "dispute",
+    "name": "Gaza Combat / Bombardment Zone",
+    "nameLong": "가자 지구 · 교전·폭격 피해 가중",
+    "admin": "Palestine",
+    "sovereignty": "Israel / Palestine",
+    "type": "Active combat / bombardment",
+    "note": "IRONSIGHT strikeLocations · 지상전·공습·포격 지속",
+    "hazardClass": "combat",
+    "source": "main",
+    "scalerank": 1,
+    "center": { "lat": 31.45, "lng": 34.4 },
+    "categories": ["①"],
+    "tension": "high",
+    "matchedEventCount": 0,
+    "geometry": {
+      "type": "Polygon",
+      "coordinates": [[[34.2, 31.22], [34.57, 31.22], [34.57, 31.6], [34.2, 31.6], [34.2, 31.22]]]
+    }
+  },
+  {
+    "id": "combat-me-israel",
+    "kind": "dispute",
+    "name": "Israel Strike / Alert Zone",
+    "nameLong": "이스라엘 · 로켓·미사일·공습 피해 가중",
+    "admin": "Israel",
+    "sovereignty": "Israel",
+    "type": "Active combat / bombardment",
+    "note": "IRONSIGHT regionBoxes · Pikud HaOref 경보·Tel Aviv·Dimona 타격권",
+    "hazardClass": "combat",
+    "source": "main",
+    "scalerank": 1,
+    "center": { "lat": 31.5, "lng": 35 },
+    "categories": ["①"],
+    "tension": "high",
+    "matchedEventCount": 0,
+    "geometry": {
+      "type": "Polygon",
+      "coordinates": [[[34, 29], [36, 29], [36, 34], [34, 34], [34, 29]]]
+    }
+  },
+  {
+    "id": "combat-me-lebanon-south",
+    "kind": "dispute",
+    "name": "Southern Lebanon Combat Belt",
+    "nameLong": "레바논 남부 · 헤즈볼라–이스라엘 교차 포격",
+    "admin": "Lebanon",
+    "sovereignty": "Lebanon / Israel",
+    "type": "Active combat / fire",
+    "note": "IRONSIGHT regionBoxes · Litani·South Lebanon strikeLocations",
+    "hazardClass": "combat",
+    "source": "main",
+    "scalerank": 1,
+    "center": { "lat": 34, "lng": 36 },
+    "categories": ["①"],
+    "tension": "high",
+    "matchedEventCount": 0,
+    "geometry": {
+      "type": "Polygon",
+      "coordinates": [[[35, 33], [37, 33], [37, 35], [35, 35], [35, 33]]]
+    }
+  },
+  {
+    "id": "combat-me-red-sea-houthi",
+    "kind": "dispute",
+    "name": "Red Sea / Bab el-Mandeb Strike Zone",
+    "nameLong": "홍해·바브엘만데브 · 미사일·무인기·상선 타격",
+    "admin": "Yemen / Red Sea",
+    "sovereignty": "Yemen (Houthi) / Coalition / Shipping",
+    "type": "Active bombardment / maritime strike",
+    "note": "IRONSIGHT maritimeRegions · Red Sea strikeLocations",
+    "hazardClass": "bombardment",
+    "source": "main",
+    "scalerank": 1,
+    "center": { "lat": 14.5, "lng": 42.5 },
+    "categories": ["③"],
+    "tension": "high",
+    "matchedEventCount": 0,
+    "geometry": {
+      "type": "Polygon",
+      "coordinates": [[[41, 12], [46, 12], [46, 17], [41, 17], [41, 12]]]
+    }
+  },
+  {
+    "id": "combat-me-syria-north",
+    "kind": "dispute",
+    "name": "Syria Combat Zones",
+    "nameLong": "시리아 · 다중 전선·프록시 교전",
+    "admin": "Syria",
+    "sovereignty": "Syria / Turkey / SDF / Russia / Iran (proxy)",
+    "type": "Active combat / fire",
+    "note": "IRONSIGHT regionBoxes · Damascus·북부 공습·포격",
+    "hazardClass": "combat",
+    "source": "main",
+    "scalerank": 1,
+    "center": { "lat": 35, "lng": 39 },
+    "categories": ["①"],
+    "tension": "high",
+    "matchedEventCount": 0,
+    "geometry": {
+      "type": "Polygon",
+      "coordinates": [[[35, 32], [43, 32], [43, 38], [35, 38], [35, 32]]]
+    }
+  },
+  {
+    "id": "combat-me-iraq-isis-belt",
+    "kind": "dispute",
+    "name": "Iraq Combat / Militia Belt",
+    "nameLong": "이라크 · 민병·대테러·공습 교전",
+    "admin": "Iraq",
+    "sovereignty": "Iraq / Iran (proxy) / US",
+    "type": "Active combat / fire",
+    "note": "IRONSIGHT regionBoxes · Baghdad·민병대 타격권",
+    "hazardClass": "combat",
+    "source": "main",
+    "scalerank": 2,
+    "center": { "lat": 33.5, "lng": 43.5 },
+    "categories": ["①"],
+    "tension": "high",
+    "matchedEventCount": 0,
+    "geometry": {
+      "type": "Polygon",
+      "coordinates": [[[38, 29], [49, 29], [49, 38], [38, 38], [38, 29]]]
+    }
+  },
+  {
+    "id": "combat-me-yemen",
+    "kind": "dispute",
+    "name": "Yemen Combat / Houthi Zone",
+    "nameLong": "예멘 · 후티·연합군 교전·드론",
+    "admin": "Yemen",
+    "sovereignty": "Yemen (Houthi) / Saudi-led Coalition",
+    "type": "Active combat / fire",
+    "note": "IRONSIGHT regionBoxes · Sana'a·Aden·Houthi strikeLocations",
+    "hazardClass": "combat",
+    "source": "main",
+    "scalerank": 2,
+    "center": { "lat": 15.5, "lng": 48.5 },
+    "categories": ["①"],
+    "tension": "high",
+    "matchedEventCount": 0,
+    "geometry": {
+      "type": "Polygon",
+      "coordinates": [[[42, 12], [55, 12], [55, 19], [42, 19], [42, 12]]]
+    }
+  },
+  {
+    "id": "combat-me-iran-nation",
+    "kind": "dispute",
+    "name": "Iran National Strike Exposure",
+    "nameLong": "이란 전역 · 장거리 타격·방공·핵시설 리스크",
+    "admin": "Iran",
+    "sovereignty": "Iran",
+    "type": "Active bombardment / strike exposure",
+    "note": "IRONSIGHT regionBoxes · Iran theater bbox",
+    "hazardClass": "bombardment",
+    "source": "main",
+    "scalerank": 1,
+    "center": { "lat": 31, "lng": 54 },
+    "categories": ["③"],
+    "tension": "high",
+    "matchedEventCount": 0,
+    "geometry": {
+      "type": "Polygon",
+      "coordinates": [[[44, 24], [64, 24], [64, 38], [44, 38], [44, 24]]]
+    }
+  },
+  {
+    "id": "combat-me-iran-strike-corridor",
+    "kind": "dispute",
+    "name": "Iran Strike Corridor (IRGC / Nuclear)",
+    "nameLong": "이란 서부·중부 · 미사일·핵·군사기지 타격 집중",
+    "admin": "Iran",
+    "sovereignty": "Iran",
+    "type": "Active combat / bombardment",
+    "note": "IRONSIGHT launchSites · Tehran·Isfahan·Natanz·Tabriz·Shiraz·Bushehr",
+    "hazardClass": "combat",
+    "source": "main",
+    "scalerank": 1,
+    "center": { "lat": 33, "lng": 50.5 },
+    "categories": ["③"],
+    "tension": "high",
+    "matchedEventCount": 0,
+    "geometry": {
+      "type": "Polygon",
+      "coordinates": [[[46, 28], [55, 28], [55, 38.5], [46, 38.5], [46, 28]]]
+    }
+  },
+  {
+    "id": "tension-me-iran-israel",
+    "kind": "dispute",
+    "name": "Iran–Israel Strategic Exchange Corridor",
+    "nameLong": "이란–이스라엘 · 장거리 미사일·드론·방공 교환 회랑",
+    "admin": "Iran / Israel",
+    "sovereignty": "Iran / Israel",
+    "type": "Strategic strike / air corridor",
+    "note": "IRONSIGHT conflict theater · 휴전·전투 진동 구간",
+    "hazardClass": "gray-zone",
+    "source": "main",
+    "scalerank": 1,
+    "center": { "lat": 32.5, "lng": 48 },
+    "categories": ["③"],
+    "tension": "high",
+    "matchedEventCount": 0,
+    "geometry": {
+      "type": "Polygon",
+      "coordinates": [[[44, 29], [54, 29], [54, 36], [44, 36], [44, 29]]]
+    }
+  },
+  {
+    "id": "tension-me-hormuz",
+    "kind": "dispute",
+    "name": "Strait of Hormuz Gray Zone",
+    "nameLong": "호르무즈 해협 회색지대 · 해상억지·유조선 리스크",
+    "admin": "Iran / Oman / UAE",
+    "sovereignty": "Multiple",
+    "type": "Maritime gray zone / chokepoint",
+    "note": "IRONSIGHT maritimeRegions · Strait of Hormuz · IRGCN patrol",
+    "hazardClass": "gray-zone",
+    "source": "main",
+    "scalerank": 1,
+    "center": { "lat": 26.57, "lng": 56.49 },
+    "categories": ["③"],
+    "tension": "high",
+    "matchedEventCount": 0,
+    "geometry": {
+      "type": "Polygon",
+      "coordinates": [[[55.2, 25.5], [57.5, 25.5], [57.5, 27.3], [55.2, 27.3], [55.2, 25.5]]]
+    }
+  },
+  {
+    "id": "tension-me-gulf-states",
+    "kind": "dispute",
+    "name": "Gulf States / Qatar–Bahrain Tension",
+    "nameLong": "걸프·카타르·바레인 · 미사일·드론·5th Fleet 리스크",
+    "admin": "Qatar / Bahrain / UAE / Kuwait",
+    "sovereignty": "GCC / US",
+    "type": "Regional threat / gray zone",
+    "note": "IRONSIGHT regionBoxes · Qatar/Bahrain · countryQueries",
+    "hazardClass": "tension",
+    "source": "main",
+    "scalerank": 2,
+    "center": { "lat": 25, "lng": 48 },
+    "categories": ["③"],
+    "tension": "high",
+    "matchedEventCount": 0,
+    "geometry": {
+      "type": "Polygon",
+      "coordinates": [[[45, 23], [51, 23], [51, 27], [45, 27], [45, 23]]]
+    }
+  }
+]

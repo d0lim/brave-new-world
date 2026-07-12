@@ -17,7 +17,8 @@ export async function getDb(options?: { persist?: boolean }): Promise<AppDb> {
   if (cached?.db) return cached.db;
 
   const proxy = await getPlatformProxy({
-    configPath: "wrangler.toml",
+    // Cron ingest Worker 설정(D1 바인딩). OpenNext 앱은 wrangler.jsonc.
+    configPath: "wrangler.ingest.toml",
     persist: options?.persist ?? true,
   });
 

@@ -3,7 +3,7 @@
 #
 # Deploy:  npm run cf:ingest:deploy
 # Migrate: npm run cf:d1:migrate:remote
-# Secret:  npx wrangler secret put NASA_FIRMS_API_KEY
+# Secret:  npx wrangler secret put NASA_FIRMS_API_KEY -c wrangler.ingest.toml
 
 name = "conflict-view-ingest"
 main = "workers/cron-ingest/src/index.ts"

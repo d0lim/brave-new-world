@@ -23,7 +23,15 @@ npm run db:generate          # schema → drizzle/*.sql
 npm run db:migrate:local     # 로컬 D1
 npm run db:migrate:remote    # 원격 D1
 npm run db:studio            # Drizzle Studio (토큰 필요할 수 있음)
+npm run viina:build          # VIINA zone 캐시
+npm run ukraine:hatch:build  # 빗금 path 사전계산 → 파일(+D1)
 ```
+
+## Ukraine hatch offload
+
+1. `npm run viina:build`
+2. `npm run ukraine:hatch:build` (또는 첫 `GET /api/render/ukraine-control-paths` 시 서버 빌드)
+3. 글로브는 사전계산 path만 뷰포트 필터 후 렌더 (클라 geometry hatch 생략)
 
 ## Next.js 사용 예
 

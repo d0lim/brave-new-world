@@ -21,7 +21,7 @@ export async function getDb(options?: { persist?: boolean }): Promise<AppDb> {
     persist: options?.persist ?? true,
   });
 
-  const d1 = (proxy.env as { DB?: D1Database }).DB;
+  const d1 = (proxy.env as { DB?: import("@cloudflare/workers-types").D1Database }).DB;
   if (!d1) {
     await proxy.dispose();
     throw new Error(

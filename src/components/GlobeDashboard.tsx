@@ -276,6 +276,14 @@ import {
   computeUkraineFrontFitBbox,
 } from "@/lib/ukraineFrontPaths";
 import {
+  filterHatchPathsByView,
+  lodTierToHatchLod,
+} from "@/lib/ukraineHatchPrecompute";
+import {
+  prefetchUkraineHatchPaths,
+  readUkraineHatchPathsCache,
+} from "@/lib/ukraineHatchPrefetch";
+import {
   createUkraineSettlementLabelElement,
   getUkraineSettlementTier,
   isInUkraineTheater,
@@ -2003,33 +2011,73 @@ export function GlobeDashboard({
     return visible.map((country) => ({ ...country, polygonLayer: "country" as const }));
   }, [data.countries, globeLod.tier, isVectorBaseMap, layerViewState]);
 
+  const ukraineHatchLod = lodTierToHatchLod(globeLod.tier);
+  const [ukraineHatchCachePaths, setUkraineHatchCachePaths] = useState<TransportPath[]>(
+    () => readUkraineHatchPathsCache(ukraineHatchLod)?.paths ?? [],
+  );
+
+  useEffect(() => {
+    if (!showUkraineControl || viinaDisplay.lod.mode === "hidden") {
+      return;
+    }
+    let cancelled = false;
+    const cached = readUkraineHatchPathsCache(ukraineHatchLod);
+    if (cached?.paths?.length) {
+      setUkraineHatchCachePaths(cached.paths);
+    }
+    void prefetchUkraineHatchPaths(ukraineHatchLod).then((payload) => {
+      if (cancelled || !payload?.paths?.length) return;
+      setUkraineHatchCachePaths(payload.paths);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [showUkraineControl, ukraineHatchLod, viinaDisplay.lod.mode, ukraineControlDate]);
+
   const rawUkraineFrontRender = useMemo(() => {
     if (!showUkraineControl || viinaDisplay.lod.mode === "hidden") {
       return { paths: [] as TransportPath[] };
     }
+
+    const maxPaths =
+      globeLod.tier === "global" || globeLod.tier === "continent"
+        ? 1800
+        : globeLod.tier === "regional"
+          ? 3200
+          : 5000;
+    const radiusDeg = VIEWPORT_RADIUS_BY_TIER[globeLod.tier] + 4;
+
+    // 서버/D1 사전계산 path 우선 — 클라에서는 뷰포트 필터만
+    if (ukraineHatchCachePaths.length > 0) {
+      return {
+        paths: filterHatchPathsByView(
+          ukraineHatchCachePaths,
+          layerViewState,
+          radiusDeg,
+          maxPaths,
+        ),
+      };
+    }
+
+    // 캐시 없을 때만 기존 클라 계산 폴백
     const maxZones =
       globeLod.tier === "global" || globeLod.tier === "continent"
         ? 900
         : globeLod.tier === "regional"
           ? 1400
           : 2200;
-    const maxArrows =
-      globeLod.tier === "global" || globeLod.tier === "continent"
-        ? 10
-        : globeLod.tier === "regional"
-          ? 14
-          : 18;
     return buildUkraineFrontRender(
       viinaDisplay.ruZones,
       viinaDisplay.uaZones,
       viinaDisplay.contestedZones,
       layerViewState,
-      { maxZones, maxArrows, lodTier: globeLod.tier },
+      { maxZones, lodTier: globeLod.tier },
     );
   }, [
     globeLod.tier,
     layerViewState,
     showUkraineControl,
+    ukraineHatchCachePaths,
     viinaDisplay.contestedZones,
     viinaDisplay.lod.mode,
     viinaDisplay.ruZones,

@@ -45,6 +45,7 @@
     "viina:lfs": "node scripts/viina-lfs.js",
     "viina:build": "node scripts/build-viina-ukraine.js lite",
     "viina:build:full": "node scripts/build-viina-ukraine.js full",
+    "ukraine:hatch:build": "tsx scripts/build-ukraine-hatch-cache.ts",
     "db:generate": "drizzle-kit generate",
     "db:studio": "drizzle-kit studio",
     "db:migrate:local": "wrangler d1 migrations apply conflict-view-db --local",
@@ -82,6 +83,7 @@
     "mapshaper": "^0.7.35",
     "postcss": "^8",
     "tailwindcss": "^3.4.1",
+    "tsx": "^4.23.0",
     "typescript": "^5",
     "wrangler": "^4.110.0"
   }

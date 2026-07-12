@@ -227,6 +227,50 @@ export function useGlobeStaticLayers(options: {
     [options.globeTier, options.radiusDeg, options.viewState.lat, options.viewState.lng],
   );
 
+  const fetchViewportPoints = useCallback(
+    async (layer: string, setter: (value: StaticPoint[]) => void) => {
+      try {
+        const params = new URLSearchParams({
+          layer,
+          lat: String(Math.round(options.viewState.lat * 10) / 10),
+          lng: String(Math.round(options.viewState.lng * 10) / 10),
+          radius: String(options.radiusDeg),
+          tier: options.globeTier,
+        });
+        const response = await fetch(`/api/layers/viewport-points?${params}`, {
+          cache: "no-store",
+        });
+        if (!response.ok) return;
+        const payload = (await response.json()) as { points?: StaticPoint[] };
+        setter(Array.isArray(payload.points) ? payload.points : []);
+      } catch {
+        // optional
+      }
+    },
+    [options.globeTier, options.radiusDeg, options.viewState.lat, options.viewState.lng],
+  );
+
+  const fetchViewportBaseAreas = useCallback(async () => {
+    try {
+      const params = new URLSearchParams({
+        layer: "military-base-areas",
+        lat: String(Math.round(options.viewState.lat * 10) / 10),
+        lng: String(Math.round(options.viewState.lng * 10) / 10),
+        radius: String(options.radiusDeg),
+        tier: options.globeTier,
+      });
+      const response = await fetch(`/api/layers/viewport-points?${params}`, {
+        cache: "no-store",
+      });
+      if (!response.ok) return;
+      const payload = (await response.json()) as { areas?: MilitaryBaseArea[] };
+      setMilitaryBaseAreas(Array.isArray(payload.areas) ? payload.areas : []);
+    } catch {
+      // optional
+    }
+  }, [options.globeTier, options.radiusDeg, options.viewState.lat, options.viewState.lng]);
+
+
   const loadOnceApiPoints = useCallback(
     async (
       key: string,
@@ -372,75 +416,197 @@ export function useGlobeStaticLayers(options: {
   ]);
 
   useEffect(() => {
-    if (options.showLngTerminals) {
-      loadOnce("lngTerminals", "lng-terminals.json", setLngTerminals, expandPointsFromJson);
+    if (!options.showLngTerminals) {
+      setLngTerminals([]);
+      return;
     }
-  }, [loadOnce, options.showLngTerminals, reloadToken]);
+    const timer = window.setTimeout(() => {
+      void fetchViewportPoints("lng-terminals", setLngTerminals);
+    }, 320);
+    return () => window.clearTimeout(timer);
+  }, [
+    fetchViewportPoints,
+    options.showLngTerminals,
+    options.viewState.lat,
+    options.viewState.lng,
+    options.globeTier,
+    options.radiusDeg,
+    reloadToken,
+  ]);
 
   useEffect(() => {
-    if (options.showAirports) {
-      loadOnce("airports", "airports.json", setAirports, expandPointsFromJson);
+    if (!options.showAirports) {
+      setAirports([]);
+      return;
     }
-  }, [loadOnce, options.showAirports, reloadToken]);
+    const timer = window.setTimeout(() => {
+      void fetchViewportPoints("airports", setAirports);
+    }, 320);
+    return () => window.clearTimeout(timer);
+  }, [
+    fetchViewportPoints,
+    options.showAirports,
+    options.viewState.lat,
+    options.viewState.lng,
+    options.globeTier,
+    options.radiusDeg,
+    reloadToken,
+  ]);
 
   useEffect(() => {
-    if (options.showPorts) {
-      loadOnce("ports", "ports.json", setPorts, expandPointsFromJson);
+    if (!options.showPorts) {
+      setPorts([]);
+      return;
     }
-  }, [loadOnce, options.showPorts, reloadToken]);
+    const timer = window.setTimeout(() => {
+      void fetchViewportPoints("ports", setPorts);
+    }, 320);
+    return () => window.clearTimeout(timer);
+  }, [
+    fetchViewportPoints,
+    options.showPorts,
+    options.viewState.lat,
+    options.viewState.lng,
+    options.globeTier,
+    options.radiusDeg,
+    reloadToken,
+  ]);
 
   useEffect(() => {
-    if (options.showMilitaryBases) {
-      loadOnce("bases", "military-bases.json", setMilitaryBases, expandPointsFromJson);
-      loadOnce(
-        "baseAreas",
-        "military-base-areas.json",
-        setMilitaryBaseAreas,
-        expandMilitaryAreasFromJson,
-      );
+    if (!options.showMilitaryBases) {
+      setMilitaryBases([]);
+      setMilitaryBaseAreas([]);
+      return;
     }
-  }, [loadOnce, options.showMilitaryBases, reloadToken]);
+    const timer = window.setTimeout(() => {
+      void fetchViewportPoints("military-bases", setMilitaryBases);
+      void fetchViewportBaseAreas();
+    }, 320);
+    return () => window.clearTimeout(timer);
+  }, [
+    fetchViewportBaseAreas,
+    fetchViewportPoints,
+    options.showMilitaryBases,
+    options.viewState.lat,
+    options.viewState.lng,
+    options.globeTier,
+    options.radiusDeg,
+    reloadToken,
+  ]);
 
   useEffect(() => {
-    if (options.showResources) {
-      loadOnce("resources", "resources.json", setResources, expandPointsFromJson);
+    if (!options.showResources) {
+      setResources([]);
+      return;
     }
-  }, [loadOnce, options.showResources, reloadToken]);
+    const timer = window.setTimeout(() => {
+      void fetchViewportPoints("resources", setResources);
+    }, 320);
+    return () => window.clearTimeout(timer);
+  }, [
+    fetchViewportPoints,
+    options.showResources,
+    options.viewState.lat,
+    options.viewState.lng,
+    options.globeTier,
+    options.radiusDeg,
+    reloadToken,
+  ]);
 
   useEffect(() => {
-    if (options.showCableLandings) {
-      loadOnce("cableLandings", "cable-landings.json", setCableLandings, expandPointsFromJson);
+    if (!options.showCableLandings) {
+      setCableLandings([]);
+      return;
     }
-  }, [loadOnce, options.showCableLandings, reloadToken]);
+    const timer = window.setTimeout(() => {
+      void fetchViewportPoints("cable-landings", setCableLandings);
+    }, 320);
+    return () => window.clearTimeout(timer);
+  }, [
+    fetchViewportPoints,
+    options.showCableLandings,
+    options.viewState.lat,
+    options.viewState.lng,
+    options.globeTier,
+    options.radiusDeg,
+    reloadToken,
+  ]);
 
   useEffect(() => {
-    if (options.showNuclearSites) {
-      loadOnce("nuclearSites", "nuclear-sites.json", setNuclearSites, expandPointsFromJson);
+    if (!options.showNuclearSites) {
+      setNuclearSites([]);
+      return;
     }
-  }, [loadOnce, options.showNuclearSites, reloadToken]);
+    const timer = window.setTimeout(() => {
+      void fetchViewportPoints("nuclear-sites", setNuclearSites);
+    }, 320);
+    return () => window.clearTimeout(timer);
+  }, [
+    fetchViewportPoints,
+    options.showNuclearSites,
+    options.viewState.lat,
+    options.viewState.lng,
+    options.globeTier,
+    options.radiusDeg,
+    reloadToken,
+  ]);
 
   useEffect(() => {
-    if (options.showInternetExchanges) {
-      loadOnce(
-        "internetExchanges",
-        "internet-exchanges.json",
-        setInternetExchanges,
-        expandPointsFromJson,
-      );
+    if (!options.showInternetExchanges) {
+      setInternetExchanges([]);
+      return;
     }
-  }, [loadOnce, options.showInternetExchanges, reloadToken]);
+    const timer = window.setTimeout(() => {
+      void fetchViewportPoints("internet-exchanges", setInternetExchanges);
+    }, 320);
+    return () => window.clearTimeout(timer);
+  }, [
+    fetchViewportPoints,
+    options.showInternetExchanges,
+    options.viewState.lat,
+    options.viewState.lng,
+    options.globeTier,
+    options.radiusDeg,
+    reloadToken,
+  ]);
 
   useEffect(() => {
-    if (options.showRefugeeCamps) {
-      loadOnce("refugeeCamps", "refugee-camps.json", setRefugeeCamps, expandPointsFromJson);
+    if (!options.showRefugeeCamps) {
+      setRefugeeCamps([]);
+      return;
     }
-  }, [loadOnce, options.showRefugeeCamps, reloadToken]);
+    const timer = window.setTimeout(() => {
+      void fetchViewportPoints("refugee-camps", setRefugeeCamps);
+    }, 320);
+    return () => window.clearTimeout(timer);
+  }, [
+    fetchViewportPoints,
+    options.showRefugeeCamps,
+    options.viewState.lat,
+    options.viewState.lng,
+    options.globeTier,
+    options.radiusDeg,
+    reloadToken,
+  ]);
 
   useEffect(() => {
-    if (options.showUcdpEvents) {
-      loadOnce("ucdpEvents", "ucdp-events.json", setUcdpEvents, expandPointsFromJson);
+    if (!options.showUcdpEvents) {
+      setUcdpEvents([]);
+      return;
     }
-  }, [loadOnce, options.showUcdpEvents, reloadToken]);
+    const timer = window.setTimeout(() => {
+      void fetchViewportPoints("ucdp-events", setUcdpEvents);
+    }, 320);
+    return () => window.clearTimeout(timer);
+  }, [
+    fetchViewportPoints,
+    options.showUcdpEvents,
+    options.viewState.lat,
+    options.viewState.lng,
+    options.globeTier,
+    options.radiusDeg,
+    reloadToken,
+  ]);
 
   useEffect(() => {
     if (options.showAiDataCenters) {

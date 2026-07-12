@@ -13,9 +13,19 @@ export function prefetchUkraineControl(): Promise<UkraineControlData | null> {
   if (cache?.features?.length) return Promise.resolve(cache);
   if (inflight) return inflight;
 
-  inflight = fetch("/api/render/ukraine-control", { cache: "no-store" })
+  inflight = fetch("/api/render/ukraine-control?light=1", { cache: "no-store" })
     .then(async (res) => {
-      if (!res.ok) return null;
+      if (!res.ok) {
+        // light 실패 시 풀 페이로드 폴백
+        const full = await fetch("/api/render/ukraine-control", { cache: "no-store" });
+        if (!full.ok) return null;
+        const payload = (await full.json()) as UkraineControlData;
+        if (payload?.features?.length) {
+          cache = payload;
+          return payload;
+        }
+        return null;
+      }
       const payload = (await res.json()) as UkraineControlData;
       if (payload?.features?.length) {
         cache = payload;

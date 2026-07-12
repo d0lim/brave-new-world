@@ -1,6 +1,10 @@
-# Local Wrangler secrets for conflict-view-ingest
+# Local Wrangler secrets (ingest + Next OpenNext)
 # Copy to .dev.vars (do not commit .dev.vars)
 
+# OpenNext: which Next.js .env.* to load during wrangler/preview
+NEXTJS_ENV=development
+
+# conflict-view-ingest
 NASA_FIRMS_API_KEY=your_nasa_firms_map_key_here
 
 # Optional — if set, POST /run requires Authorization: Bearer <secret>

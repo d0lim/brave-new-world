@@ -1,3 +1,5 @@
+import { initOpenNextCloudflareForDev } from "@opennextjs/cloudflare";
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   experimental: {
@@ -34,3 +36,6 @@ const nextConfig = {
 };
 
 export default nextConfig;
+
+// Cloudflare Workers 로컬 바인딩(OpenNext). next dev에서도 getCloudflareContext 사용 가능
+initOpenNextCloudflareForDev();

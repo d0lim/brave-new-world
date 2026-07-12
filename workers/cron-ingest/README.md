@@ -6,7 +6,7 @@ Next.js `src/workers/`(브라우저 Web Worker)와 분리해 **`workers/cron-ing
 
 | 파일 | 역할 |
 |------|------|
-| `../../wrangler.toml` | Worker 이름, D1 바인딩, Cron `*/10 * * * *` |
+| `../../wrangler.ingest.toml` | Worker 이름, D1 바인딩, Cron `*/10 * * * *` |
 | `schema.sql` | `firms_fires` / `gdelt_points` / `ingest_runs` |
 | `src/index.ts` | Cron + `GET /health` · `GET /latest` · `POST /run` |
 | `src/firms.ts` | NASA FIRMS area CSV (전장 bbox) |
@@ -19,10 +19,10 @@ Next.js `src/workers/`(브라우저 Web Worker)와 분리해 **`workers/cron-ing
 npm run cf:d1:migrate:remote
 
 # 2) FIRMS 키 (대시보드/.env 의 NASA_FIRMS_API_KEY)
-npx wrangler secret put NASA_FIRMS_API_KEY
+npx wrangler secret put NASA_FIRMS_API_KEY -c wrangler.ingest.toml
 
 # 3) (선택) 수동 트리거 보호
-npx wrangler secret put INGEST_CRON_SECRET
+npx wrangler secret put INGEST_CRON_SECRET -c wrangler.ingest.toml
 
 # 4) 배포
 npm run cf:ingest:deploy

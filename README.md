@@ -86,6 +86,15 @@ npm run start   # 프로덕션 서버
 npm run lint    # ESLint
 ```
 
+### Cloudflare에 배포 (MapLibre 앱)
+
+```bash
+npx wrangler login
+npm run cf:app:deploy   # OpenNext → Workers (conflict-view)
+```
+
+Cron ingest는 `npm run cf:ingest:deploy` 입니다. 자세한 절차·주의사항은 [`docs/cloudflare-deploy.md`](docs/cloudflare-deploy.md)를 참고하세요.
+
 ---
 
 ## 환경 변수 (`.env.local`)

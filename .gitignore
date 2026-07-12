@@ -29,10 +29,16 @@ yarn-error.log*
 # local env files
 .env
 .env*.local
+.dev.vars
+
+# cloudflare
+.wrangler/
 
 # telethon session
 scripts/telegram-osint/.session/
 *.session
+**/__pycache__/
+*.pyc
 
 # local data exports
 /scripts/output/

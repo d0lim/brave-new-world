@@ -44,12 +44,22 @@
     "dev:live": "node scripts/dev-with-telegram.js",
     "viina:lfs": "node scripts/viina-lfs.js",
     "viina:build": "node scripts/build-viina-ukraine.js lite",
-    "viina:build:full": "node scripts/build-viina-ukraine.js full"
+    "viina:build:full": "node scripts/build-viina-ukraine.js full",
+    "db:generate": "drizzle-kit generate",
+    "db:studio": "drizzle-kit studio",
+    "db:migrate:local": "wrangler d1 migrations apply conflict-view-db --local",
+    "db:migrate:remote": "wrangler d1 migrations apply conflict-view-db --remote",
+    "cf:ingest:dev": "wrangler dev",
+    "cf:ingest:deploy": "wrangler deploy",
+    "cf:ingest:tail": "wrangler tail",
+    "cf:d1:migrate:local": "npm run db:migrate:local",
+    "cf:d1:migrate:remote": "npm run db:migrate:remote"
   },
   "dependencies": {
     "@google/earthengine": "^1.7.34",
     "@streamparser/json": "^0.0.22",
     "adm-zip": "^0.5.18",
+    "drizzle-orm": "^0.45.2",
     "fuse.js": "^7.4.2",
     "iconv-lite": "^0.7.3",
     "maplibre-gl": "^5.24.0",
@@ -61,15 +71,18 @@
     "yahoo-finance2": "^3.15.4"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "^5.20260712.1",
     "@types/adm-zip": "^0.5.8",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
+    "drizzle-kit": "^0.31.10",
     "eslint": "^8",
     "eslint-config-next": "14.2.35",
     "mapshaper": "^0.7.35",
     "postcss": "^8",
     "tailwindcss": "^3.4.1",
-    "typescript": "^5"
+    "typescript": "^5",
+    "wrangler": "^4.110.0"
   }
 }

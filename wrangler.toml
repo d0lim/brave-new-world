@@ -1,0 +1,38 @@
+# Conflict View — Cloudflare Workers Cron Ingest (FIRMS + GDELT → D1)
+# Docs: workers/cron-ingest/README.md
+#
+# Deploy:  npm run cf:ingest:deploy
+# Migrate: npm run cf:d1:migrate:remote
+# Secret:  npx wrangler secret put NASA_FIRMS_API_KEY
+
+name = "conflict-view-ingest"
+main = "workers/cron-ingest/src/index.ts"
+compatibility_date = "2025-10-11"
+workers_dev = true
+
+# Optional: allow lightweight URL/Buffer helpers if needed later
+compatibility_flags = []
+
+[vars]
+# Theater FIRMS day window (1–5). Keep small for Cron CPU limits.
+FIRMS_DAY_RANGE = "1"
+# Cap per FIRMS theater bbox insert
+FIRMS_MAX_PER_THEATER = "400"
+# GDELT Geo API maxpoints (shared across queries)
+GDELT_MAX_POINTS = "250"
+# Retain window for prune (hours)
+RETENTION_HOURS = "48"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "conflict-view-db"
+database_id = "7e44bacd-d2f1-4c77-84c2-7be6b90fa0ae"
+migrations_dir = "drizzle"
+
+# Every 10 minutes
+[triggers]
+crons = ["*/10 * * * *"]
+
+# Local secrets: copy .dev.vars.example → .dev.vars (gitignored)
+# Production: wrangler secret put NASA_FIRMS_API_KEY
+# Optional: wrangler secret put INGEST_CRON_SECRET

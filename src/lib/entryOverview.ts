@@ -19,10 +19,10 @@ import type { ViewerMode } from "@/lib/viewPackages";
  */
 export const ENTRY_GATE = {
   /** 로딩·환영·도메인 동안 뒷배경 카메라 (이미 줌아웃된 궤도) */
-  bootAltitude: 2.85,
+  bootAltitude: 2.85 as number,
   bootLookAt: { lat: 18, lng: 35 } as const,
   /** 도메인 선택 직후 — 전체 지구본이 확 빠지는 고도 */
-  zoomOutAltitude: 3.4,
+  zoomOutAltitude: 3.4 as number,
   zoomOutFlyMs: 1600,
   /** 줌아웃 연출 후 세부설정 창까지 여유 */
   afterZoomOutHoldMs: 450,

@@ -39,6 +39,47 @@ CREATE INDEX IF NOT EXISTS idx_gdelt_ingested ON gdelt_points (ingested_at);
 CREATE INDEX IF NOT EXISTS idx_gdelt_tag ON gdelt_points (query_tag);
 CREATE INDEX IF NOT EXISTS idx_gdelt_geo ON gdelt_points (lat, lng);
 
+CREATE TABLE IF NOT EXISTS news_stream_snapshots (
+  cache_key TEXT PRIMARY KEY,
+  packages TEXT,
+  lang TEXT NOT NULL DEFAULT 'ko',
+  payload_json TEXT NOT NULL,
+  item_count INTEGER NOT NULL DEFAULT 0,
+  tier1_count INTEGER NOT NULL DEFAULT 0,
+  tier2_count INTEGER NOT NULL DEFAULT 0,
+  tier3_count INTEGER NOT NULL DEFAULT 0,
+  fetched_at TEXT NOT NULL,
+  ingested_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_news_snap_fetched ON news_stream_snapshots (fetched_at);
+CREATE INDEX IF NOT EXISTS idx_news_snap_lang ON news_stream_snapshots (lang);
+
+CREATE TABLE IF NOT EXISTS news_stream_items (
+  id TEXT PRIMARY KEY,
+  cache_key TEXT NOT NULL,
+  item_id TEXT NOT NULL,
+  trust_tier INTEGER NOT NULL,
+  theater TEXT,
+  title TEXT NOT NULL,
+  link TEXT NOT NULL,
+  source TEXT,
+  publisher TEXT,
+  pub_date TEXT,
+  feed_topic TEXT,
+  econ_genre TEXT,
+  category TEXT,
+  image_url TEXT,
+  summary TEXT,
+  role TEXT NOT NULL DEFAULT 'verified',
+  ingested_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_news_items_cache ON news_stream_items (cache_key);
+CREATE INDEX IF NOT EXISTS idx_news_items_tier ON news_stream_items (trust_tier);
+CREATE INDEX IF NOT EXISTS idx_news_items_theater ON news_stream_items (theater);
+CREATE INDEX IF NOT EXISTS idx_news_items_ingested ON news_stream_items (ingested_at);
+
 CREATE TABLE IF NOT EXISTS ingest_runs (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   started_at TEXT NOT NULL,

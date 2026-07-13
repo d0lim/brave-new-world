@@ -1,43 +1,44 @@
 "use client";
 
 import { useCallback, useState } from "react";
+import { BRAND_NAME } from "@/lib/brand";
 import type { LabelLanguage } from "@/lib/layerPrefs";
 import { t } from "@/lib/uiStrings";
 
 const LETTER_KO = {
-  title: "환영합니다!",
+  title: "멋진신세계에 오신 것을 환영합니다",
   paragraphs: [
     "존경하는 탐험가께.",
-    "당신은 지금, 지구의 표면을 한눈에 내려다보는 관측대에 들어섰습니다. 이 자리에서는 국경선과 전선, 해로와 파이프라인, 속보와 침묵이 한 화면 위에서 서로 겹쳐집니다. Conflict View는 단정한 결론을 강요하지 않습니다. 다만 보이는 것을 더 선명하게, 흩어진 것을 한곳에 모아, 당신이 스스로 판단할 수 있도록 돕습니다.",
-    "세상은 종종 하나의 이야기로 정리되기를 원합니다. 그러나 지정학은 여러 줄기가 한꺼번에 흐르는 강과 같습니다. 한쪽에서는 포화가 울리고, 다른 쪽에서는 회담이 이어지며, 바다 위에서는 선박이 항로를 바꾸고, 케이블과 에너지 관은 보이지 않는 힘으로 대륙을 잇습니다. 이 지구본은 그 복잡한 결을 지도의 언어로 옮겨 놓았습니다.",
+    "문을 열면, 먼저 소리가 옵니다.\n멀리서 포탄이 작렬하고, 공습 사이렌이 허파를 쥐어짭니다. 지도 위 한 칸에서는 밤이 붉게 타오릅니다. 그런데—같은 순간, 같은 지구본의 반대편에서는 누군가 조용히 숫자를 읽어 올립니다. 유가. 환율. 제재. 항로. 케이블. 누군가는 돈을 벌고 있습니다.",
+    "Aldous Huxley가 그린 《Brave New World》는 ‘멋진’이라는 말이 얼마나 섬뜩할 수 있는지를 보여 주었습니다. 우리는 그 아이러니를 빌려, 이 관측대에 이름을 붙였습니다. 멋진신세계.\n완성된 낙원이 아니라—전쟁과 이익이 한 화면을 나눠 쓰는, 너무도 현실적인 신세계.",
+    "세상은 하나의 이야기로 정리되기를 원합니다. 그러나 지정학은 여러 줄기가 한꺼번에 흐르는 강입니다. 한쪽에서는 총성이, 다른 쪽에서는 회담이, 바다 위에서는 선박이 항로를 틀고, 해저에서는 보이지 않는 케이블이 대륙을 잇습니다. 이 지구본은 그 서사시의 결을, 지도의 언어로 펼쳐 놓았습니다.",
     "이곳에서 당신은 두 갈래의 문 앞에 서게 됩니다.",
-    "지정학의 창은 전선과 분쟁, 군사·외교의 긴장을 따라갑니다. 우크라이나의 접촉선, 공중의 궤적, 속보의 불꽃, 전장의 조용한 윤곽을 들여다보는 길입니다.",
-    "지경학의 창은 에너지와 물류, 항로와 시장, 제재와 허브의 맥을 따라갑니다. 호르무즈와 수에즈, 케이블과 파이프라인, 자본과 공급망이 교차하는 지점을 읽는 길입니다.",
-    "어느 문을 열든, 당신은 원하는 방식으로 관측을 이어갈 수 있습니다. 레이어를 켜고 끄며 시야를 좁히거나 넓히고, 관심 지역으로 날아가며, 뉴스와 데이터를 번갈아 살피십시오. 처음에는 낯설어도, 손끝의 선택 하나하나가 곧 당신만의 렌즈가 됩니다.",
-    "부디 성급히 닫지 마십시오. 지도는 답을 주기보다, 올바른 질문을 떠올리게 하는 도구입니다. 오늘 당신이 이 관측대에서 건져 올리는 통찰이, 세상의 소란 속에서도 방향을 잃지 않는 나침반이 되기를 바랍니다.",
-    "우리는 당신의 방문을 진심으로 환영합니다. 이제, 편지를 접고—어느 창으로 들어설지 선택해 주십시오.",
+    "지정학의 창—전선과 분쟁, 군사와 외교의 긴장. 접촉선의 윤곽, 공중의 궤적, 속보의 불꽃, 사이렌이 남긴 잔향을 따라가는 길입니다.",
+    "지경학의 창—에너지와 물류, 시장과 제재, 호르무즈와 수에즈, 파이프라인과 해저 케이블. 자본이 숨을 고르는 교차로를 읽는 길입니다.",
+    "어느 문을 열든, 부디 성급히 눈을 감지 마십시오. 소름과 설렘은 같은 자리에서 태어납니다. 긴장 너머에 감동이 있고, 감동 너머에 질문이 남습니다. 지도는 답을 주기보다, 올바른 질문을 떠올리게 하는 도구입니다.",
+    "이제 편지를 접으십시오.\n그리고—어느 창으로 이 멋진신세계에 들어설지, 스스로 선택해 주십시오.",
   ],
-  signOff: "Conflict View\n지구본 관측대에서",
-  backMark: "Conflict View",
-  backSub: "지구본 관측대",
+  signOff: `${BRAND_NAME.ko}\n지구본 관측대에서`,
+  backMark: BRAND_NAME.ko,
+  backSub: "Brave New World",
 };
 
 const LETTER_EN = {
-  title: "Welcome!",
+  title: "Welcome to Brave New World",
   paragraphs: [
     "Dear explorer,",
-    "You have stepped into an observatory that looks down upon the surface of the Earth. Here borders and front lines, sea lanes and pipelines, breaking news and silence overlap on a single screen. Conflict View does not force a tidy conclusion. It only gathers what is scattered and sharpens what is visible, so that you may judge for yourself.",
-    "The world often longs to be told as one story. Yet geopolitics is a river of many currents at once. Guns thunder in one place while talks continue in another; ships change course at sea; cables and energy lines bind continents with invisible force. This globe renders that tangled grain in the language of maps.",
+    "Open the door, and sound arrives first.\nFar away, shells rupture the night; air-raid sirens claw at the lungs. One square of the map burns red. And yet—in the same heartbeat, on the far side of the same globe—someone quietly reads the numbers up. Oil. Exchange. Sanctions. Sea lanes. Cables. Someone is making money.",
+    "Aldous Huxley’s Brave New World taught us how unsettling the word “brave” can be. We borrowed that irony for this observatory. Brave New World.\nNot a finished paradise—but a world too real, where war and profit share one screen.",
+    "The world longs to be told as a single story. Geopolitics is a river of many currents at once: gunfire here, talks there; ships altering course at sea; unseen cables binding continents below. This globe unfolds that epic grain in the language of maps.",
     "Here you stand before two doors.",
-    "The window of geopolitics follows front lines and disputes, and the tension of arms and diplomacy—Ukraine’s contact line, trails in the sky, sparks of breaking news, the quiet outline of the battlefield.",
-    "The window of geoeconomics follows energy and logistics, routes and markets, sanctions and hubs—Hormuz and Suez, cables and pipelines, the crossings of capital and supply chains.",
-    "Whichever door you open, you may observe as you wish. Toggle layers to narrow or widen your view, fly to places of interest, and move between news and data. At first it may feel unfamiliar, but each choice at your fingertips becomes a lens of your own.",
-    "Do not close it too quickly. A map does not so much give answers as invite the right questions. May the insight you draw from this observatory today be a compass that holds its bearing amid the world’s noise.",
-    "We welcome your visit with sincere regard. Now fold the letter—and choose which window you will enter.",
+    "The window of geopolitics—front lines and disputes, the tension of arms and diplomacy: the outline of a contact line, trails in the sky, sparks of breaking news, the after-echo of sirens.",
+    "The window of geoeconomics—energy and logistics, markets and sanctions, Hormuz and Suez, pipelines and submarine cables: the crossings where capital catches its breath.",
+    "Whichever door you open, do not close your eyes too soon. Goosebumps and thrill are born in the same place. Beyond tension, feeling; beyond feeling, a question. A map does not so much give answers as invite the right ones.",
+    "Now fold the letter.\nAnd choose—for yourself—which window will lead you into this Brave New World.",
   ],
-  signOff: "Conflict View\nFrom the Globe Observatory",
-  backMark: "Conflict View",
-  backSub: "Globe Observatory",
+  signOff: `${BRAND_NAME.en}\nFrom the Globe Observatory`,
+  backMark: BRAND_NAME.en,
+  backSub: "멋진신세계",
 };
 
 /** 접기(뒷면) + 상승 모션 총 길이 (CSS와 맞춤) */
@@ -51,10 +52,13 @@ type WelcomeParchmentLetterProps = {
 export function WelcomeParchmentLetter({ lang, onContinue }: WelcomeParchmentLetterProps) {
   const letter = lang === "en" ? LETTER_EN : LETTER_KO;
   const [phase, setPhase] = useState<"idle" | "folding" | "done">("idle");
-  const fontStyle = {
-    fontFamily:
-      'var(--font-letter-serif), "Noto Serif KR", "Nanum Myeongjo", "Apple Myungjo", "Batang", serif',
-  } as const;
+  /** 고문헌 필체 — 한글 고운바탕 + 영문 코모란트 */
+  const classicalStack =
+    'var(--font-letter-serif), "Gowun Batang", "Nanum Myeongjo", "Apple Myungjo", "Batang", serif';
+  const scriptStack =
+    'var(--font-letter-script), "Cormorant Garamond", "Garamond", "Times New Roman", serif';
+  const bodyFont = lang === "en" ? scriptStack : classicalStack;
+  const titleFont = classicalStack;
 
   const handleContinue = useCallback(() => {
     if (phase !== "idle") return;
@@ -83,7 +87,7 @@ export function WelcomeParchmentLetter({ lang, onContinue }: WelcomeParchmentLet
       <div className="welcome-letter-stage">
         <div
           className={`welcome-letter-card ${exiting ? "welcome-letter-card--fold-exit" : ""}`}
-          style={fontStyle}
+          style={{ fontFamily: bodyFont }}
         >
           {/* 앞면 */}
           <div className="welcome-parchment welcome-letter-face welcome-letter-face--front relative flex max-h-[min(92vh,880px)] w-full max-w-2xl flex-col overflow-hidden rounded-sm shadow-[0_24px_80px_rgba(0,0,0,0.55)]">
@@ -91,19 +95,29 @@ export function WelcomeParchmentLetter({ lang, onContinue }: WelcomeParchmentLet
             <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden px-7 py-8 sm:px-12 sm:py-10">
               <h1
                 id="welcome-letter-title"
-                className="shrink-0 text-center text-3xl leading-tight tracking-tight text-[#3d2a18] sm:text-4xl"
-                style={{ fontWeight: 700 }}
+                className="welcome-letter-title shrink-0 text-center text-[1.85rem] leading-[1.45] tracking-[0.04em] text-[#3d2a18] sm:text-[2.35rem] sm:leading-[1.4] sm:tracking-[0.06em]"
+                style={{ fontFamily: titleFont, fontWeight: 700 }}
               >
                 {letter.title}
               </h1>
               <div className="mx-auto mt-3 h-px w-24 shrink-0 bg-[#8b6914]/45" aria-hidden />
-              <div className="mt-6 min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain text-[1.05rem] leading-[1.85] tracking-[-0.01em] text-[#3f2e1c] sm:text-[1.12rem] sm:leading-[1.9]">
+              <div
+                className="welcome-letter-body mt-6 min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain text-[1.08rem] leading-[2] tracking-[0.02em] text-[#3f2e1c] sm:text-[1.14rem] sm:leading-[2.05] sm:tracking-[0.025em]"
+                style={{ fontFamily: bodyFont, fontWeight: 400 }}
+              >
                 {letter.paragraphs.map((p) => (
                   <p key={p.slice(0, 24)} className="whitespace-pre-wrap">
                     {p}
                   </p>
                 ))}
-                <p className="whitespace-pre-line pb-1 text-right text-[1rem] leading-relaxed text-[#5a4428]">
+                <p
+                  className="whitespace-pre-line pb-1 text-right text-[1.05rem] leading-relaxed tracking-[0.03em] text-[#5a4428]"
+                  style={{
+                    fontFamily: scriptStack,
+                    fontStyle: "italic",
+                    fontWeight: 500,
+                  }}
+                >
                   {letter.signOff}
                 </p>
               </div>
@@ -113,8 +127,8 @@ export function WelcomeParchmentLetter({ lang, onContinue }: WelcomeParchmentLet
                 type="button"
                 onClick={handleContinue}
                 disabled={phase !== "idle"}
-                className="rounded-full border border-[#8b6914]/50 bg-[#efe0b8] px-6 py-2.5 text-base text-[#3d2a18] shadow-sm transition hover:bg-[#f7ecd0] disabled:cursor-wait disabled:opacity-70"
-                style={{ ...fontStyle, fontWeight: 600 }}
+                className="rounded-full border border-[#8b6914]/50 bg-[#efe0b8] px-6 py-2.5 text-base tracking-[0.04em] text-[#3d2a18] shadow-sm transition hover:bg-[#f7ecd0] disabled:cursor-wait disabled:opacity-70"
+                style={{ fontFamily: titleFont, fontWeight: 700 }}
               >
                 {t("welcomeLetterCta", lang)}
               </button>
@@ -129,8 +143,12 @@ export function WelcomeParchmentLetter({ lang, onContinue }: WelcomeParchmentLet
             <div className="welcome-parchment-edge pointer-events-none absolute inset-0" />
             <div className="welcome-letter-back-inner">
               <div className="welcome-letter-wax" />
-              <p className="welcome-letter-back-mark">{letter.backMark}</p>
-              <p className="welcome-letter-back-sub">{letter.backSub}</p>
+              <p className="welcome-letter-back-mark" style={{ fontFamily: titleFont }}>
+                {letter.backMark}
+              </p>
+              <p className="welcome-letter-back-sub" style={{ fontFamily: scriptStack, fontStyle: "italic" }}>
+                {letter.backSub}
+              </p>
               <div className="welcome-letter-back-lines" />
             </div>
           </div>

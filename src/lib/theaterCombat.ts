@@ -1,10 +1,18 @@
-/** 활성 교전 전장 — 콜아웃·전장 사운드 공용 */
+/** 전장 박스 — 콜아웃은 전체, 전장(포격) 사운드는 실제 교전만 */
 
 export type CombatTheaterId =
   | "russia-ukraine"
   | "middle-east"
   | "china-taiwan"
   | "korea";
+
+/** 실제 교전 중 — 전장 앰비언트·원샷 대상 */
+export const ACTIVE_WAR_THEATER_IDS = ["russia-ukraine", "middle-east"] as const;
+export type ActiveWarTheaterId = (typeof ACTIVE_WAR_THEATER_IDS)[number];
+
+/** 긴장·억제 전장 — 긴장 rumble만 (포격 사운드 없음) */
+export const TENSION_THEATER_IDS = ["china-taiwan", "korea"] as const;
+export type TensionTheaterId = (typeof TENSION_THEATER_IDS)[number];
 
 type TheaterBox = {
   id: CombatTheaterId;
@@ -21,6 +29,14 @@ const THEATER_BOXES: TheaterBox[] = [
   { id: "korea", south: 33, north: 43, west: 124, east: 132 },
 ];
 
+export function isActiveWarTheater(id: CombatTheaterId): id is ActiveWarTheaterId {
+  return (ACTIVE_WAR_THEATER_IDS as readonly string[]).includes(id);
+}
+
+export function isTensionTheater(id: CombatTheaterId): id is TensionTheaterId {
+  return (TENSION_THEATER_IDS as readonly string[]).includes(id);
+}
+
 export function isInCombatTheater(
   theater: CombatTheaterId,
   lat: number,
@@ -31,7 +47,7 @@ export function isInCombatTheater(
   return lat >= box.south && lat <= box.north && lng >= box.west && lng <= box.east;
 }
 
-/** 카메라 중심이 속한 교전 전장 (우선순위: 우크라 > 중동 > 대만 > 한반도) */
+/** 카메라 중심이 속한 전장 (우선순위: 우크라 > 중동 > 대만 > 한반도) */
 export function resolveCombatTheaterAt(
   lat: number,
   lng: number,
@@ -41,6 +57,16 @@ export function resolveCombatTheaterAt(
       return box.id;
     }
   }
+  return null;
+}
+
+/** 실제 교전 전장만 (우크라 · 중동/이란) — 전장 사운드용 */
+export function resolveActiveWarTheaterAt(
+  lat: number,
+  lng: number,
+): ActiveWarTheaterId | null {
+  const theater = resolveCombatTheaterAt(lat, lng);
+  if (theater && isActiveWarTheater(theater)) return theater;
   return null;
 }
 

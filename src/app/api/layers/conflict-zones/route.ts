@@ -23,7 +23,7 @@ export async function GET(request: Request) {
 
   try {
     const { data, cached } = await cachedFetchJson("ai-war-zones-demo-v2-hatch", TTL_MS, async () =>
-      attachHatchPaths(detectAiWarZonesDemo() as ConflictZoneFeature[]),
+      attachHatchPaths((await detectAiWarZonesDemo()) as ConflictZoneFeature[]),
     );
     return NextResponse.json({
       receivedAt: new Date().toISOString(),

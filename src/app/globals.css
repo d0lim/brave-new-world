@@ -61,8 +61,9 @@ body {
 }
 
 .welcome-letter-scrim {
-  background: rgba(2, 4, 10, 0.92);
-  backdrop-filter: blur(6px);
+  /* 뒷배경 줌아웃 지구본이 비치도록 — 완전 불투명 금지 */
+  background: rgba(2, 4, 10, 0.72);
+  backdrop-filter: blur(3px);
   transition:
     background 0.65s ease,
     backdrop-filter 0.65s ease,
@@ -149,18 +150,17 @@ body {
 
 .welcome-letter-back-mark {
   margin: 0;
-  font-size: 1.35rem;
+  font-size: 1.45rem;
   font-weight: 700;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.14em;
   color: #4a3420;
 }
 
 .welcome-letter-back-sub {
   margin: 0;
-  font-size: 0.85rem;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: rgba(74, 52, 32, 0.72);
+  font-size: 0.95rem;
+  letter-spacing: 0.1em;
+  color: rgba(74, 52, 32, 0.75);
 }
 
 .welcome-letter-back-lines {

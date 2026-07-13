@@ -1,9 +1,13 @@
-# Conflict View — Cloudflare Workers Cron Ingest (FIRMS + GDELT → D1)
+# Conflict View — Cloudflare Workers Cron Ingest
+# FIRMS + GDELT + news/AIS/ADS-B/tunnels warm → D1
 # Docs: workers/cron-ingest/README.md
 #
 # Deploy:  npm run cf:ingest:deploy
 # Migrate: npm run cf:d1:migrate:remote
 # Secret:  npx wrangler secret put NASA_FIRMS_API_KEY -c wrangler.ingest.toml
+# Optional warm URLs (Next app):
+#   NEWS_WARM_URL / AIS_WARM_URL / ADSB_WARM_URL / TUNNELS_WARM_URL
+#   INGEST_CRON_SECRET
 
 name = "conflict-view-ingest"
 main = "workers/cron-ingest/src/index.ts"

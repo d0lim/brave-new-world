@@ -1,7 +1,6 @@
-import fs from "fs";
-import path from "path";
 import type { CountryFeature, TransportPath } from "@/data/geoTypes";
 import { expandTransportPaths } from "@/lib/compactData";
+import { loadCloudStaticJson } from "@/lib/cloudStaticJson";
 import type { GlobeLodTier } from "@/lib/globeLod";
 import { getServerDataProfile } from "@/lib/serverEnv";
 import {
@@ -51,32 +50,15 @@ const DEFAULT_MAX: Record<ViewportPathLayer, Record<GlobeLodTier, number>> = {
 const pathCache = new Map<string, TransportPath[]>();
 const countryCache = new Map<string, CountryFeature[]>();
 
-function profileDir(profile = getServerDataProfile()) {
-  return path.join(process.cwd(), "public", "data", profile);
-}
-
-function readJsonFile<T>(fileName: string): T | null {
-  const profile = getServerDataProfile();
-  const primary = path.join(profileDir(profile), fileName);
-  const fallback = path.join(process.cwd(), "public", "data", fileName);
-  for (const filePath of [primary, fallback]) {
-    if (!fs.existsSync(filePath)) continue;
-    try {
-      return JSON.parse(fs.readFileSync(filePath, "utf8")) as T;
-    } catch {
-      // next
-    }
-  }
-  return null;
-}
-
-export function loadAllTransportPaths(layer: ViewportPathLayer): TransportPath[] {
+export async function loadAllTransportPaths(
+  layer: ViewportPathLayer,
+): Promise<TransportPath[]> {
   const profile = getServerDataProfile();
   const key = `${profile}:${layer}`;
   const hit = pathCache.get(key);
   if (hit) return hit;
 
-  const raw = readJsonFile<unknown[]>(FILE_BY_LAYER[layer]);
+  const raw = await loadCloudStaticJson<unknown[]>(FILE_BY_LAYER[layer]);
   if (!Array.isArray(raw) || raw.length === 0) {
     pathCache.set(key, []);
     return [];
@@ -88,18 +70,18 @@ export function loadAllTransportPaths(layer: ViewportPathLayer): TransportPath[]
   return paths;
 }
 
-export function loadAllCountries(): CountryFeature[] {
+export async function loadAllCountries(): Promise<CountryFeature[]> {
   const profile = getServerDataProfile();
   const key = `${profile}:countries`;
   const hit = countryCache.get(key);
   if (hit) return hit;
 
-  const chunk = readJsonFile<CountryFeature[]>("countries.json");
+  const chunk = await loadCloudStaticJson<CountryFeature[]>("countries.json");
   let countries: CountryFeature[] = [];
   if (Array.isArray(chunk) && chunk.length > 0) {
     countries = chunk;
   } else {
-    const app = readJsonFile<{ countries?: CountryFeature[] }>("app-data.json");
+    const app = await loadCloudStaticJson<{ countries?: CountryFeature[] }>("app-data.json");
     if (Array.isArray(app?.countries)) countries = app.countries;
   }
   countryCache.set(key, countries);
@@ -148,7 +130,7 @@ export function filterTransportPathsForViewport(
   return visible;
 }
 
-export function queryViewportPaths(
+export async function queryViewportPaths(
   layer: ViewportPathLayer,
   options: {
     lat: number;
@@ -160,7 +142,7 @@ export function queryViewportPaths(
     arterialMaxRank?: number;
   },
 ) {
-  const all = loadAllTransportPaths(layer);
+  const all = await loadAllTransportPaths(layer);
   const defaultMax = DEFAULT_MAX[layer][options.tier] ?? 200;
   const maxCount = Math.min(options.max ?? defaultMax, defaultMax || options.max || 0);
   if (maxCount <= 0) {
@@ -179,14 +161,14 @@ export function queryViewportPaths(
   return { paths, total: all.length, returned: paths.length };
 }
 
-export function queryViewportCountries(options: {
+export async function queryViewportCountries(options: {
   lat: number;
   lng: number;
   radiusDeg: number;
   tier: GlobeLodTier;
   max?: number;
 }) {
-  const all = loadAllCountries().filter((c) => Boolean(c.geometry));
+  const all = (await loadAllCountries()).filter((c) => Boolean(c.geometry));
   const defaultMax = COUNTRY_POLYGON_MAX_BY_TIER[options.tier];
   const maxCount = Math.min(options.max ?? defaultMax, defaultMax);
   const view = { lat: options.lat, lng: options.lng };

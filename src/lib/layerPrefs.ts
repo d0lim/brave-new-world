@@ -11,6 +11,8 @@ export type LayerPrefs = {
   showAis: boolean;
   showShippingLanes: boolean;
   showSubmarineCables: boolean;
+  /** 해저터널 인프라 (D1 클라우드 로그 · 토글 시 온디맨드) */
+  showSubmarineTunnels: boolean;
   showOilPipelines: boolean;
   showGasPipelines: boolean;
   showLngTerminals: boolean;
@@ -25,6 +27,8 @@ export type LayerPrefs = {
   showRefugeeCamps: boolean;
   showUcdpEvents: boolean;
   showMilitaryActivity: boolean;
+  /** 민간 항공기 운항 (지경학) — 군용 제외 ADS-B */
+  showAirTraffic: boolean;
   /** 미 해군 항공모함 위치 추적 */
   showUsCarriers: boolean;
   showSpaceLaunches: boolean;
@@ -57,15 +61,16 @@ export type LayerPrefs = {
 /** v21: 분쟁 → 전쟁구역 / 외교적 긴장 분리 */
 export const LAYER_PREFS_KEY = "geowatch-layers-v21";
 
-/** 토글 가능 레이어는 전부 기본 OFF — 사용자가 켤 때만 로드·렌더 */
+/** 토글 가능 레이어는 기본 OFF. 활성 전장(이란·우크라) 전쟁구역만 기본 ON */
 export const DEFAULT_LAYER_PREFS: LayerPrefs = {
-  showWarZones: false,
+  showWarZones: true,
   showDiplomaticTension: false,
   showCityLabels: false,
   showRailGlow: false,
   showAis: false,
   showShippingLanes: false,
   showSubmarineCables: false,
+  showSubmarineTunnels: false,
   showOilPipelines: false,
   showGasPipelines: false,
   showLngTerminals: false,
@@ -79,6 +84,7 @@ export const DEFAULT_LAYER_PREFS: LayerPrefs = {
   showRefugeeCamps: false,
   showUcdpEvents: false,
   showMilitaryActivity: false,
+  showAirTraffic: false,
   showUsCarriers: false,
   showSpaceLaunches: false,
   showIntelHotspots: false,
@@ -90,7 +96,7 @@ export const DEFAULT_LAYER_PREFS: LayerPrefs = {
   showCyberIncidents: false,
   showElectionEvents: false,
   showFirmsFires: false,
-  showUkraineControl: true,
+  showUkraineControl: false,
   showGdeltWar: false,
   showGdeltDiplomatic: false,
   showGdeltAlliance: false,

@@ -98,9 +98,52 @@ export async function pruneOldRows(db: D1Database, retentionHours: number) {
     .prepare(`DELETE FROM gdelt_points WHERE ingested_at < ?`)
     .bind(cutoff)
     .run();
+
+  let newsSnapshotsDeleted = 0;
+  let newsItemsDeleted = 0;
+  let aisDeleted = 0;
+  let adsbDeleted = 0;
+  try {
+    const snaps = await db
+      .prepare(`DELETE FROM news_stream_snapshots WHERE ingested_at < ?`)
+      .bind(cutoff)
+      .run();
+    const items = await db
+      .prepare(`DELETE FROM news_stream_items WHERE ingested_at < ?`)
+      .bind(cutoff)
+      .run();
+    newsSnapshotsDeleted = snaps.meta.changes ?? 0;
+    newsItemsDeleted = items.meta.changes ?? 0;
+  } catch {
+    // table may not exist until migration 0001
+  }
+
+  try {
+    const ais = await db
+      .prepare(`DELETE FROM ais_vessels WHERE ingested_at < ?`)
+      .bind(cutoff)
+      .run();
+    aisDeleted = ais.meta.changes ?? 0;
+  } catch {
+    // until migration 0002
+  }
+  try {
+    const adsb = await db
+      .prepare(`DELETE FROM adsb_aircraft WHERE ingested_at < ?`)
+      .bind(cutoff)
+      .run();
+    adsbDeleted = adsb.meta.changes ?? 0;
+  } catch {
+    // until migration 0002
+  }
+
   return {
     firmsDeleted: firms.meta.changes ?? 0,
     gdeltDeleted: gdelt.meta.changes ?? 0,
+    newsSnapshotsDeleted,
+    newsItemsDeleted,
+    aisDeleted,
+    adsbDeleted,
     cutoff,
   };
 }

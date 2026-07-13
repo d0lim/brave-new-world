@@ -129,9 +129,10 @@ export const VIEW_PACKAGES: ViewPackageDef[] = [
     id: "frontline-live",
     label: "전선 실시간",
     tagline: "우크라·중동",
-    description: "우크라 전선 · NEPTUN · 이스라엘 공습 경보",
+    description: "NEPTUN · 공습 경보 · GDELT (우크라 전선은 전장 선택 시)",
     layers: {
-      showUkraineControl: true,
+      // 우크라 전선은 ModePicker/내비「우크라」세부 선택 시에만
+      showUkraineControl: false,
       showNeptun: true,
       showNeptunPreviousTrails: true,
       showTzevaAdom: true,
@@ -193,17 +194,16 @@ const LAYER_DROP_PRIORITY: BooleanLayerKey[] = [
   "showUsCarriers",
   "showConflictZones",
   "showDiplomaticTension",
-  "showWarZones",
   "showLngTerminals",
   "showGasPipelines",
   "showOilPipelines",
   "showTelegramOsint",
-  // showFirmsFires · showLogisticsRisk · showShippingLanes · showGdeltWar 는 중동 핵심 — 후순위 드롭
+  // showWarZones · showFirmsFires · showLogisticsRisk · showShippingLanes · showGdeltWar
+  // 는 이란·우크라 등 활성 전장 핵심 — 후순위 드롭
 ];
 
 const ECONOMY_LAYER_DROP_PRIORITY: BooleanLayerKey[] = [
   "showDiplomaticTension",
-  "showWarZones",
   "showEconomicCenters",
   "showPorts",
   "showInternetExchanges",
@@ -212,6 +212,7 @@ const ECONOMY_LAYER_DROP_PRIORITY: BooleanLayerKey[] = [
   "showOilPipelines",
   "showSubmarineCables",
   "showAirports",
+  // showWarZones 유지 — 호르무즈 등 초크포인트와 함께 해석
 ];
 
 export const LAYER_PREF_LABELS: Partial<Record<BooleanLayerKey, string>> = {
@@ -459,12 +460,9 @@ export function markViewConfigCustomized() {
   saveViewConfig({ ...existing, customizedLayers: true });
 }
 
-/** 신규 유저 — 모드 선택 화면 표시 여부 */
+/** 신규 플로우는 GlobeDashboard(환영→도메인→지구본→세부). 부트 ModePicker는 쓰지 않음. */
 export function shouldShowModePicker(): boolean {
-  if (typeof window === "undefined") return false;
-  if (loadViewConfig()) return false;
-  if (localStorage.getItem(LAYER_PREFS_KEY)) return false;
-  return true;
+  return false;
 }
 
 /** @deprecated use shouldShowModePicker */

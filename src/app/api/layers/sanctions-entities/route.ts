@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 const TTL_MS = 24 * 60 * 60 * 1000;
 
 async function loadSanctions(): Promise<{ points: StaticPoint[]; lists: string[] }> {
-  const points = loadLocalStaticPoints("sanctions-entities.json");
+  const points = await loadLocalStaticPoints("sanctions-entities.json");
   return {
     points,
     lists: ["OFAC SDN", "UN Consolidated", "EU FSF", "UK Sanctions"],

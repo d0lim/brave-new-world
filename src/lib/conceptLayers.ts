@@ -19,6 +19,8 @@ const UKRAINE_STACK: LayerPatch = {
   showUkraineControl: true,
   showNeptun: true,
   showNeptunPreviousTrails: true,
+  showWarZones: true,
+  showDiplomaticTension: true,
   showGdeltWar: true,
   showGdeltDiplomatic: true,
   showTelegramOsint: true,
@@ -199,12 +201,13 @@ export function conflictTheaterFromNavId(navId: string): ViewTheaterChoice {
 }
 
 export function conceptLayersForConflict(theater: ViewTheaterChoice): LayerPatch {
-  if (theater === "auto") return UKRAINE_STACK;
-  if (theater === "all") return CONFLICT_BASE;
+  // auto/미지정: 우크라 전선 OFF — 전장「우크라」·내비 우크라 선택 시에만 UKRAINE_STACK
+  if (theater === "auto") return { ...CONFLICT_BASE, ...NO_UKRAINE };
+  if (theater === "all") return { ...CONFLICT_BASE, ...NO_UKRAINE };
   if (theater in CONFLICT_THEATER_LAYERS) {
     return CONFLICT_THEATER_LAYERS[theater as ConflictConceptTheater];
   }
-  return UKRAINE_STACK;
+  return { ...CONFLICT_BASE, ...NO_UKRAINE };
 }
 
 export function conceptLayersForConflictNavId(navId: string): LayerPatch {

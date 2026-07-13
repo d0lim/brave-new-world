@@ -12,17 +12,60 @@ import { fetchGdeltPoints } from "./gdelt";
 
 export type { IngestEnv };
 
+type WarmResult = { ok: boolean; status: number; detail?: string };
+
 type IngestResult = {
   ok: boolean;
   startedAt: string;
   finishedAt: string;
   firmsCount: number;
   gdeltCount: number;
+  newsWarm?: WarmResult;
+  aisWarm?: WarmResult;
+  adsbWarm?: WarmResult;
+  tunnelsWarm?: WarmResult;
+  disputeHatchWarm?: WarmResult;
+  ukraineHatchWarm?: WarmResult;
   firmsErrors: string[];
   gdeltErrors: string[];
-  pruned?: { firmsDeleted: number; gdeltDeleted: number; cutoff: string };
+  pruned?: {
+    firmsDeleted: number;
+    gdeltDeleted: number;
+    newsSnapshotsDeleted?: number;
+    newsItemsDeleted?: number;
+    aisDeleted?: number;
+    adsbDeleted?: number;
+    cutoff: string;
+  };
   error: string | null;
 };
+
+async function warmEndpoint(
+  url: string | undefined,
+  env: IngestEnv,
+  label: string,
+): Promise<WarmResult | undefined> {
+  const warmUrl = url?.trim();
+  if (!warmUrl) return undefined;
+  try {
+    const headers: Record<string, string> = { Accept: "application/json" };
+    const secret = env.INGEST_CRON_SECRET?.trim();
+    if (secret) headers.Authorization = `Bearer ${secret}`;
+    const res = await fetch(warmUrl, { method: "POST", headers });
+    const text = await res.text();
+    return {
+      ok: res.ok,
+      status: res.status,
+      detail: text.slice(0, 400),
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      status: 0,
+      detail: error instanceof Error ? error.message : `${label} warm failed`,
+    };
+  }
+}
 
 async function runIngest(env: IngestEnv): Promise<IngestResult> {
   const startedAt = new Date().toISOString();
@@ -31,6 +74,12 @@ async function runIngest(env: IngestEnv): Promise<IngestResult> {
   let firmsCount = 0;
   let gdeltCount = 0;
   let pruned: IngestResult["pruned"];
+  let newsWarm: IngestResult["newsWarm"];
+  let aisWarm: IngestResult["aisWarm"];
+  let adsbWarm: IngestResult["adsbWarm"];
+  let tunnelsWarm: IngestResult["tunnelsWarm"];
+  let disputeHatchWarm: IngestResult["disputeHatchWarm"];
+  let ukraineHatchWarm: IngestResult["ukraineHatchWarm"];
 
   try {
     const dayRange = Math.min(5, Math.max(1, readIntVar(env, "FIRMS_DAY_RANGE", 1)));
@@ -62,6 +111,12 @@ async function runIngest(env: IngestEnv): Promise<IngestResult> {
     gdeltCount = await upsertGdeltPoints(env.DB, gdelt.points);
 
     pruned = await pruneOldRows(env.DB, retentionHours);
+    newsWarm = await warmEndpoint(env.NEWS_WARM_URL, env, "news");
+    aisWarm = await warmEndpoint(env.AIS_WARM_URL, env, "ais");
+    adsbWarm = await warmEndpoint(env.ADSB_WARM_URL, env, "adsb");
+    tunnelsWarm = await warmEndpoint(env.TUNNELS_WARM_URL, env, "tunnels");
+    disputeHatchWarm = await warmEndpoint(env.DISPUTE_HATCH_WARM_URL, env, "dispute-hatch");
+    ukraineHatchWarm = await warmEndpoint(env.UKRAINE_HATCH_WARM_URL, env, "ukraine-hatch");
 
     const finishedAt = new Date().toISOString();
     const hardFail =
@@ -73,6 +128,12 @@ async function runIngest(env: IngestEnv): Promise<IngestResult> {
       finishedAt,
       firmsCount,
       gdeltCount,
+      newsWarm,
+      aisWarm,
+      adsbWarm,
+      tunnelsWarm,
+      disputeHatchWarm,
+      ukraineHatchWarm,
       firmsErrors,
       gdeltErrors,
       pruned,
@@ -90,6 +151,12 @@ async function runIngest(env: IngestEnv): Promise<IngestResult> {
         firmsErrors,
         gdeltErrors,
         pruned,
+        newsWarm,
+        aisWarm,
+        adsbWarm,
+        tunnelsWarm,
+        disputeHatchWarm,
+        ukraineHatchWarm,
       },
     });
 
@@ -105,7 +172,7 @@ async function runIngest(env: IngestEnv): Promise<IngestResult> {
         gdeltCount,
         ok: false,
         error: message,
-        detail: { firmsErrors, gdeltErrors },
+        detail: { firmsErrors, gdeltErrors, newsWarm, aisWarm, adsbWarm, tunnelsWarm, disputeHatchWarm, ukraineHatchWarm },
       });
     } catch {
       // ignore secondary logging failure
@@ -116,6 +183,12 @@ async function runIngest(env: IngestEnv): Promise<IngestResult> {
       finishedAt,
       firmsCount,
       gdeltCount,
+      newsWarm,
+      aisWarm,
+      adsbWarm,
+      tunnelsWarm,
+      disputeHatchWarm,
+      ukraineHatchWarm,
       firmsErrors,
       gdeltErrors,
       error: message,
@@ -141,7 +214,10 @@ const worker = {
     ctx.waitUntil(
       runIngest(env).then((result) => {
         console.log(
-          `[ingest] ok=${result.ok} firms=${result.firmsCount} gdelt=${result.gdeltCount}`,
+          `[ingest] ok=${result.ok} firms=${result.firmsCount} gdelt=${result.gdeltCount}` +
+            (result.newsWarm
+              ? ` newsWarm=${result.newsWarm.ok ? "ok" : "fail"}`
+              : ""),
           result.error ? `error=${result.error}` : "",
         );
       }),
@@ -170,6 +246,20 @@ const worker = {
       const gdelt = await env.DB.prepare(
         `SELECT COUNT(*) AS c FROM gdelt_points`,
       ).first<{ c: number }>();
+      let newsSnapshots = 0;
+      let newsItems = 0;
+      try {
+        const snap = await env.DB.prepare(
+          `SELECT COUNT(*) AS c FROM news_stream_snapshots`,
+        ).first<{ c: number }>();
+        const items = await env.DB.prepare(
+          `SELECT COUNT(*) AS c FROM news_stream_items`,
+        ).first<{ c: number }>();
+        newsSnapshots = snap?.c ?? 0;
+        newsItems = items?.c ?? 0;
+      } catch {
+        // migration not applied yet
+      }
       const last = await env.DB.prepare(
         `SELECT started_at, finished_at, firms_count, gdelt_count, ok, error
          FROM ingest_runs ORDER BY id DESC LIMIT 1`,
@@ -177,6 +267,8 @@ const worker = {
       return Response.json({
         firmsRows: firms?.c ?? 0,
         gdeltRows: gdelt?.c ?? 0,
+        newsSnapshots,
+        newsItems,
         lastRun: last ?? null,
       });
     }

@@ -49,6 +49,7 @@ export const ULTRA_LITE_HEAVY_RENDER_KEYS = new Set<keyof LayerPrefs>([
   "showGdeltProtests",
   "showCityLabels",
   "showMilitaryActivity",
+  "showAirTraffic",
   "showMilitaryBases",
   "showShippingLanes",
   "showTelegramOsint",
@@ -125,7 +126,7 @@ export function ultraLiteGdeltPinScale(): number {
 export function resetLayerPrefsForUltraLite(): LayerPrefs {
   return applyUltraLiteToLayerPrefs({
     ...DEFAULT_LAYER_PREFS,
-    showUkraineControl: true,
+    showUkraineControl: false,
     showNeptun: true,
     showNeptunPreviousTrails: false,
   });

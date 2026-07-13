@@ -55,11 +55,12 @@ export const CONFLICT_ZONE_GROUP: NavMenuGroup = {
     {
       id: "taiwan",
       label: "대만",
-      lat: 24.2,
-      lng: 121.0,
-      altitude: 1.7,
-      description: "대만 본섬·진먼·마쭈·펑후 인접 해역",
-      bbox: { minLat: 18, maxLat: 30, minLng: 112, maxLng: 128 },
+      lat: 22.7,
+      lng: 122.9,
+      /** 푸젠·대만·오키나와·루손 북부가 한 화면에 들어오는 고도 */
+      altitude: 0.98,
+      description: "푸젠성·대만섬·오키나와·루손 북부",
+      bbox: { minLat: 18.2, maxLat: 27.2, minLng: 116.8, maxLng: 129.0 },
       subItems: [
         {
           id: "taiwan-strait",
@@ -96,11 +97,12 @@ export const CONFLICT_ZONE_GROUP: NavMenuGroup = {
     {
       id: "korea",
       label: "한반도",
-      lat: 37.8,
-      lng: 127.2,
-      altitude: 1.68,
+      lat: 38.0,
+      lng: 127.3,
+      /** 한반도가 뷰포트를 거의 채우는 고도 */
+      altitude: 0.7,
       description: "남북 분단·DMZ·서해 분쟁",
-      bbox: { minLat: 32, maxLat: 43, minLng: 122, maxLng: 133 },
+      bbox: { minLat: 33.2, maxLat: 43.0, minLng: 124.3, maxLng: 130.8 },
       subItems: [
         {
           id: "dmz",

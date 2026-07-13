@@ -218,11 +218,11 @@ export const SANCTIONS_SUPPLY_GROUP: NavMenuGroup = {
     {
       id: "taiwan-chip",
       label: "대만 · TSMC",
-      lat: 24.8,
-      lng: 121.0,
-      altitude: 0.85,
-      description: "반도체 공급망 · 수출 통제",
-      bbox: { minLat: 22, maxLat: 26, minLng: 119, maxLng: 122 },
+      lat: 22.7,
+      lng: 122.9,
+      altitude: 0.98,
+      description: "반도체 공급망 · 푸젠·대만·오키나와 프레임",
+      bbox: { minLat: 18.2, maxLat: 27.2, minLng: 116.8, maxLng: 129.0 },
       subItems: [],
     },
     {

@@ -7,6 +7,8 @@ import {
   type AudioEventDef,
   type AudioEventId,
 } from "@/data/audioManifest";
+import { joinAudioCdnUrl } from "@/lib/cloudAudio";
+import { getRuntimeConfig } from "@/lib/runtimeConfig.client";
 import {
   CV_SOUND_PREF_EVENT,
   SOUND_PREF_KEY,
@@ -16,12 +18,15 @@ import {
 import { isZoomScaledSound, scaledSoundVolume } from "@/lib/soundDistanceScale";
 
 /** 로컬/스트림 URL — 캐시 버스팅으로 예전 개짖음 MP3 무효화 */
-const AUDIO_URL_BUST = "v9-front-callouts";
+const AUDIO_URL_BUST = "v15-r2-audio";
 
 function audioUrlForEvent(eventId: AudioEventId, def: AudioEventDef): string {
   if (def.localSrc) {
-    const sep = def.localSrc.includes("?") ? "&" : "?";
-    return `${def.localSrc}${sep}v=${AUDIO_URL_BUST}`;
+    return joinAudioCdnUrl(
+      getRuntimeConfig().dataCdnBase,
+      def.localSrc,
+      AUDIO_URL_BUST,
+    );
   }
   return `/api/sound-stream?eventId=${encodeURIComponent(eventId)}&v=${AUDIO_URL_BUST}`;
 }
@@ -36,12 +41,29 @@ export type PlaySoundOptions = {
   altitude?: number | null;
   /** 매니페스트 볼륨에 곱함 (클릭 사이렌 등) */
   volumeScale?: number;
-  /** 지정 시 루프로 재생 후 이 시간(ms)에 정지 */
+  /** 지정 시 이 시간(ms)에 정지 (루프 버스트 포함) */
   durationMs?: number;
   /** 원샷 스로틀 무시 */
   force?: boolean;
   /** true면 기존 원샷을 끊지 않고 겹쳐 재생 (전장 교전음) */
   overlap?: boolean;
+  /**
+   * duration 동안 음량을 사인파로 올렸다 내림 (파도).
+   * factor는 계산된 기본 볼륨에 곱함.
+   */
+  waveVolume?: {
+    minFactor: number;
+    maxFactor: number;
+    periodMs: number;
+  };
+  /** duration 종료 직후 연쇄 원샷 (FPV 컷→폭발 등) */
+  chain?: {
+    eventId: AudioEventId;
+    volumeScale?: number;
+    durationMs?: number;
+    force?: boolean;
+    overlap?: boolean;
+  };
 };
 
 /**
@@ -160,7 +182,7 @@ export function useSoundStream(options?: UseSoundStreamOptions) {
 
       const volumeScale =
         typeof playOpts?.volumeScale === "number" && Number.isFinite(playOpts.volumeScale)
-          ? Math.min(1.6, Math.max(0.2, playOpts.volumeScale))
+          ? Math.min(1.6, Math.max(0.05, playOpts.volumeScale))
           : 1;
       const volume = Math.min(
         1,
@@ -168,17 +190,23 @@ export function useSoundStream(options?: UseSoundStreamOptions) {
       );
 
       if (def.loop && !timedBurst) {
+        const ambientBase = def.volume * volumeScale;
         if (ambientIdRef.current === eventId && ambientRef.current && !ambientRef.current.paused) {
-          ambientRef.current.volume = volume;
+          ambientRef.current.volume = scaledSoundVolume(
+            eventId,
+            ambientBase,
+            altitudeRef.current,
+          );
+          ambientBaseVolumeRef.current = ambientBase;
           return;
         }
         ambientRef.current?.pause();
         const audio = new Audio(audioUrlForEvent(eventId, def));
         audio.loop = true;
-        audio.volume = volume;
+        audio.volume = scaledSoundVolume(eventId, ambientBase, altitudeRef.current);
         ambientRef.current = audio;
         ambientIdRef.current = eventId;
-        ambientBaseVolumeRef.current = def.volume;
+        ambientBaseVolumeRef.current = ambientBase;
         try {
           await audio.play();
         } catch {
@@ -188,7 +216,9 @@ export function useSoundStream(options?: UseSoundStreamOptions) {
       }
 
       const audio = new Audio(audioUrlForEvent(eventId, def));
-      audio.loop = Boolean(timedBurst);
+      // 파도 음량·하드컷은 루프하지 않음 (클립 그대로 + 볼륨 변조)
+      const useWave = Boolean(playOpts?.waveVolume) && timedBurst;
+      audio.loop = Boolean(timedBurst) && !useWave;
       audio.volume = volume;
 
       if (playOpts?.overlap) {
@@ -211,6 +241,22 @@ export function useSoundStream(options?: UseSoundStreamOptions) {
         oneShotRef.current = audio;
       }
 
+      let waveRaf = 0;
+      if (useWave && playOpts?.waveVolume) {
+        const { minFactor, maxFactor, periodMs } = playOpts.waveVolume;
+        const peak = volume;
+        const started = performance.now();
+        const tickWave = (now: number) => {
+          if (audio.paused || audio.ended) return;
+          const phase = ((now - started) / Math.max(400, periodMs)) * Math.PI * 2;
+          const wave = (Math.sin(phase) + 1) / 2;
+          const factor = minFactor + (maxFactor - minFactor) * wave;
+          audio.volume = Math.min(1, Math.max(0, peak * factor));
+          waveRaf = window.requestAnimationFrame(tickWave);
+        };
+        waveRaf = window.requestAnimationFrame(tickWave);
+      }
+
       try {
         await audio.play();
       } catch {
@@ -218,11 +264,22 @@ export function useSoundStream(options?: UseSoundStreamOptions) {
       }
       if (timedBurst) {
         const ms = playOpts!.durationMs!;
+        const chain = playOpts?.chain;
         window.setTimeout(() => {
+          if (waveRaf) window.cancelAnimationFrame(waveRaf);
           audio.pause();
           audio.currentTime = 0;
           if (oneShotRef.current === audio) oneShotRef.current = null;
           overlapPoolRef.current = overlapPoolRef.current.filter((a) => a !== audio);
+          if (chain?.eventId) {
+            void play(chain.eventId, {
+              altitude: altitudeRef.current,
+              volumeScale: chain.volumeScale,
+              durationMs: chain.durationMs,
+              force: chain.force ?? true,
+              overlap: chain.overlap ?? true,
+            });
+          }
         }, ms);
       }
     },

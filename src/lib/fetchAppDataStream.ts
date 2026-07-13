@@ -1,6 +1,6 @@
 import { JSONParser } from "@streamparser/json";
 import type { AppData, SearchPlace } from "@/data/geoTypes";
-import { getDataProfile } from "@/lib/dataProfile";
+import { dataPath, getDataProfile } from "@/lib/dataProfile";
 
 export type AppDataLoadProgress = {
   bytesReceived: number;
@@ -42,12 +42,13 @@ const TOP_LEVEL_PATHS = [
   "$.railroads",
 ] as const;
 
+/** 클라우드 CDN(dataPath) 우선 → 로컬 API 스트림 폴백 */
 function chunkUrl(profile: string, fileName: string): string {
   return `/api/data-stream?file=${encodeURIComponent(fileName)}&profile=${encodeURIComponent(profile)}`;
 }
 
-function staticUrl(profile: string, fileName: string): string {
-  return `/data/${profile}/${fileName}`;
+function staticUrl(_profile: string, fileName: string): string {
+  return dataPath(fileName);
 }
 
 async function fetchJsonFile<T>(
@@ -56,7 +57,8 @@ async function fetchJsonFile<T>(
   signal?: AbortSignal,
   onBytes?: (bytes: number, total: number | null) => void,
 ): Promise<T> {
-  const urls = [chunkUrl(profile, fileName), staticUrl(profile, fileName)];
+  // CDN(static) first — cloud foundation; API stream as local/dev fallback
+  const urls = [staticUrl(profile, fileName), chunkUrl(profile, fileName)];
   let lastError: Error | null = null;
 
   for (const url of urls) {

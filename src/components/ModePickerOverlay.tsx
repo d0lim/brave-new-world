@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useLocale } from "@/contexts/LocaleContext";
+import { brandName } from "@/lib/brand";
 import { ECONOMY_HUB_OPTIONS, type EconomyHubChoice } from "@/lib/autoFlyTarget";
 import type { ViewerMode } from "@/lib/viewerChrome";
 import {
@@ -95,8 +96,8 @@ export function ModePickerOverlay({
       aria-labelledby="mode-picker-title"
     >
       <div className="my-auto w-full max-w-2xl rounded-2xl border border-orange-400/20 bg-[#0a1428]/95 p-6 shadow-2xl sm:p-8">
-        <p className="text-center text-[11px] font-medium uppercase tracking-[0.42em] text-orange-200/75">
-          GeoWatch
+        <p className="text-center text-[11px] font-medium tracking-[0.28em] text-orange-200/75 sm:tracking-[0.36em]">
+          {brandName(lang)}
         </p>
         <h1
           id="mode-picker-title"

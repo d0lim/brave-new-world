@@ -1,29 +1,29 @@
 import { NextResponse } from "next/server";
-import fs from "fs";
-import path from "path";
-import { getServerDataProfile } from "@/lib/serverEnv";
 import type { UsCarrier } from "@/data/usCarriers";
 import { US_CARRIERS_SEED } from "@/data/usCarriers";
+import { loadCloudStaticJson } from "@/lib/cloudStaticJson";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const PROJECT_ROOT = process.cwd();
+type CarrierPayload = {
+  carriers?: UsCarrier[];
+  updatedAt?: string;
+  source?: string;
+  generatedAt?: string;
+};
 
-function loadCarrierFile(): { carriers: UsCarrier[]; updatedAt: string; source: string } {
-  const profile = getServerDataProfile();
-  const filePath = path.join(PROJECT_ROOT, "public", "data", profile, "us-carriers.json");
-  if (fs.existsSync(filePath)) {
-    const payload = JSON.parse(fs.readFileSync(filePath, "utf8")) as {
-      carriers?: UsCarrier[];
-      updatedAt?: string;
-      source?: string;
-      generatedAt?: string;
-    };
+async function loadCarrierFile(): Promise<{
+  carriers: UsCarrier[];
+  updatedAt: string;
+  source: string;
+}> {
+  const payload = await loadCloudStaticJson<CarrierPayload>("us-carriers.json");
+  if (payload) {
     return {
       carriers: payload.carriers || US_CARRIERS_SEED,
       updatedAt: payload.updatedAt || payload.generatedAt || new Date().toISOString(),
-      source: payload.source || "local JSON",
+      source: payload.source || "cloud JSON",
     };
   }
   return {
@@ -36,7 +36,7 @@ function loadCarrierFile(): { carriers: UsCarrier[]; updatedAt: string; source: 
 /** stub과 무관하게 정적 항모 데이터 제공 (외부 API 없음) */
 export async function GET() {
   try {
-    const { carriers, updatedAt, source } = loadCarrierFile();
+    const { carriers, updatedAt, source } = await loadCarrierFile();
     return NextResponse.json({
       receivedAt: new Date().toISOString(),
       updatedAt,

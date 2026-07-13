@@ -12,12 +12,15 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { emitBreakingDispatchSound } from "@/components/SoundEffectsBridge";
 import { MapLegend } from "@/components/MapLegend";
 import { HoverHint } from "@/components/HoverHint";
 import { StockTickerStrip } from "@/components/StockTickerStrip";
 import { IntelRelatedMarketsPanel } from "@/components/IntelRelatedMarketsPanel";
 import { IntelSheetSearchBar, type IntelSearchResult } from "@/components/IntelSheetSearchBar";
 import { TelegramIntelFeed } from "@/components/TelegramIntelFeed";
+import { UserAnalyzeButton } from "@/components/UserAnalyzeButton";
+import { UserAnthropicKeyPanel } from "@/components/UserAnthropicKeyPanel";
 import { ViinaFrontEventsPanel } from "@/components/ViinaFrontEventsPanel";
 import type { ViinaFrontEvent } from "@/lib/viinaFrontEvents";
 import type { TelegramAlert } from "@/lib/telegramAlerts";
@@ -38,6 +41,7 @@ import { ECONOMY_TIER_LABELS } from "@/lib/news/mediaTiers";
 import { STOCK_TICKER_SYMBOLS } from "@/lib/stockTickers";
 import {
   heroHighlightSymbols,
+  resolveBreakingSos,
   resolveIntelStackClearance,
   resolveIntelStackMode,
   TICKER_SPIKE_THRESHOLD_PERCENT,
@@ -50,6 +54,7 @@ import {
 } from "@/lib/news/todayBriefing";
 import type { NewsDigestItem } from "@/lib/news/digestTypes";
 import { theaterAssetNote, theaterAssetSymbols } from "@/lib/theaterAssets";
+import { liveNewsPollMs } from "@/lib/liveRenderGuard";
 import {
   flyTargetForTheater,
   matchesTheaterFilter,
@@ -68,7 +73,7 @@ export type IntelSheetTab = "news" | "telegram" | "viina";
 /** 경제 Intel 전체화면 — RSS vs 증시 */
 export type EconomyIntelTab = "news" | "markets";
 
-const POLL_MS = 90_000;
+const POLL_MS_FALLBACK = 90_000;
 
 const THEATER_LABELS: Record<NewsStreamItem["theater"], string> = {
   "middle-east": "중동",
@@ -238,7 +243,7 @@ export function NewsStreamProvider({
   useEffect(() => {
     if (!visible) return;
     void refresh();
-    const timer = window.setInterval(() => void refresh(), POLL_MS);
+    const timer = window.setInterval(() => void refresh(), liveNewsPollMs() || POLL_MS_FALLBACK);
     return () => window.clearInterval(timer);
   }, [refresh, visible, packagesKey, langKey]);
 
@@ -430,6 +435,18 @@ export function DynamicIntelStack({
   const isAlert = mode === "alert";
   const highlightSymbols = isAlert && hero ? heroHighlightSymbols(hero) : [];
   const [todayHidden, setTodayHidden] = useState(false);
+  const lastBreakingHeroIdRef = useRef<string | null>(null);
+
+  /** S급만 SOS 모스 (A는 배너만 · 사이렌 없음) */
+  useEffect(() => {
+    if (!isAlert || !hero?.id || !resolveBreakingSos(hero)) {
+      if (!isAlert) lastBreakingHeroIdRef.current = null;
+      return;
+    }
+    if (lastBreakingHeroIdRef.current === hero.id) return;
+    lastBreakingHeroIdRef.current = hero.id;
+    emitBreakingDispatchSound();
+  }, [isAlert, hero?.id, hero?.breakingRank]);
 
   useEffect(() => {
     setTodayHidden(isTodayBriefingDismissed());
@@ -1368,6 +1385,16 @@ function AnalysisPanel({
         <p className="mt-0.5 text-[11px] text-violet-200/55">{t("aiDigestPolicy")}</p>
       </div>
       <div className="space-y-2 px-4 py-3 text-sm leading-6 text-slate-300">
+        <UserAnthropicKeyPanel compact />
+        {hero ? (
+          <UserAnalyzeButton
+            title={hero.title}
+            source={hero.source}
+            link={hero.link}
+            theater={hero.theater}
+            excerpt={hero.summary ?? hero.title}
+          />
+        ) : null}
         {digest?.summaryLines ? (
           <>
             <ol className="list-decimal space-y-1 pl-4 text-sm text-violet-50/90">

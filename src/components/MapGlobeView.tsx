@@ -43,6 +43,10 @@ const INTERACTIVE_LAYERS = [
   "map-paths",
   "map-polygons-fill",
   "map-rings",
+  "ukraine-macro-fill",
+  "ukraine-micro-fill",
+  "ukraine-micro-defense",
+  "ukraine-micro-combat-circle",
 ] as const;
 
 export const MapGlobeView = forwardRef<MapGlobeMethods, MapGlobeViewProps>(function MapGlobeView(
@@ -108,6 +112,19 @@ export const MapGlobeView = forwardRef<MapGlobeMethods, MapGlobeViewProps>(funct
       }[]) ?? [],
     [props.heatmapsData],
   );
+
+  const emptyUkraineFc = useMemo<GeoJSON.FeatureCollection>(
+    () => ({ type: "FeatureCollection", features: [] }),
+    [],
+  );
+  const ukraineMacroGeoJson = useMemo(() => {
+    const raw = props.ukraineMacroGeoJson as GeoJSON.FeatureCollection | undefined;
+    return raw?.type === "FeatureCollection" ? raw : emptyUkraineFc;
+  }, [emptyUkraineFc, props.ukraineMacroGeoJson]);
+  const ukraineMicroGeoJson = useMemo(() => {
+    const raw = props.ukraineMicroGeoJson as GeoJSON.FeatureCollection | undefined;
+    return raw?.type === "FeatureCollection" ? raw : emptyUkraineFc;
+  }, [emptyUkraineFc, props.ukraineMicroGeoJson]);
 
   const interactiveLayerIds = useMemo(() => {
     const fromProps = props.interactiveLayerIds;
@@ -540,6 +557,155 @@ export const MapGlobeView = forwardRef<MapGlobeMethods, MapGlobeViewProps>(funct
                 "circle-opacity": 0.35,
                 "circle-stroke-width": 1,
                 "circle-stroke-color": ["get", "color"],
+              }}
+            />
+          </Source>
+        ) : null}
+
+        {/* 우크라 전선 LOD: macro Zoom≤5 · micro Zoom≥6 — 좌표는 항상 [lng,lat] GeoJSON */}
+        {ukraineMacroGeoJson.features.length > 0 ? (
+          <Source id="ukraine-macro-source" type="geojson" data={ukraineMacroGeoJson}>
+            <Layer
+              id="ukraine-macro-fill"
+              type="fill"
+              maxzoom={6}
+              filter={[
+                "all",
+                ["==", ["geometry-type"], "Polygon"],
+                ["in", ["get", "role"], ["literal", ["ru-occupied", "ua-occupied", "ru-claimed", "ua-claimed"]]],
+              ]}
+              paint={{
+                "fill-color": ["coalesce", ["get", "fill"], "#b91c1c"],
+                "fill-opacity": ["coalesce", ["get", "fillOpacity"], 0.34],
+              }}
+            />
+            <Layer
+              id="ukraine-macro-outline"
+              type="line"
+              maxzoom={6}
+              filter={["==", ["geometry-type"], "Polygon"]}
+              paint={{
+                "line-color": ["coalesce", ["get", "stroke"], "#fecaca"],
+                "line-width": 1.4,
+                "line-opacity": 0.85,
+              }}
+            />
+            <Layer
+              id="ukraine-macro-hatch"
+              type="line"
+              maxzoom={6}
+              filter={[
+                "all",
+                ["==", ["geometry-type"], "LineString"],
+                ["==", ["get", "role"], "hatch"],
+              ]}
+              paint={{
+                "line-color": ["coalesce", ["get", "stroke"], "rgba(248,113,113,0.5)"],
+                "line-width": 0.9,
+                "line-opacity": 0.7,
+              }}
+            />
+          </Source>
+        ) : null}
+
+        {ukraineMicroGeoJson.features.length > 0 ? (
+          <Source id="ukraine-micro-source" type="geojson" data={ukraineMicroGeoJson}>
+            <Layer
+              id="ukraine-micro-fill"
+              type="fill"
+              minzoom={6}
+              filter={[
+                "all",
+                ["==", ["geometry-type"], "Polygon"],
+                ["in", ["get", "role"], ["literal", ["ru-occupied", "ua-occupied", "ru-claimed", "ua-claimed"]]],
+              ]}
+              paint={{
+                "fill-color": ["coalesce", ["get", "fill"], "#f97316"],
+                "fill-opacity": ["coalesce", ["get", "fillOpacity"], 0.4],
+              }}
+            />
+            <Layer
+              id="ukraine-micro-outline"
+              type="line"
+              minzoom={6}
+              filter={["==", ["geometry-type"], "Polygon"]}
+              paint={{
+                "line-color": ["coalesce", ["get", "stroke"], "#fed7aa"],
+                "line-width": 1.1,
+                "line-opacity": 0.9,
+              }}
+            />
+            <Layer
+              id="ukraine-micro-defense"
+              type="line"
+              minzoom={6}
+              filter={[
+                "all",
+                ["==", ["geometry-type"], "LineString"],
+                ["==", ["get", "role"], "defense-line"],
+              ]}
+              paint={{
+                "line-color": ["coalesce", ["get", "stroke"], "#f87171"],
+                "line-width": 2.2,
+                "line-opacity": 0.95,
+              }}
+            />
+            <Layer
+              id="ukraine-micro-advance"
+              type="line"
+              minzoom={6}
+              filter={[
+                "all",
+                ["==", ["geometry-type"], "LineString"],
+                ["in", ["get", "role"], ["literal", ["advance", "hatch"]]],
+              ]}
+              paint={{
+                "line-color": ["coalesce", ["get", "stroke"], "#38bdf8"],
+                "line-width": 1.6,
+                "line-opacity": 0.88,
+                "line-dasharray": [2, 1.2],
+              }}
+            />
+            <Layer
+              id="ukraine-micro-combat-circle"
+              type="circle"
+              minzoom={6}
+              filter={[
+                "all",
+                ["==", ["geometry-type"], "Point"],
+                ["==", ["get", "role"], "combat-ring"],
+              ]}
+              paint={{
+                "circle-radius": [
+                  "interpolate",
+                  ["linear"],
+                  ["zoom"],
+                  6,
+                  10,
+                  10,
+                  22,
+                  13,
+                  36,
+                ],
+                "circle-color": ["coalesce", ["get", "fill"], "#22c55e"],
+                "circle-opacity": 0.28,
+                "circle-stroke-width": 2,
+                "circle-stroke-color": ["coalesce", ["get", "stroke"], "#86efac"],
+              }}
+            />
+            <Layer
+              id="ukraine-micro-combat-ring-line"
+              type="line"
+              minzoom={6}
+              filter={[
+                "all",
+                ["==", ["geometry-type"], "LineString"],
+                ["==", ["get", "role"], "combat-ring"],
+              ]}
+              paint={{
+                "line-color": ["coalesce", ["get", "stroke"], "#4ade80"],
+                "line-width": 1.5,
+                "line-opacity": 0.85,
               }}
             />
           </Source>

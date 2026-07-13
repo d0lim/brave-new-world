@@ -10,7 +10,6 @@ import {
 } from "@/lib/bootLoadingProgress";
 import { GlobeLoadingScreen } from "@/components/GlobeLoadingScreen";
 import { prefetchUkraineControl } from "@/lib/viinaPrefetch";
-import { prefetchUkraineHatchPaths } from "@/lib/ukraineHatchPrefetch";
 import { prefetchDisputeHatchPaths } from "@/lib/disputeHatchPrefetch";
 import { prefetchNeptun } from "@/lib/neptunPrefetch";
 import { ModePickerOverlay } from "@/components/ModePickerOverlay";
@@ -45,8 +44,6 @@ export function GlobeBootLoader({
   useEffect(() => {
     if (viinaMeta.available) {
       void prefetchUkraineControl();
-      void prefetchUkraineHatchPaths("overview");
-      void prefetchUkraineHatchPaths("detail");
     }
     void prefetchDisputeHatchPaths("overview");
     void prefetchDisputeHatchPaths("detail");

@@ -8,6 +8,27 @@
       "when": 1783882345108,
       "tag": "0000_init_conflict_view",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1783900000000,
+      "tag": "0001_news_stream",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1784000000000,
+      "tag": "0002_ais_adsb_tunnels",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1784100000000,
+      "tag": "0003_dispute_hatch",
+      "breakpoints": true
     }
   ]
 }

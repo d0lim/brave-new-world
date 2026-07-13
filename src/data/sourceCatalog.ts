@@ -39,13 +39,47 @@ export const NEWS_LAYER_SOURCE_CATALOG: NewsLayerSourceNote[] = [
   },
   {
     layerId: "military-activity",
-    source: "adsb.fi open data",
+    source: "ADSBexchange / adsb.fi → D1",
     url: "/api/adsb-mil",
-    cadence: "On demand (≤1 req/s upstream)",
-    attribution: "adsb.fi",
-    notes: "Military aircraft positions via opendata.adsb.fi /v2/mil (ADSBexchange v2 compatible).",
+    cadence: "Cron warm ~10m · toggle on-demand D1",
+    attribution: "ADSBexchange (x-api-key) or adsb.fi fallback",
+    notes:
+      "Military aircraft. Cron POST /api/adsb/warm → D1 `adsb_aircraft` (mode=mil). User toggle reads D1 first; ?live=1 forces upstream.",
     status: "shipped",
-    ingest: "live-poll",
+    ingest: "cached-api",
+  },
+  {
+    layerId: "air-traffic",
+    source: "ADSBexchange / adsb.fi → D1",
+    url: "/api/adsb-traffic",
+    cadence: "Cron hub warm ~10m · toggle on-demand D1",
+    attribution: "ADSBexchange or adsb.fi",
+    notes:
+      "Civilian traffic (exclude dbFlags&1). Cron warms hub grids into D1; viewport query prefers D1 bbox then live.",
+    status: "shipped",
+    ingest: "cached-api",
+  },
+  {
+    layerId: "ais",
+    source: "MarineTraffic / aisstream → D1",
+    url: "/api/ais",
+    cadence: "Cron MT warm ~10m · toggle on-demand D1",
+    attribution: "MarineTraffic · aisstream.io",
+    notes:
+      "Commercial AIS via MarineTraffic warm → D1 `ais_vessels`. Toggle reads D1 first; military still uses aisstream live fallback.",
+    status: "shipped",
+    ingest: "cached-api",
+  },
+  {
+    layerId: "tunnels",
+    source: "Conflict View submarine tunnel seed → D1",
+    url: "/api/submarine-tunnels",
+    cadence: "On demand (seeded once)",
+    attribution: "Conflict View logistics seed",
+    notes:
+      "Major undersea tunnels (Eurotunnel, Seikan, Marmaray, …). Stored in D1 `submarine_tunnels`; fetched only when layer toggled ON.",
+    status: "shipped",
+    ingest: "cached-api",
   },
   {
     layerId: "firms-fires",
@@ -62,7 +96,7 @@ export const NEWS_LAYER_SOURCE_CATALOG: NewsLayerSourceNote[] = [
     layerId: "tzeva-adom",
     source: "Pikud HaOref (unofficial JSON)",
     url: "/api/tzeva-adom",
-    cadence: "3s poll (TZEVA_ADOM_POLL_MS)",
+    cadence: "Client poll only while showTzevaAdom ON (stub 3s / live 15s); server cache ~2.5s",
     attribution: "Israel Home Front Command (Oref)",
     notes:
       "Tzeva Adom rocket/missile alerts via AlertsHistory.json — same feed as DavidTheExplorer/Tzeva-Adom-API. Geo-restricted to Israeli IP; use OREF_HISTORY_URL proxy abroad.",
@@ -169,7 +203,7 @@ export const NEWS_LAYER_SOURCE_CATALOG: NewsLayerSourceNote[] = [
     source: "Curated seed",
     url: "src/data/logisticsRiskPoints.ts",
     cadence: "Project versioned",
-    attribution: "Conflict View editorial",
+    attribution: "멋진신세계 editorial",
     notes:
       "Maritime chokepoints (Suez, Hormuz, Malacca, etc.) and critical logistics hubs (Eurotunnel, Crimea bridge). Hover shows risk note and related macro tickers.",
     status: "shipped",
@@ -276,7 +310,7 @@ export const NEWS_LAYER_SOURCE_CATALOG: NewsLayerSourceNote[] = [
     cadence: "90s cache",
     attribution: "Each outlet RSS terms",
     notes:
-      "Macro, energy, shipping, and sanctions headlines for geo-trader view. Fetched via feedCatalog ALL_ECON_FEEDS with ECON_RELEVANCE filter.",
+      "Major-industry & company headlines for geo-trader: Big Tech/AI, semis (Nvidia·TSMC·ASML), EV/batteries, oil majors, shipping lines, plus market wires. Fetched via ALL_ECON_FEEDS.",
     status: "shipped",
     ingest: "live-poll",
   },
@@ -304,25 +338,25 @@ export const NEWS_LAYER_SOURCE_CATALOG: NewsLayerSourceNote[] = [
   },
   {
     layerId: "dispute-zones-me",
-    source: "IRONSIGHT regionBoxes + regional tension seeds",
-    url: "/data/{profile}/app-data.json",
-    cadence: "Build (merge-regional-tensions)",
+    source: "IRONSIGHT regionBoxes → disputes.json → D1 hatch",
+    url: "/api/render/dispute-paths",
+    cadence: "Build / Cron warm · toggle on-demand D1",
     attribution: "Copyright (c) 2026 Nobler Works · MIT License (IRONSIGHT reference)",
     notes:
-      "Middle East combat/tension hatch boxes aligned to IRONSIGHT iran-israel.ts regionBoxes and strikeLocations. Hatch rendering via disputeHatch.ts.",
+      "Middle East combat/tension boxes (IRONSIGHT iran-israel) merged into disputes.json. Hatch precomputed to D1 `dispute_hatch_paths`; client fetches on war/diplomatic toggle only.",
     status: "shipped",
-    ingest: "static-build",
+    ingest: "cached-api",
   },
   {
     layerId: "viina-ukraine-control",
-    source: "VIINA",
-    url: "(rendering only — no public API)",
-    cadence: "Build from vendor/VIINA (gitignored render cache)",
+    source: "VIINA → D1 hatch snapshot",
+    url: "/api/render/ukraine-control-paths",
+    cadence: "Build / Cron warm · toggle on-demand D1",
     attribution: "VIINA · Open Database License (ODbL) v1.0",
     notes:
-      "Ukraine territorial control for globe rendering only (ODbL Produced Work). Loaded server-side from private/viina-render; no public API, GeoJSON export, or bulk static distribution. See docs/copyright-checklist.md and src/lib/licensing/viinaPolicy.ts.",
+      "Ukraine control hatch precomputed (`ukraine:hatch:build`) into D1. Globe toggles fetch snapshot paths only — no client geometry hatch. VIINA raw stays private.",
     status: "shipped",
-    ingest: "static-build",
+    ingest: "cached-api",
   },
 ];
 

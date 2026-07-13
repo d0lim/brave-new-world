@@ -34,7 +34,7 @@ function parseWktPoint(value: unknown): { lat: number; lng: number } | null {
 }
 
 async function loadAiDataCenters(): Promise<StaticPoint[]> {
-  const snapshot = loadLocalStaticPoints("ai-data-centers.json");
+  const snapshot = await loadLocalStaticPoints("ai-data-centers.json");
   if (snapshot.length > 0) return snapshot;
 
   const url = `https://query.wikidata.org/sparql?format=json&query=${encodeURIComponent(SPARQL)}`;
@@ -87,7 +87,7 @@ export async function GET(request: Request) {
       attribution: "Wikidata (CC0) / local build",
     });
   } catch (error) {
-    const fallback = loadLocalStaticPoints("ai-data-centers.json");
+    const fallback = await loadLocalStaticPoints("ai-data-centers.json");
     return NextResponse.json({
       receivedAt: new Date().toISOString(),
       cached: false,

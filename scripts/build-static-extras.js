@@ -18,6 +18,8 @@ const SHIPPING_URL =
   "https://raw.githubusercontent.com/newzealandpaul/Shipping-Lanes/main/data/Shipping_Lanes_v1.geojson";
 
 // TeleGeography 해저케이블 미러 — https://github.com/lintaojlu/submarine_cable_information
+// 로컬 우선: scripts/data/Submarine_Cables.geojson.json (카카오 ArcGIS 폴리곤 코리도)
+const LOCAL_CABLE_GEOJSON = path.join(DATA_DIR, "Submarine_Cables.geojson.json");
 const CABLE_GEO_URLS = [
   "https://raw.githubusercontent.com/lintaojlu/submarine_cable_information/master/web/public/api/v3/cable/cable-geo.json",
   "https://www.submarinecablemap.com/api/v3/cable/cable-geo.json",
@@ -27,26 +29,192 @@ const LANDING_GEO_URLS = [
   "https://www.submarinecablemap.com/api/v3/landing-point/landing-point-geo.json",
 ];
 
-async function fetchJson(url) {
-  const res = await fetch(url, { cache: "no-store" });
-  if (!res.ok) throw new Error(`HTTP ${res.status}: ${url}`);
-  return res.json();
+function cableStatusRank(status) {
+  const s = String(status || "").toLowerCase();
+  if (s.includes("in service")) return 0;
+  if (s.includes("under construction") || s.includes("planned")) return 1;
+  if (!s || s === "?") return 2;
+  if (s.includes("out of service") || s.includes("abandoned")) return 3;
+  return 2;
 }
 
-async function fetchJsonFromMirrors(urls, label) {
-  let lastError = null;
-  for (const url of urls) {
-    try {
-      const json = await fetchJson(url);
-      if (!json?.features?.length) throw new Error(`empty features: ${url}`);
-      console.log(`   ${label} source: ${url}`);
-      return json;
-    } catch (error) {
-      lastError = error;
-      console.warn(`   ${label} 시도 실패 (${url}):`, error.message);
+function loadLocalCableGeojson() {
+  if (!fs.existsSync(LOCAL_CABLE_GEOJSON)) return null;
+  const json = JSON.parse(fs.readFileSync(LOCAL_CABLE_GEOJSON, "utf8"));
+  if (!json?.features?.length) return null;
+  console.log(`   해저케이블 source: local ${path.relative(process.cwd(), LOCAL_CABLE_GEOJSON)}`);
+  return json;
+}
+
+function buildPathsFromCableGeo(cableGeo, maxPts, precision) {
+  const paths = [];
+  for (const [index, feature] of (cableGeo.features || []).entries()) {
+    const props = feature.properties || {};
+    const cableId =
+      props.id ||
+      props.feature_id ||
+      props.objectid ||
+      props.shortname ||
+      `cable-${index}`;
+    const name =
+      (props.cablesystem && props.cablesystem !== "?" ? props.cablesystem : null) ||
+      props.name ||
+      props.shortname ||
+      String(cableId);
+    const status = props.status || null;
+    const lengthHint = Number(props.SHAPE__Length) || 0;
+
+    for (const [pathIndex, points] of lineGeometryToPoints(
+      feature.geometry,
+      maxPts,
+      roundCoord,
+      precision,
+    ).entries()) {
+      if (points.length < 2) continue;
+      paths.push({
+        id: `submarine-cable-${cableId}-${pathIndex}`,
+        kind: "submarine-cable",
+        name,
+        scalerank: cableStatusRank(status),
+        lengthKm: null,
+        bbox: pointsBbox(points, roundCoord),
+        points,
+        meta: {
+          color: props.color || null,
+          status,
+          owner: props.owner || null,
+          region: props.region || null,
+          lengthHint,
+          source: props.cablesystem
+            ? "local_submarine_cables_geojson"
+            : "submarine_cable_information",
+        },
+      });
     }
   }
-  throw lastError || new Error(`${label} GeoJSON을 불러오지 못함`);
+
+  paths.sort((a, b) => {
+    const statusDiff = (a.scalerank ?? 9) - (b.scalerank ?? 9);
+    if (statusDiff !== 0) return statusDiff;
+    const lenDiff = (b.meta?.lengthHint || 0) - (a.meta?.lengthHint || 0);
+    if (lenDiff !== 0) return lenDiff;
+    return b.points.length - a.points.length;
+  });
+
+  return paths;
+}
+
+function landingsFromPaths(paths, precision) {
+  const seen = new Set();
+  const landings = [];
+  for (const pathItem of paths) {
+    const ends = [pathItem.points[0], pathItem.points[pathItem.points.length - 1]];
+    for (const [endIndex, point] of ends.entries()) {
+      if (!point) continue;
+      const key = `${point.lat},${point.lng}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      landings.push({
+        id: `cable-landing-${pathItem.id}-${endIndex}`,
+        kind: "cable-landing",
+        name: pathItem.name,
+        lat: roundCoord(point.lat, precision),
+        lng: roundCoord(point.lng, precision),
+        tier: 1,
+        meta: { source: "local_submarine_cables_geojson" },
+      });
+    }
+  }
+  return landings;
+}
+
+async function buildLandingsFromMirrors(precision) {
+  const landings = [];
+  try {
+    const landingGeo = await fetchJsonFromMirrors(LANDING_GEO_URLS, "착륙점");
+    for (const feature of landingGeo.features || []) {
+      const props = feature.properties || {};
+      const coords = feature.geometry?.coordinates;
+      if (!Array.isArray(coords) || coords.length < 2) continue;
+      const [lng, lat] = coords;
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) continue;
+      if (props.is_tbd) continue;
+
+      const landingId = props.id || `${lat},${lng}`;
+      landings.push({
+        id: `cable-landing-${landingId}`,
+        kind: "cable-landing",
+        name: props.name || landingId,
+        lat: roundCoord(lat, precision),
+        lng: roundCoord(lng, precision),
+        tier: 1,
+        meta: { source: "submarine_cable_information" },
+      });
+    }
+  } catch (error) {
+    console.warn("   착륙점 미러 fetch 실패:", error.message);
+  }
+  return landings;
+}
+
+function diversifyCablePaths(paths, limit) {
+  if (paths.length <= limit) return paths;
+  const byName = new Map();
+  for (const pathItem of paths) {
+    const key = pathItem.name || pathItem.id;
+    if (!byName.has(key)) byName.set(key, []);
+    byName.get(key).push(pathItem);
+  }
+
+  const picked = [];
+  const pickedIds = new Set();
+  const perSystem = Math.max(1, Math.min(4, Math.ceil(limit / Math.max(byName.size, 1))));
+
+  for (const group of byName.values()) {
+    for (const pathItem of group.slice(0, perSystem)) {
+      if (picked.length >= limit) break;
+      picked.push(pathItem);
+      pickedIds.add(pathItem.id);
+    }
+    if (picked.length >= limit) break;
+  }
+
+  if (picked.length < limit) {
+    for (const pathItem of paths) {
+      if (pickedIds.has(pathItem.id)) continue;
+      picked.push(pathItem);
+      pickedIds.add(pathItem.id);
+      if (picked.length >= limit) break;
+    }
+  }
+
+  return picked;
+}
+
+async function buildSubmarineCables() {
+  const maxPts = IS_LITE ? 36 : 100;
+  const precision = IS_LITE ? 2 : 3;
+
+  try {
+    const localGeo = loadLocalCableGeojson();
+    if (localGeo) {
+      const paths = buildPathsFromCableGeo(localGeo, maxPts, precision);
+      const cappedPaths = diversifyCablePaths(paths, IS_LITE ? 80 : 900);
+      const landings = capArray(landingsFromPaths(cappedPaths, precision), 120, 1600);
+      return { paths: cappedPaths, landings };
+    }
+
+    const cableGeo = await fetchJsonFromMirrors(CABLE_GEO_URLS, "해저케이블");
+    const paths = buildPathsFromCableGeo(cableGeo, maxPts, precision);
+    const landings = await buildLandingsFromMirrors(precision);
+    return {
+      paths: diversifyCablePaths(paths, IS_LITE ? 40 : 600),
+      landings: capArray(landings, 80, 1200),
+    };
+  } catch (error) {
+    console.warn("   해저케이블 미러 fetch 실패, seed 사용:", error.message);
+    return seedSubmarineCables();
+  }
 }
 
 async function buildShippingLanes() {
@@ -142,78 +310,26 @@ function seedSubmarineCables() {
   };
 }
 
-async function buildSubmarineCables() {
-  const paths = [];
-  const landings = [];
+async function fetchJson(url) {
+  const res = await fetch(url, { cache: "no-store" });
+  if (!res.ok) throw new Error(`HTTP ${res.status}: ${url}`);
+  return res.json();
+}
 
-  try {
-    const [cableGeo, landingGeo] = await Promise.all([
-      fetchJsonFromMirrors(CABLE_GEO_URLS, "해저케이블"),
-      fetchJsonFromMirrors(LANDING_GEO_URLS, "착륙점"),
-    ]);
-
-    const maxPts = IS_LITE ? 36 : 100;
-    const precision = IS_LITE ? 2 : 3;
-
-    for (const [index, feature] of (cableGeo.features || []).entries()) {
-      const props = feature.properties || {};
-      const cableId = props.id || props.feature_id || `cable-${index}`;
-      const name = props.name || cableId;
-
-      for (const [pathIndex, points] of lineGeometryToPoints(
-        feature.geometry,
-        maxPts,
-        roundCoord,
-        precision,
-      ).entries()) {
-        if (points.length < 2) continue;
-        paths.push({
-          id: `submarine-cable-${cableId}-${pathIndex}`,
-          kind: "submarine-cable",
-          name,
-          scalerank: 0,
-          lengthKm: null,
-          bbox: pointsBbox(points, roundCoord),
-          points,
-          meta: {
-            color: props.color || null,
-            source: "submarine_cable_information",
-          },
-        });
-      }
+async function fetchJsonFromMirrors(urls, label) {
+  let lastError = null;
+  for (const url of urls) {
+    try {
+      const json = await fetchJson(url);
+      if (!json?.features?.length) throw new Error(`empty features: ${url}`);
+      console.log(`   ${label} source: ${url}`);
+      return json;
+    } catch (error) {
+      lastError = error;
+      console.warn(`   ${label} 시도 실패 (${url}):`, error.message);
     }
-
-    for (const feature of landingGeo.features || []) {
-      const props = feature.properties || {};
-      const coords = feature.geometry?.coordinates;
-      if (!Array.isArray(coords) || coords.length < 2) continue;
-      const [lng, lat] = coords;
-      if (!Number.isFinite(lat) || !Number.isFinite(lng)) continue;
-      if (props.is_tbd) continue;
-
-      const landingId = props.id || `${lat},${lng}`;
-      landings.push({
-        id: `cable-landing-${landingId}`,
-        kind: "cable-landing",
-        name: props.name || landingId,
-        lat: roundCoord(lat, precision),
-        lng: roundCoord(lng, precision),
-        tier: 1,
-        meta: { source: "submarine_cable_information" },
-      });
-    }
-  } catch (error) {
-    console.warn("   해저케이블 미러 fetch 실패, seed 사용:", error.message);
-    return seedSubmarineCables();
   }
-
-  // 긴 케이블 구간 우선 유지
-  paths.sort((a, b) => b.points.length - a.points.length);
-
-  return {
-    paths: capArray(paths, 40, 600),
-    landings: capArray(landings, 80, 1200),
-  };
+  throw lastError || new Error(`${label} GeoJSON을 불러오지 못함`);
 }
 
 // OurAirports open data (daily dump) — https://github.com/davidmegginson/ourairports-data

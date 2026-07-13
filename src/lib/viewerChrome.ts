@@ -53,16 +53,22 @@ export type ViewerChromePreset = {
 };
 
 const CONFLICT_FORCE_ON: Partial<LayerPrefs> = {
-  showUkraineControl: true,
+  // 우크라 전선은 전장/내비 세부 선택(UKRAINE_STACK) 시에만 ON
   showNeptun: true,
   showNeptunPreviousTrails: true,
   showGdeltWar: true,
   showGdeltDiplomatic: true,
   showTelegramOsint: true,
+  showWarZones: true,
+  // AIS·항모는 토글 시에만 — stub OFF 시 외부 API 해머 방지
+  showUsCarriers: false,
+  showAis: false,
 };
 
 const CONFLICT_FORCE_OFF: Partial<LayerPrefs> = {
   showAiDataCenters: false,
+  showAirTraffic: false,
+  showAis: false,
 };
 
 const ECONOMY_FORCE_ON: Partial<LayerPrefs> = {
@@ -76,6 +82,10 @@ const ECONOMY_FORCE_ON: Partial<LayerPrefs> = {
   showInternetExchanges: true,
   showPorts: true,
   showEconomicCenters: true,
+  showSubmarineTunnels: true,
+  // AIS·민간 ADS-B는 토글 시에만 (live 폴링 비용)
+  showAis: false,
+  showAirTraffic: false,
 };
 
 const ECONOMY_FORCE_OFF: Partial<LayerPrefs> = {
@@ -112,7 +122,7 @@ export const VIEWER_CHROME: Record<ViewerMode, ViewerChromePreset> = {
     },
     navProfile: NAV_MENU_GROUPS,
     searchPlaceholder: "지명 · 국가 · 분쟁 검색",
-    navHeaderLabel: "Conflict View",
+    navHeaderLabel: "멋진신세계",
     modePickerTitle: "지정학",
     modePickerTagline: "전선 · GDELT · Telegram OSINT",
     modePickerBullets: [
@@ -139,12 +149,12 @@ export const VIEWER_CHROME: Record<ViewerMode, ViewerChromePreset> = {
     },
     navProfile: ECON_NAV_MENU_GROUPS,
     searchPlaceholder: "유가 · 제재 · 항로 · 허브 검색",
-    navHeaderLabel: "Geo Markets",
+    navHeaderLabel: "멋진신세계 · 시장",
     modePickerTitle: "경제 · 시장",
     modePickerTagline: "유가 · VIX · 제재 · 물류",
     modePickerBullets: [
       "주요 증시·VIX·유가 티커",
-      "경제 RSS · 시장 속보",
+      "경제 RSS · 빅테크·반도체·전기차·에너지 기업 속보",
       "제재·파이프라인·해운·초크포인트 레이어",
       "하단: 티커 + 시장 속보 (GDELT/TG 없음)",
     ],

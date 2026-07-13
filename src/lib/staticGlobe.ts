@@ -16,7 +16,11 @@ function bboxNearView(point: StaticPoint, view: ViewState, radiusDeg: number): b
 }
 
 /** 전역 줌에서도 항상 표시 — 전략 병목·물류 거점 */
-const PINNED_STATIC_KINDS = new Set<StaticPoint["kind"]>(["chokepoint", "logistics-hub"]);
+const PINNED_STATIC_KINDS = new Set<StaticPoint["kind"]>([
+  "chokepoint",
+  "logistics-hub",
+  "submarine-tunnel",
+]);
 
 export function filterStaticPointsForView(
   points: StaticPoint[],
@@ -75,6 +79,7 @@ export const STATIC_POINT_COLORS: Record<StaticPoint["kind"], string> = {
   "lng-terminal": "rgba(251, 146, 60, 0.92)",
   chokepoint: "rgba(251, 113, 133, 0.95)",
   "logistics-hub": "rgba(244, 63, 94, 0.92)",
+  "submarine-tunnel": "rgba(125, 211, 252, 0.95)",
 };
 
 /** 공항/항구/미군기지는 HTML 마커로 표시 (일반 points와 이중 렌더 금지) */
@@ -139,6 +144,7 @@ export function staticPointRadius(kind: StaticPoint["kind"], altitude = 1): numb
     "lng-terminal": 0.21,
     chokepoint: 0.28,
     "logistics-hub": 0.26,
+    "submarine-tunnel": 0.27,
   };
   return map[kind] * getZoomOutScale(altitude);
 }

@@ -26,6 +26,7 @@ const STATIC_KIND: Record<string, Bi> = {
   "lng-terminal": { ko: "액화가스 터미널", en: "LNG terminal" },
   chokepoint: { ko: "해상 초크포인트", en: "Maritime chokepoint" },
   "logistics-hub": { ko: "핵심 물류 거점", en: "Logistics hub" },
+  "submarine-tunnel": { ko: "해저터널", en: "Submarine tunnel" },
 };
 
 const PATH_KIND: Partial<Record<TransportPath["kind"], Bi>> = {
@@ -155,6 +156,8 @@ export const HOVER = {
   militaryBase: (lang: LabelLanguage) => pick({ ko: "미군기지", en: "US military base" }, lang),
   milAircraft: (lang: LabelLanguage) =>
     pick({ ko: "군사 항공기 (ADS-B)", en: "Military aircraft (ADS-B)" }, lang),
+  civAircraft: (lang: LabelLanguage) =>
+    pick({ ko: "민간 항공기 (ADS-B)", en: "Civilian aircraft (ADS-B)" }, lang),
   firmsCombat: (lang: LabelLanguage) =>
     pick({ ko: "폭격·화재 추정", en: "Likely strike / fire" }, lang),
   firmsFire: (lang: LabelLanguage) =>

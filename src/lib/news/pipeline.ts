@@ -8,6 +8,7 @@ import {
   isFeedItemRelevant,
   type NewsFeedDef,
 } from "@/lib/news/feedCatalog";
+import { computeBreakingGrade } from "@/lib/news/breakingGrade";
 import { classifyMediaTier } from "@/lib/news/mediaTiers";
 import { fetchRssFeed } from "@/lib/news/rssParser";
 import type {
@@ -27,16 +28,6 @@ const URGENCY =
 
 const ECON_URGENCY =
   /\b(breaking|surge|plunge|crash|rally|cut|hike|sanction|embargo|blockade|default|bankrupt|strike|shutdown|record\s?high|record\s?low|selloff|soar|tumble)\b/i;
-
-const THEATER_URGENCY: Record<NewsTheater, number> = {
-  "middle-east": 1.15,
-  "russia-ukraine": 1.1,
-  "korea": 1.05,
-  "china-taiwan": 1.05,
-  japan: 1.0,
-  "south-asia": 1.0,
-  global: 0.95,
-};
 
 function stableId(title: string, link: string, theater: NewsTheater): string {
   const key = `${theater}:${title.toLowerCase().slice(0, 80)}:${link.slice(0, 60)}`;
@@ -69,30 +60,6 @@ function parseAgeMinutes(pubDate: string): number {
   const ts = Date.parse(pubDate);
   if (!Number.isFinite(ts)) return 9999;
   return Math.max(0, Math.round((Date.now() - ts) / 60_000));
-}
-
-function recencyScore(ageMinutes: number): number {
-  if (ageMinutes <= 5) return 40;
-  if (ageMinutes <= 15) return 35;
-  if (ageMinutes <= 60) return 28;
-  if (ageMinutes <= 180) return 18;
-  if (ageMinutes <= 720) return 10;
-  return 4;
-}
-
-function urgencyScore(item: NewsStreamItem, clusterSize: number): number {
-  let score = recencyScore(parseAgeMinutes(item.pubDate));
-  score *= THEATER_URGENCY[item.theater];
-  if (item.feedTopic === "economy") {
-    if (ECON_URGENCY.test(item.title)) score += 22;
-  } else if (URGENCY.test(item.title)) {
-    score += 22;
-  }
-  if (clusterSize >= 3) score += 18;
-  else if (clusterSize >= 2) score += 10;
-  if (item.trustTier === 1) score += 6;
-  if (item.trustTier === 3) score += 12; // speed bonus for hero signal
-  return score;
 }
 
 function resolveHeroStatus(
@@ -142,19 +109,25 @@ function pickHero(items: NewsStreamItem[]): HeroBreakingItem | null {
   for (const item of eligible) {
     const key = clusterKey(item.title);
     const cluster = clusters.get(key) || [item];
-    const score = urgencyScore(item, cluster.length);
-    const heroStatus = resolveHeroStatus(item, cluster);
     const ageMinutes = parseAgeMinutes(item.pubDate);
+    const graded = computeBreakingGrade(item, cluster, ageMinutes);
+    const heroStatus = resolveHeroStatus(item, cluster);
 
     const entry: HeroBreakingItem = {
       ...item,
       heroStatus,
-      urgencyScore: score,
+      urgencyScore: graded.urgencyScore,
+      breakingGrade: graded.grade,
+      breakingRank: graded.rank,
       ageMinutes,
       clusterId: key,
     };
 
-    if (!best || entry.urgencyScore > best.urgencyScore) {
+    if (
+      !best ||
+      entry.breakingGrade > best.breakingGrade ||
+      (entry.breakingGrade === best.breakingGrade && entry.urgencyScore > best.urgencyScore)
+    ) {
       best = entry;
     }
   }
@@ -166,6 +139,7 @@ function pickHero(items: NewsStreamItem[]): HeroBreakingItem | null {
       .filter((c) => c.trustTier === 1)
       .sort((a, b) => parseAgeMinutes(a.pubDate) - parseAgeMinutes(b.pubDate))[0];
     if (tier1 && best.heroStatus !== "unverified") {
+      const graded = computeBreakingGrade(tier1, cluster, parseAgeMinutes(tier1.pubDate));
       best = {
         ...best,
         title: tier1.title,
@@ -175,6 +149,10 @@ function pickHero(items: NewsStreamItem[]): HeroBreakingItem | null {
         pubDate: tier1.pubDate,
         trustTier: tier1.trustTier,
         heroStatus: "confirmed",
+        urgencyScore: graded.urgencyScore,
+        breakingGrade: graded.grade,
+        breakingRank: graded.rank,
+        ageMinutes: parseAgeMinutes(tier1.pubDate),
       };
     }
   }

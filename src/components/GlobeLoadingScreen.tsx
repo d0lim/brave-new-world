@@ -18,7 +18,7 @@ void main() {
 }
 `;
 
-/** 블랙 어스 · 야경(도시 불빛) · 우주 배경 */
+/** 초록 육지 · 스치는 구름 · 야경 도시 불빛 · 우주 배경 */
 const FRAG = `
 precision highp float;
 
@@ -105,19 +105,55 @@ vec3 spaceBackground(vec2 uv) {
   return col;
 }
 
+vec2 normalToLatLng(vec3 n) {
+  float lat = asin(clamp(n.y, -1.0, 1.0));
+  float lng = atan(n.x, n.z);
+  return vec2(lat, lng);
+}
+
+float wrapLngDelta(float d) {
+  return abs(mod(d + 3.14159265, 6.2831853) - 3.14159265);
+}
+
+/** 대략적 대륙 타원 + 노이즈 해안선 — 육지/바다 실루엣이 보이도록 */
+float continentField(vec3 n) {
+  vec2 ll = normalToLatLng(n);
+  float field = 0.0;
+  // center lat,lng · radius lat,lng (radians)
+  field = max(field, 1.0 - length(vec2((ll.x - 0.45) / 0.55, wrapLngDelta(ll.y + 1.75) / 0.95))); // 유라시아
+  field = max(field, 1.0 - length(vec2((ll.x - 0.15) / 0.72, wrapLngDelta(ll.y + 1.55) / 0.55))); // 아프리카
+  field = max(field, 1.0 - length(vec2((ll.x - 0.72) / 0.42, wrapLngDelta(ll.y + 1.75) / 1.35))); // 북미
+  field = max(field, 1.0 - length(vec2((ll.x + 0.25) / 0.55, wrapLngDelta(ll.y + 1.05) / 0.55))); // 남미
+  field = max(field, 1.0 - length(vec2((ll.x + 0.45) / 0.38, wrapLngDelta(ll.y - 2.35) / 0.72))); // 호주
+  field = max(field, 1.0 - length(vec2((ll.x + 0.95) / 0.28, wrapLngDelta(ll.y + 0.2) / 1.1))); // 남극
+  field = max(field, 1.0 - length(vec2((ll.x - 0.15) / 0.22, wrapLngDelta(ll.y - 1.85) / 0.45))); // SE Asia / 인도
+  float coast = fbm(n * 3.1 + vec3(1.4, 0.2, 2.7)) * 0.22;
+  return clamp(field + coast - 0.12, 0.0, 1.0);
+}
+
 float landMask(vec3 n) {
-  return smoothstep(0.06, 0.48, fbm(n * 3.35 + vec3(2.1, 0.0, 4.3)));
+  return smoothstep(0.28, 0.55, continentField(n));
 }
 
 vec3 cityLights(vec3 n, float land) {
   float coarse = fbm(n * 5.5 + vec3(0.4, 1.2, 2.8));
   float fine = fbm(n * 14.0 + vec3(3.1, 0.7, 5.2));
-  float density = smoothstep(0.38, 0.82, coarse * 0.65 + fine * 0.55);
+  float density = smoothstep(0.34, 0.78, coarse * 0.65 + fine * 0.55);
   density *= land;
   density *= smoothstep(0.92, 0.35, abs(n.y));
   vec3 warm = vec3(1.0, 0.72, 0.32);
   vec3 cool = vec3(0.55, 0.78, 1.0);
-  return mix(warm, cool, fine * 0.35) * density * 1.35;
+  return mix(warm, cool, fine * 0.35) * density * 1.55;
+}
+
+/** 경도 방향으로 스쳐 지나가는 구름층 */
+float cloudCover(vec3 n, float time) {
+  vec3 drift = rotateY(n, time * 0.07);
+  float bands = fbm(drift * 2.4 + vec3(time * 0.05, 0.0, time * 0.03));
+  float wisps = fbm(drift * 6.5 + vec3(1.2, time * 0.08, 0.4));
+  float cover = smoothstep(0.12, 0.55, bands * 0.7 + wisps * 0.45);
+  cover *= smoothstep(0.95, 0.55, abs(n.y));
+  return cover * cover;
 }
 
 void main() {
@@ -143,30 +179,50 @@ void main() {
       float twilight = smoothstep(0.35, -0.05, ndl) * (1.0 - night);
 
       float land = landMask(n);
-      vec3 ocean = vec3(0.012, 0.022, 0.045);
-      vec3 terrain = vec3(0.025, 0.032, 0.028);
-      vec3 polar = vec3(0.08, 0.09, 0.11);
-      float polarW = smoothstep(0.8, 0.94, abs(n.y));
-      vec3 surface = mix(ocean, terrain, land * 0.92);
-      surface = mix(surface, polar, polarW * 0.65);
+      // 낮: 바다 청록 / 육지 초록
+      vec3 oceanDay = vec3(0.04, 0.10, 0.20);
+      vec3 landDay = vec3(0.12, 0.38, 0.16);
+      vec3 landDayDeep = vec3(0.06, 0.22, 0.10);
+      float veg = 0.55 + 0.45 * fbm(n * 5.0 + vec3(0.3, 1.1, 0.7));
+      landDay = mix(landDayDeep, landDay, veg);
+      // 밤: 어두운 초록 실루엣
+      vec3 oceanNight = vec3(0.006, 0.012, 0.035);
+      vec3 landNight = vec3(0.02, 0.07, 0.035);
+      float polarW = smoothstep(0.78, 0.94, abs(n.y));
+      vec3 polarDay = vec3(0.62, 0.66, 0.70);
+      vec3 polarNight = vec3(0.12, 0.14, 0.18);
 
-      vec3 lights = cityLights(n, land) * (night + twilight * 0.35);
+      vec3 daySurf = mix(oceanDay, landDay, land);
+      daySurf = mix(daySurf, polarDay, polarW * (0.45 + 0.4 * land));
+      vec3 nightSurf = mix(oceanNight, landNight, land);
+      nightSurf = mix(nightSurf, polarNight, polarW * 0.7);
+
+      vec3 lights = cityLights(n, land) * (night + twilight * 0.4);
       float dayGlow = clamp(ndl, 0.0, 1.0);
-      vec3 daySide = surface * (0.04 + dayGlow * 0.12);
-      vec3 nightSide = surface * 0.025 + lights;
+      vec3 daySide = daySurf * (0.4 + dayGlow * 0.9);
+      vec3 nightSide = nightSurf + lights;
 
-      col = mix(daySide, nightSide, smoothstep(0.08, -0.12, ndl));
+      col = mix(daySide, nightSide, smoothstep(0.12, -0.18, ndl));
+
+      // 구름 — 지구보다 살짝 빠르게 스침
+      float clouds = cloudCover(n, uTime);
+      vec3 cloudLit = vec3(0.92, 0.95, 1.0) * (0.35 + dayGlow * 0.75);
+      vec3 cloudDim = vec3(0.12, 0.14, 0.18);
+      vec3 cloudCol = mix(cloudDim, cloudLit, 1.0 - night * 0.85);
+      col = mix(col, cloudCol, clouds * (0.55 + 0.25 * (1.0 - night)));
+      lights *= (1.0 - clouds * 0.7);
+      col += lights * night * 0.15;
 
       float rim = pow(1.0 - max(dot(n, -rd), 0.0), 2.8);
       col += vec3(0.15, 0.38, 0.72) * rim * 0.42;
       col += vec3(0.45, 0.62, 0.95) * rim * rim * 0.18;
 
       float spec = pow(clamp(dot(reflect(-lightDir, n), -rd), 0.0, 1.0), 24.0);
-      col += vec3(0.7, 0.82, 1.0) * spec * 0.08 * (0.3 + dayGlow);
+      col += vec3(0.7, 0.82, 1.0) * spec * 0.1 * (0.25 + dayGlow) * (1.0 - land * 0.7) * (1.0 - clouds * 0.5);
     }
   }
 
-  col = pow(col, vec3(1.05));
+  col = pow(col, vec3(1.02));
   gl_FragColor = vec4(col, 1.0);
 }
 `;

@@ -130,6 +130,6 @@ export const ECONOMY_TIER_LABELS: Record<
   { label: string; detail: string }
 > = {
   1: { label: "공식·와이어", detail: "Reuters · WSJ · FT · IMF · BBC" },
-  2: { label: "시장 매체", detail: "CNBC · Google News · 테마 RSS" },
+  2: { label: "시장 매체", detail: "CNBC · Google · 기업·산업 RSS" },
   3: { label: "미확인 속보", detail: "참고용" },
 };

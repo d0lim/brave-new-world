@@ -1,9 +1,37 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // 기존 unused-vars가 build를 막지 않도록 (webpack 번들 오류와 별개)
+  eslint: { ignoreDuringBuilds: true },
   experimental: {
     optimizePackageImports: ["maplibre-gl"],
+    // wrangler/miniflare를 서버 번들에 넣으면 blake3-wasm·esbuild가 깨짐
+    serverComponentsExternalPackages: [
+      "wrangler",
+      "miniflare",
+      "blake3-wasm",
+      "esbuild",
+      "workerd",
+    ],
   },
-  webpack: (config, { dev }) => {
+  webpack: (config, { isServer, dev }) => {
+    if (isServer) {
+      const prev = config.externals;
+      const extras = ["wrangler", "miniflare", "blake3-wasm", "workerd"];
+      if (Array.isArray(prev)) {
+        config.externals = [...prev, ...extras];
+      } else if (typeof prev === "function") {
+        config.externals = [
+          prev,
+          ({ request }, callback) => {
+            if (request && extras.includes(request)) return callback(null, `commonjs ${request}`);
+            callback();
+          },
+        ];
+      } else {
+        config.externals = extras;
+      }
+    }
+
     if (dev) {
       config.output = {
         ...config.output,

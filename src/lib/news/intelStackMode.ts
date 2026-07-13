@@ -1,8 +1,9 @@
 import { theaterAssetSymbols } from "@/lib/theaterAssets";
-import type { HeroBreakingItem } from "@/lib/news/types";
+import { A_GRADE_MIN, shouldEmitBreakingSos } from "@/lib/news/breakingGrade";
+import type { BreakingUiRank, HeroBreakingItem } from "@/lib/news/types";
 
-/** A급 속보 — 이 점수 이상일 때 alert 모드(히어로 슬라이드업) */
-export const ALERT_URGENCY_THRESHOLD = 45;
+/** @deprecated grade 체계로 대체 — A급(≥6) 이상이면 alert */
+export const ALERT_URGENCY_THRESHOLD = A_GRADE_MIN * 10;
 
 export const INTEL_STACK_CLEARANCE_CALM = "8.5rem";
 export const INTEL_STACK_CLEARANCE_ALERT = "13.5rem";
@@ -14,9 +15,23 @@ export const TICKER_SPIKE_THRESHOLD_PERCENT = 1.25;
 
 export type IntelStackMode = "calm" | "alert";
 
+/**
+ * A·S → alert(히어로 슬라이드업)
+ * B → calm (시트만)
+ */
 export function resolveIntelStackMode(hero: HeroBreakingItem | null): IntelStackMode {
   if (!hero) return "calm";
-  return hero.urgencyScore >= ALERT_URGENCY_THRESHOLD ? "alert" : "calm";
+  const rank: BreakingUiRank =
+    hero.breakingRank ??
+    (hero.breakingGrade >= 9 ? "S" : hero.breakingGrade >= A_GRADE_MIN ? "A" : "B");
+  if (rank === "B") return "calm";
+  return "alert";
+}
+
+/** S급만 SOS 모스 */
+export function resolveBreakingSos(hero: HeroBreakingItem | null): boolean {
+  if (!hero) return false;
+  return shouldEmitBreakingSos(hero.breakingRank);
 }
 
 export function resolveIntelStackClearance(

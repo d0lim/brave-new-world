@@ -53,8 +53,8 @@ const UI = {
   },
   domainGateTitle: { ko: "어느 창으로 들어설까요?", en: "Which window will you enter?" },
   domainGateSubtitle: {
-    ko: "지정학과 지경학, 두 갈래의 문입니다",
-    en: "Two doors: geopolitics and geoeconomics",
+    ko: "포화의 창, 혹은 이익의 창 — 멋진신세계의 두 문",
+    en: "The window of shells, or of fortune — two doors into Brave New World",
   },
   domainUltraLiteLabel: { ko: "Ultra-Lite 모드", en: "Ultra-Lite mode" },
   domainUltraLiteHook: {
@@ -272,7 +272,7 @@ const UI = {
     ko: "에너지와 물류, 항로와 시장의 맥을 읽습니다",
     en: "Read energy, logistics, sea lanes, and markets",
   },
-  welcomeLetterCta: { ko: "편지를 접고 입장하기", en: "Fold the letter and enter" },
+  welcomeLetterCta: { ko: "편지를 접고 신세계로", en: "Fold the letter — enter the New World" },
   entryCautionMustRead: { ko: "반드시 읽어주세요", en: "Please read this carefully" },
   entryCautionTitle: { ko: "주의", en: "Caution" },
   entryCautionSubtitle: {
@@ -291,8 +291,8 @@ const UI = {
   },
   entryCautionSoundWhenTitle: { ko: "언제 소리가 나나요", en: "When sound plays" },
   entryCautionSoundWhen: {
-    ko: "• 공습 사이렌: 경보 칩·버튼으로 fly 할 때만\n• NEPTUN·FIRMS 폭격음: 해당 레이어 ON + 화면 안으로 들어올 때\n• 전선 교전음: 지정학 모드에서 전장 위로 충분히 줌인했을 때\n• 긴장 rumble: 전쟁·고긴장 구역 위 (전선보다 낮은 우선순위)\n• 항모 갑판: 미 항모가 화면 안에 있을 때\n• 경제 앰비언트: 파이프라인 > 데이터센터 > 항구 > 경제중심 레이어\n• 티커·모드 전환·일반 클릭으로는 소리가 나지 않습니다",
-    en: "• Air-raid siren: only when you fly via the alert chip/button\n• NEPTUN / FIRMS combat: layer ON + event enters the viewport\n• Frontline combat: geopolitics mode, zoomed into a theater\n• Tension rumble: over war / high-tension zones (below frontline priority)\n• Carrier deck: when a US carrier is in view\n• Economy ambient: pipeline > datacenter > port > economic hubs\n• Ticker, mode switch, and normal UI clicks stay silent",
+    ko: "• 공습 사이렌: 경보 칩·버튼으로 fly 할 때만\n• S급 속보만 SOS 모스 (A급은 배너만 · Tier3 단독은 S 불가)\n• NEPTUN·FIRMS 폭격음: 해당 레이어 ON + 화면 안으로 들어올 때\n• 전선 교전음(우크라·중동): 줌 LOD — 멀리 포격/짧은폭격 · 중간 포격+작은총성 · 가까이 총성\n• 대만해협: 시계 틱 긴장음 · 한반도/고긴장: rumble\n• 항모 갑판: 미 항모가 화면 안에 있을 때\n• 경제 앰비언트: 파이프라인 > 데이터센터 > 항구 > 경제중심 레이어\n• 티커·모드 전환·일반 클릭으로는 소리가 나지 않습니다",
+    en: "• Air-raid siren: only when you fly via the alert chip/button\n• SOS Morse for S-grade breaking only (A = banner silent · Tier3 alone cannot be S)\n• NEPTUN / FIRMS combat: layer ON + event enters the viewport\n• Frontline (Ukraine / Middle East): LOD — far artillery/short blasts · mid artillery + quiet gunfire · close gunfire\n• Taiwan Strait: ticking tension · Korea / high-tension: rumble\n• Carrier deck: when a US carrier is in view\n• Economy ambient: pipeline > datacenter > port > economic hubs\n• Ticker, mode switch, and normal UI clicks stay silent",
   },
   entryCautionCta: { ko: "확인했습니다 — 편지로", en: "Got it — continue to letter" },
   soundOn: { ko: "소리 켜짐", en: "Sound on" },
@@ -320,7 +320,10 @@ const UI = {
   modeConflict: { ko: "지정학", en: "Geopolitics" },
   modeConflictHint: { ko: "전선 · 분쟁 · OSINT · 군사 뉴스", en: "Frontline · conflict · OSINT · military news" },
   modeEconomy: { ko: "경제·시장", en: "Markets" },
-  modeEconomyHint: { ko: "증시 · 유가 · 제재 · 경제 RSS", en: "Stocks · oil · sanctions · economy RSS" },
+  modeEconomyHint: {
+    ko: "증시 · 유가 · 빅테크·반도체·전기차 RSS",
+    en: "Stocks · oil · Big Tech · semis · EV RSS",
+  },
   intelNews: { ko: "Intel 뉴스", en: "Intel news" },
   intelEconomy: { ko: "경제·증시", en: "Markets" },
   heroAccordingTo: { ko: "에 따르면 ", en: " reports " },
@@ -362,8 +365,8 @@ const UI = {
   econGenreBar: { ko: "뉴스 카테고리", en: "News categories" },
   econGenreAll: { ko: "전체", en: "All" },
   econGenreAllHint: {
-    ko: "거시 · 인프라 · 에너지 · 물류 · 반도체 · 시장",
-    en: "Macro · infra · energy · shipping · chips · markets",
+    ko: "AI·빅테크 · 반도체 · 전기차 · 에너지 · 물류 · 인프라 · 거시 · 와이어",
+    en: "AI · semis · EV · energy · shipping · infra · macro · wires",
   },
 } as const;
 
@@ -449,20 +452,20 @@ export const MODE_PICKER_CHROME: Record<
   economy: {
     ko: {
       title: "경제 · 시장",
-      tagline: "유가 · VIX · 제재 · 물류",
+      tagline: "빅테크 · 반도체 · 전기차 · 에너지",
       bullets: [
         "주요 증시·VIX·유가 티커",
-        "경제 RSS · 시장 속보",
+        "경제 RSS · 빅테크·반도체·전기차·에너지 기업 속보",
         "제재·파이프라인·해운·초크포인트 레이어",
         "하단: 티커 + 시장 속보 (GDELT/TG 없음)",
       ],
     },
     en: {
       title: "Markets",
-      tagline: "Oil · VIX · sanctions · logistics",
+      tagline: "Big Tech · semis · EV · energy",
       bullets: [
         "Major indices · VIX · oil tickers",
-        "Economy RSS · market breaking news",
+        "Economy RSS · Big Tech · chips · EV · oil majors",
         "Sanctions · pipelines · shipping · chokepoints",
         "Bottom: ticker + market headlines (no GDELT/TG)",
       ],

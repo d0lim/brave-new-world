@@ -1,6 +1,6 @@
-# Conflict View (GeoWatch)
+# 멋진신세계 (Brave New World)
 
-3D 지구본 기반 **지정학 · 지경학** 대시보드입니다. Natural Earth 지형, GDELT 뉴스, 우크라이나 전선(VIINA), NEPTUN 공중 위협, 텔레그램 OSINT, 이스라엘·우크라 공습 경보, 시장·물류 레이어를 한 화면에서 탐색할 수 있습니다.
+Aldous Huxley 《Brave New World》를 모티브로 한 3D 지구본 관측대입니다. 한쪽에서는 포화가 울리고 공습 사이렌이 울려 대는데, 다른 한쪽에서는 누군가가 돈을 법니다—그 서사시를 한 지도 위에 겹쳐 둡니다.
 
 - **스택:** Next.js 14 · React 18 · TypeScript · MapLibre GL · react-map-gl · Tailwind CSS
 - **언어:** UI 기본 한국어 · 레이어 패널에서 **English** 전환 (`labelLanguage`) — 호버·범례·aria 포함
@@ -302,17 +302,20 @@ public/data/neptun-seed.json
 
 ## 성능 · 최적화 정책
 
+**데이터 계층은 2층** — [docs/data-architecture-2tier.md](docs/data-architecture-2tier.md)  
+(1층 클라우드 창고 R2/D1 · 2층 실시간 폴링). `lite`/`full`은 1층 **해상도 옵션**이지 별도 층이 아님.
+
 | 항목 | 동작 |
 |------|------|
 | **stub 모드** | 외부 API 대신 `public/data/*-seed.json` · 프로필 JSON 사용 |
-| **live 가드** | `API_STUB_MODE=false` 시 `liveRenderGuard`가 FIRMS/AIS/ADS-B 폴링·상한을 보수화 |
-| **lite / full** | `DATA_PROFILE` — 지오메트리·이벤트 밀도 분리 (서버 env → `page.tsx` 주입) |
+| **live 가드 (기둥)** | `API_STUB_MODE=false` 시 `liveRenderGuard`가 폴링·상한을 **더 보수화** — 삭제 금지 |
+| **lite / full** | `DATA_PROFILE` — 창고 안 지오메트리 밀도 (서버 env → `page.tsx` 주입) |
 | **gzip 데이터** | `npm`/`node scripts/compress-data-gzip.js` → `fetchJsonPreferGzip`이 `.json.gz` 우선 |
 | **JSON 워커** | `jsonParse.worker.ts`로 대용량 파싱 메인 스레드 분리 |
-| **레이어 기본 OFF** | `layerPrefs` — 모든 레이어 체크박스 기본 해제 |
-| **동시 ON 상한** | `layerExclusiveCap` · Ultra-Lite · 보기 패키지 hard cap |
+| **레이어 기본 OFF (기둥)** | `layerPrefs` — 체크박스 기본 해제 (전쟁구역 등 활성 전장 예외 가능) |
+| **동시 ON 상한 (기둥)** | `layerExclusiveCap` · Ultra-Lite · 보기 패키지 hard cap |
 | **뷰포트 LOD** | NEPTUN·VIINA·정적 포인트 — tier별 최대 개수·반경 |
-| **분쟁 빗금 캐시** | `disputeHatchCache` |
+| **분쟁 빗금 캐시** | `disputeHatchCache` / D1 스냅샷 |
 | **NEPTUN fetch** | 우크라 극동부 뷰 또는 전선 레이어 ON 시에만 |
 | **궤적 렌더** | 모드별 점 budget, elevated 캐시, path 애니메이션 OFF |
 | **카메라 busy** | `cameraBusyGuard` — tween/드래그 중 티커·무거운 갱신 일시정지 |
@@ -321,12 +324,14 @@ public/data/neptun-seed.json
 
 ## 데이터 프로필 · 빌드 스크립트
 
-### 프로필
+### 프로필 (1층 창고 · 해상도 옵션)
 
-- `public/data/lite/` — 노트북·개발용 경량 JSON
+- `public/data/lite/` — 기본·저사양 (CDN에도 우선 업로드 권장)
 - `public/data/full/` — 고해상도·데모용
 
-`dataPath("app-data.json")` → `/data/{profile}/app-data.json`
+아키텍처 층이 아니라 **같은 1층 안의 디테일 단계**입니다. 전체 그림: [data-architecture-2tier.md](docs/data-architecture-2tier.md)
+
+`dataPath("app-data.json")` → CDN 또는 `/data/{profile}/app-data.json`
 
 ### 자주 쓰는 명령
 
@@ -400,15 +405,17 @@ src/
     navRegions.ts · econNavRegions.ts
 public/
   audio/                  # 로컬 전투·공습 + README
-  data/                   # lite / full / live / 시드 (± .json.gz)
+  data/                   # lite·full = 1층 해상도 옵션 / 시드 (± .json.gz) → R2 권장
 scripts/
   compress-data-gzip.js
   telegram-osint/
 docs/
   copyright-checklist.md
+  cloudflare-deploy.md
+  data-architecture-2tier.md   # 2층(창고+빨대) · 가드 유지
   us-carrier-deck-icon.md
-  llm-news-digest.md           # 추후: 화이트리스트 LLM 3줄 요약 (Telegram 제외)
-  retention-markets-roadmap.md # 추후: 재방문·전장→심볼 해석 (매매 앱 아님)
+  llm-news-digest.md
+  retention-markets-roadmap.md
 IRONSIGHT/
 ```
 

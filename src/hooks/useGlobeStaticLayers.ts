@@ -129,6 +129,7 @@ export function useGlobeStaticLayers(options: {
   showDisputeBoundaries: boolean;
   showShippingLanes: boolean;
   showSubmarineCables: boolean;
+  showSubmarineTunnels?: boolean;
   showOilPipelines: boolean;
   showGasPipelines: boolean;
   showLngTerminals: boolean;
@@ -173,6 +174,7 @@ export function useGlobeStaticLayers(options: {
   const [sanctionsEntities, setSanctionsEntities] = useState<StaticPoint[]>([]);
   const [spaceLaunches, setSpaceLaunches] = useState<StaticPoint[]>([]);
   const [intelHotspots, setIntelHotspots] = useState<StaticPoint[]>([]);
+  const [submarineTunnels, setSubmarineTunnels] = useState<StaticPoint[]>([]);
   const [conflictZones, setConflictZones] = useState<ConflictZoneFeature[]>([]);
   const [armsEmbargoZones, setArmsEmbargoZones] = useState<ArmsEmbargoZone[]>([]);
   const [disputeOverviews, setDisputeOverviews] = useState<Map<string, DisputeOverview>>(new Map());
@@ -376,6 +378,31 @@ export function useGlobeStaticLayers(options: {
     options.radiusDeg,
     reloadToken,
   ]);
+
+  /** 해저터널 — 토글 ON 시 D1 클라우드 로그 1회 fetch */
+  useEffect(() => {
+    if (!options.showSubmarineTunnels) {
+      setSubmarineTunnels([]);
+      loadedRef.current["submarine-tunnels"] = false;
+      return;
+    }
+    if (loadedRef.current["submarine-tunnels"]) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const response = await fetch("/api/submarine-tunnels", { cache: "no-store" });
+        const payload = (await response.json()) as { tunnels?: StaticPoint[] };
+        if (cancelled) return;
+        setSubmarineTunnels(Array.isArray(payload.tunnels) ? payload.tunnels : []);
+        loadedRef.current["submarine-tunnels"] = true;
+      } catch {
+        if (!cancelled) setSubmarineTunnels([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [options.showSubmarineTunnels, reloadToken]);
 
   useEffect(() => {
     if (!options.showOilPipelines) {
@@ -765,6 +792,7 @@ export function useGlobeStaticLayers(options: {
     if (options.showIntelHotspots) merged.push(...intelHotspots);
     if (options.showLngTerminals) merged.push(...lngTerminals);
     if (options.showLogisticsRisk) merged.push(...LOGISTICS_RISK_POINTS);
+    if (options.showSubmarineTunnels) merged.push(...submarineTunnels);
     return filterStaticPointsForView(
       merged,
       options.viewState,
@@ -798,6 +826,7 @@ export function useGlobeStaticLayers(options: {
     options.showResources,
     options.showSanctionsEntities,
     options.showSpaceLaunches,
+    options.showSubmarineTunnels,
     options.showUcdpEvents,
     options.viewState,
     ports,
@@ -805,6 +834,7 @@ export function useGlobeStaticLayers(options: {
     resources,
     sanctionsEntities,
     spaceLaunches,
+    submarineTunnels,
     ucdpEvents,
   ]);
 

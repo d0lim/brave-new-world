@@ -3,11 +3,13 @@ import { FIRMS_FIRE_MAX_BY_TIER } from "@/lib/viewportCull";
 import { isClientApiStubMode } from "@/lib/runtimeConfig.client";
 
 /**
- * Live(API_STUB_MODE=false) 렌더·폴링 안전장치.
- * stub ON일 때는 기존(또는 약간 빠른) 간격, stub OFF일 때는 보수적 간격·상한.
+ * Live(API_STUB_MODE=false) 렌더·폴링 안전장치. **삭제·완화 금지** (렉 기둥).
+ * stub ON: 기존(또는 약간 빠른) 간격 · stub OFF: 보수적 간격·상한.
  *
- * 전환 게이트 (권장 순서):
- *   stub → Phase1 정적 .json.gz → Phase2 5초 버스트 ingest → Phase3 Worker OK 후 live
+ * 데이터 계층은 2층 — @see docs/data-architecture-2tier.md
+ *   1층 창고(R2/D1) → 2층 빨대(폴링). lite/full은 1층 해상도 옵션일 뿐.
+ *
+ * stub OFF 전: D1 cron 채움 · R2 CDN · 이 파일·레이어 cap 유지.
  */
 
 export {
@@ -68,6 +70,24 @@ export function liveMilFetchMax(): number {
   return isClientApiStubMode() ? 400 : 150;
 }
 
+/** 민간 항적 (지경학) */
+export function liveAirTrafficPollMs(): number {
+  return isClientApiStubMode() ? 40_000 : 55_000;
+}
+
+export function liveAirTrafficFetchMax(): number {
+  return isClientApiStubMode() ? 350 : 280;
+}
+
+/** 고도 → ADS-B 조회 반경(NM) */
+export function airTrafficDistNm(altitude: number): number {
+  if (altitude >= 1.9) return 650;
+  if (altitude >= 1.35) return 380;
+  if (altitude >= 0.85) return 200;
+  if (altitude >= 0.45) return 110;
+  return 60;
+}
+
 /** 미 항모 */
 export function liveUsCarriersPollMs(): number {
   return isClientApiStubMode() ? 5 * 60_000 : 8 * 60_000;
@@ -76,6 +96,11 @@ export function liveUsCarriersPollMs(): number {
 /** Yahoo 티커 스트립 */
 export function liveTickerPollMs(): number {
   return isClientApiStubMode() ? 10 * 60_000 : 15 * 60_000;
+}
+
+/** Intel 뉴스 스트림 (RSS) — stub OFF 시 더 느리게 */
+export function liveNewsPollMs(): number {
+  return isClientApiStubMode() ? 90_000 : 150_000;
 }
 
 /** 카메라 조작·백그라운드 탭 중 라이브 새로고침 보류 */

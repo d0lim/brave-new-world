@@ -13,8 +13,17 @@ export const EXTREME_ZOOM_ALTITUDE = 0.18;
  */
 export const ORBITAL_OVERVIEW_ALTITUDE = 1.78;
 
-/** 전장/경제 허브 진입 시 이보다 가까이 붙지 않음 */
+/**
+ * 넓은 전장(중동·우크라 전역 등) overview 진입 시 이보다 가까이 붙지 않음.
+ * 한반도·대만급(COMPACT_THEATER_MAX_SPAN_DEG 이하)에는 적용하지 않음.
+ */
 export const THEATER_ENTRY_MIN_ALTITUDE = 1.58;
+
+/**
+ * bbox 장축(도)이 이 이하면 지역 버튼이 궤도 하한 없이
+ * 작성된 altitude/bbox fit으로 화면을 채움 (한반도·대만해협 프레임).
+ */
+export const COMPACT_THEATER_MAX_SPAN_DEG = 16;
 
 export function clampGlobeAltitude(altitude: number): number {
   const a = Number.isFinite(altitude) ? altitude : MIN_GLOBE_ALTITUDE;

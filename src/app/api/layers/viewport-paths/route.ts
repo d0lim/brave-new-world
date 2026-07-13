@@ -46,7 +46,7 @@ export async function GET(request: Request) {
     : undefined;
 
   try {
-    const result = queryViewportPaths(layerRaw, {
+    const result = await queryViewportPaths(layerRaw, {
       lat,
       lng,
       radiusDeg,

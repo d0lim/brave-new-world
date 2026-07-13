@@ -90,18 +90,22 @@ RSS/GDELT whitelist
 
 ---
 
-## 5. API 스케치 (미구현)
+## 5. API · 비용 분리 (스캐폴딩)
 
-| 엔드포인트 | 역할 |
-|------------|------|
-| `GET /api/news-digest?articleId=` | 캐시 hit만 반환. miss → 404/제목만 |
-| `POST /api/news-digest/run` | 내부/cron 전용. 시크릿 헤더 |
+| 엔드포인트 | 역할 | 과금 |
+|------------|------|------|
+| `GET /api/news-digest?articleId=` | 캐시 hit만. LLM 온디맨드 없음 | 없음 |
+| `GET /api/claude/status` | 서버 키/digest 준비 여부 (키 값 비노출) | 없음 |
+| `POST /api/claude/user-analyze` | 유저 헤드라인 분석 | **유저 BYOK** (`x-anthropic-api-key`) |
+| `POST /api/news-digest/run` | 내부/cron 편집 digest (미구현) | **서버 `ANTHROPIC_API_KEY`** |
 
-환경변수 (서버 전용, 추후):
+환경변수 (서버 전용):
 
-- `LLM_NEWS_DIGEST_ENABLED=false`
-- `LLM_PROVIDER` / `LLM_API_KEY`
-- `LLM_DAILY_TOKEN_CAP`
+- `ANTHROPIC_API_KEY=` — 편집자/배치만. 유저 분석에 **절대 사용 안 함**
+- `LLM_NEWS_DIGEST_ENABLED=false` — true + 키 + stub OFF 일 때만 배치 LLM
+- `ANTHROPIC_MODEL=claude-sonnet-4-5`
+
+유저 키: 브라우저 `localStorage` (`bnw-user-anthropic-api-key`) → 요청 헤더로만 전달, 서버 미저장.
 
 ---
 

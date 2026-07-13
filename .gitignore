@@ -53,6 +53,9 @@ scripts/telegram-osint/.session/
 /private/viina-render/
 /public/data/live/
 
+# large local GIS sources (rebuild via scripts/build-static-extras.js)
+/scripts/data/Submarine_Cables.geojson.json
+
 # legacy removed — ignore empty shell if node_modules lock prevents deletion
 /geowatch/
 

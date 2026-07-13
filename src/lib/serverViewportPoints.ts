@@ -1,7 +1,6 @@
-import fs from "fs";
-import path from "path";
 import type { MilitaryBaseArea, StaticPoint } from "@/data/geoTypes";
 import { expandStaticPoints } from "@/lib/compactData";
+import { loadCloudStaticJson } from "@/lib/cloudStaticJson";
 import type { GlobeLodTier } from "@/lib/globeLod";
 import { getServerDataProfile } from "@/lib/serverEnv";
 import {
@@ -39,31 +38,18 @@ const FILE_BY_LAYER: Record<ViewportPointLayer, string> = {
 const pointCache = new Map<string, StaticPoint[]>();
 let baseAreaCache: MilitaryBaseArea[] | null = null;
 
-function readJsonFile<T>(fileName: string): T | null {
-  const profile = getServerDataProfile();
-  const primary = path.join(process.cwd(), "public", "data", profile, fileName);
-  const fallback = path.join(process.cwd(), "public", "data", fileName);
-  for (const filePath of [primary, fallback]) {
-    if (!fs.existsSync(filePath)) continue;
-    try {
-      return JSON.parse(fs.readFileSync(filePath, "utf8")) as T;
-    } catch {
-      // next
-    }
-  }
-  return null;
-}
-
 export function isViewportPointLayer(value: string): value is ViewportPointLayer {
   return value in FILE_BY_LAYER;
 }
 
-export function loadAllStaticPoints(layer: ViewportPointLayer): StaticPoint[] {
+export async function loadAllStaticPoints(
+  layer: ViewportPointLayer,
+): Promise<StaticPoint[]> {
   const profile = getServerDataProfile();
   const key = `${profile}:${layer}`;
   const hit = pointCache.get(key);
   if (hit) return hit;
-  const raw = readJsonFile<unknown[]>(FILE_BY_LAYER[layer]);
+  const raw = await loadCloudStaticJson<unknown[]>(FILE_BY_LAYER[layer]);
   if (!Array.isArray(raw) || raw.length === 0) {
     pointCache.set(key, []);
     return [];
@@ -73,7 +59,7 @@ export function loadAllStaticPoints(layer: ViewportPointLayer): StaticPoint[] {
   return points;
 }
 
-export function queryViewportPoints(
+export async function queryViewportPoints(
   layer: ViewportPointLayer,
   options: {
     lat: number;
@@ -83,7 +69,7 @@ export function queryViewportPoints(
     max?: number;
   },
 ) {
-  const all = loadAllStaticPoints(layer);
+  const all = await loadAllStaticPoints(layer);
   const view = { lat: options.lat, lng: options.lng, altitude: 1 };
   let filtered = filterStaticPointsForView(all, view, options.tier, options.radiusDeg);
   const cap = options.max ?? STATIC_POINT_MAX_BY_TIER[options.tier];
@@ -91,23 +77,23 @@ export function queryViewportPoints(
   return { points: filtered, total: all.length, returned: filtered.length };
 }
 
-export function loadAllMilitaryBaseAreas(): MilitaryBaseArea[] {
+export async function loadAllMilitaryBaseAreas(): Promise<MilitaryBaseArea[]> {
   if (baseAreaCache) return baseAreaCache;
-  const raw = readJsonFile<MilitaryBaseArea[]>("military-base-areas.json");
+  const raw = await loadCloudStaticJson<MilitaryBaseArea[]>("military-base-areas.json");
   baseAreaCache = Array.isArray(raw)
     ? raw.filter((item) => item?.geometry && item.center && typeof item.name === "string")
     : [];
   return baseAreaCache;
 }
 
-export function queryViewportMilitaryBaseAreas(options: {
+export async function queryViewportMilitaryBaseAreas(options: {
   lat: number;
   lng: number;
   radiusDeg: number;
   tier: GlobeLodTier;
   max?: number;
 }) {
-  const all = loadAllMilitaryBaseAreas();
+  const all = await loadAllMilitaryBaseAreas();
   const maxCount = options.max ?? MILITARY_BASE_AREA_MAX_BY_TIER[options.tier];
   if (maxCount <= 0) return { areas: [] as MilitaryBaseArea[], total: all.length, returned: 0 };
 

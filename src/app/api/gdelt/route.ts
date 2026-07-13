@@ -18,6 +18,17 @@ export async function GET(request: Request) {
     const preferLive = searchParams.get("live") === "1";
 
     if (theme === "cyber" || theme === "election") {
+      // Theme Geo는 D1 미적재 — 기본은 빈 응답, ?live=1 만 외부 호출
+      if (!preferLive) {
+        return NextResponse.json({
+          theme,
+          cached: false,
+          waiting: true,
+          fetchedAt: new Date().toISOString(),
+          events: [],
+          attribution: "GDELT theme — use ?live=1 or future cron table",
+        });
+      }
       const { data, cached } = await fetchGdeltThemeCached(theme);
       return NextResponse.json({
         theme,
@@ -28,7 +39,7 @@ export async function GET(request: Request) {
       });
     }
 
-    // Cron Geo 스냅샷 우선 — ZIP/CSV 파싱 생략
+    // Cron Geo 스냅샷 우선 — ZIP/CSV는 ?live=1 일 때만
     if (!preferLive) {
       const fromD1 = await readGdeltPointsFromD1(600);
       if (fromD1 && fromD1.count > 0) {
@@ -51,6 +62,14 @@ export async function GET(request: Request) {
           attribution: "GDELT Project (via Cloudflare D1 cron ingest)",
         });
       }
+      return NextResponse.json({
+        fetchedAt: new Date().toISOString(),
+        cached: false,
+        source: "d1",
+        waiting: true,
+        events: [],
+        attribution: "GDELT — D1 empty; wait for cron or ?live=1",
+      });
     }
 
     const sliceParam = searchParams.get("slices");

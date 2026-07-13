@@ -24,6 +24,16 @@ function parseLod(raw: string | null): UkraineHatchLod {
   return raw === "overview" ? "overview" : "detail";
 }
 
+function authorizeWarm(request: Request): boolean {
+  const secret =
+    process.env.INGEST_CRON_SECRET?.trim() || process.env.NEWS_WARM_SECRET?.trim();
+  if (!secret) return true;
+  const header = request.headers.get("authorization") || "";
+  const bearer = header.startsWith("Bearer ") ? header.slice(7).trim() : "";
+  const query = new URL(request.url).searchParams.get("secret") || "";
+  return bearer === secret || query === secret;
+}
+
 function splitZones(features: NonNullable<ReturnType<typeof loadViinaRenderData>>["features"]) {
   const ru = features.filter((z) => z.controlStatus === "RU");
   const ua = features.filter((z) => z.controlStatus === "UA");
@@ -32,20 +42,26 @@ function splitZones(features: NonNullable<ReturnType<typeof loadViinaRenderData>
 }
 
 async function ensureHatchPayload(lod: UkraineHatchLod) {
-  const fileCache = loadUkraineHatchCache(lod);
-  if (fileCache?.paths?.length) {
-    return { payload: fileCache, source: "file" as const };
-  }
-
+  // 클라우드 스냅샷 우선 (D1) — Workers/프로덕션에서 파일 캐시가 없을 때
   try {
     const db = await getDb();
     const fromD1 = await readUkraineHatchFromD1(db, lod);
     if (fromD1?.paths?.length) {
-      saveUkraineHatchCache(fromD1);
       return { payload: fromD1, source: "d1" as const };
     }
   } catch {
-    // D1/proxy 미가용 — 파일·빌드 경로로 계속
+    // D1/proxy 미가용
+  }
+
+  const fileCache = loadUkraineHatchCache(lod);
+  if (fileCache?.paths?.length) {
+    try {
+      const db = await getDb();
+      await writeUkraineHatchToD1(db, fileCache);
+    } catch {
+      // best-effort sync
+    }
+    return { payload: fileCache, source: "file" as const };
   }
 
   const viina = loadViinaRenderData();
@@ -141,8 +157,11 @@ export async function GET(request: Request) {
   }
 }
 
-/** 강제 재빌드 (로컬/관리용) */
+/** Cron / 강제 재빌드 — VIINA 캐시가 있는 환경에서만 성공 */
 export async function POST(request: Request) {
+  if (!authorizeWarm(request)) {
+    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  }
   if (!VIINA_POLICY.renderingOnly) {
     return NextResponse.json({ error: "viina-rendering-disabled" }, { status: 404 });
   }

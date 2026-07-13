@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useLocale } from "@/contexts/LocaleContext";
+import { brandName } from "@/lib/brand";
 import { t } from "@/lib/uiStrings";
 import type { ViewerMode } from "@/lib/viewerChrome";
 import { loadPerfPrefs } from "@/lib/ultraLiteMode";
@@ -26,8 +27,8 @@ export function DomainGateOverlay({ onSelect }: DomainGateOverlayProps) {
       aria-labelledby="domain-gate-title"
     >
       <div className="my-auto w-full max-w-2xl rounded-2xl border border-sky-400/20 bg-[#0a1428]/95 p-6 shadow-2xl sm:p-8">
-        <p className="text-center text-[11px] font-medium uppercase tracking-[0.42em] text-sky-200/70">
-          Conflict View
+        <p className="text-center text-[11px] font-medium tracking-[0.28em] text-sky-200/70 sm:tracking-[0.36em]">
+          {brandName(lang)}
         </p>
         <h1
           id="domain-gate-title"

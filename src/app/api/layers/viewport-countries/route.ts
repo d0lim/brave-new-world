@@ -33,7 +33,7 @@ export async function GET(request: Request) {
   const max = searchParams.get("max") ? Number(searchParams.get("max")) : undefined;
 
   try {
-    const result = queryViewportCountries({
+    const result = await queryViewportCountries({
       lat,
       lng,
       radiusDeg,

@@ -25,9 +25,10 @@ export function hatchLodToBuildOptions(lod: UkraineHatchLod): {
   lodTier: GlobeLodTier;
 } {
   if (lod === "overview") {
-    return { maxZones: 900, lodTier: "continent" };
+    // 전장 전체 덩어리용 — 셀 메시가 아니라 dissolve 그리드
+    return { maxZones: 3200, lodTier: "continent" };
   }
-  return { maxZones: 2200, lodTier: "near" };
+  return { maxZones: 4200, lodTier: "near" };
 }
 
 /**

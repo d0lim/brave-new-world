@@ -27,5 +27,11 @@
       "database_id": "7e44bacd-d2f1-4c77-84c2-7be6b90fa0ae",
       "migrations_dir": "drizzle"
     }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "DATA_BUCKET",
+      "bucket_name": "conflict-view-data"
+    }
   ]
 }

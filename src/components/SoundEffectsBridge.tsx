@@ -5,16 +5,18 @@ import {
   AUDIO_MANIFEST,
   type AudioEventId,
 } from "@/data/audioManifest";
+import type { GlobeLodTier } from "@/lib/globeLod";
 import { useSoundStream, type PlaySoundOptions } from "@/hooks/useSoundStream";
 
-/** 공습경보 버튼 전용 버스 — 그 외 UI 클릭 사운드는 사용하지 않음 */
+/** 공습경보·A급 속보 타전 버스 — 티커/일반 UI 클릭음은 차단 */
 export const CV_SOUND_EVENT = "cv-sound";
 
-/** 버튼/칩으로만 재생 허용 */
-const AIR_RAID_EVENT_IDS = new Set<AudioEventId>([
+/** 버스 허용 이벤트 */
+const DASHBOARD_BUS_EVENT_IDS = new Set<AudioEventId>([
   "tzeva-red-alert",
   "tzeva-all-clear",
   "neptun-air-alert",
+  "hero-breaking",
 ]);
 
 export type DashboardSoundDetail = {
@@ -26,8 +28,7 @@ export function emitDashboardSound(
   playOpts?: PlaySoundOptions,
 ) {
   if (typeof window === "undefined") return;
-  // 공습경보만 — 티커·UI 등 클릭성 사운드 차단
-  if (!AIR_RAID_EVENT_IDS.has(eventId)) return;
+  if (!DASHBOARD_BUS_EVENT_IDS.has(eventId)) return;
   window.dispatchEvent(
     new CustomEvent(CV_SOUND_EVENT, {
       detail: { eventId, ...playOpts } satisfies DashboardSoundDetail,
@@ -35,19 +36,155 @@ export function emitDashboardSound(
   );
 }
 
-/** 전선 간헐 교전음 — 총격·포격·폭격·폭발·다련장 */
-const FRONTLINE_COMBAT_ONESHOTS: AudioEventId[] = [
+/** A급 속보 히어로 슬라이드업 시 SOS 모스 타전 */
+export function emitBreakingDispatchSound() {
+  emitDashboardSound("hero-breaking", {
+    force: true,
+    volumeScale: 0.9,
+    durationMs: 9000,
+  });
+}
+
+type FrontlineSoundLod = "regional" | "near" | "village";
+
+type WeightedPick = {
+  id: AudioEventId;
+  weight: number;
+};
+
+/** LOD별 원샷 가중치 풀 */
+const FRONTLINE_POOL_BY_LOD: Record<FrontlineSoundLod, WeightedPick[]> = {
+  /** 멀리 — 포격 위주 + 짧고 음량 들쭉날쭉한 폭격 스팅 · 총성 없음 · FPV 희귀 */
+  regional: [
+    { id: "frontline-artillery-shot", weight: 4 },
+    { id: "neptun-impact", weight: 5 },
+    { id: "frontline-bombing", weight: 1 },
+    { id: "frontline-mlrs", weight: 1 },
+    { id: "frontline-fpv-drone", weight: 1 },
+  ],
+  /** 중간 — 포격 주력 + 총성(작게) + FPV */
+  near: [
+    { id: "frontline-artillery-shot", weight: 5 },
+    { id: "frontline-gunfire", weight: 2 },
+    { id: "frontline-gunfire-distant-auto", weight: 2 },
+    { id: "frontline-bombing", weight: 1 },
+    { id: "neptun-impact", weight: 1 },
+    { id: "frontline-fpv-drone", weight: 2 },
+  ],
+  /** 가까이 — 총성 2종 위주 + 포격 가끔 + FPV */
+  village: [
+    { id: "frontline-gunfire", weight: 4 },
+    { id: "frontline-gunfire-distant-auto", weight: 3 },
+    { id: "frontline-artillery-shot", weight: 2 },
+    { id: "frontline-bombing", weight: 1 },
+    { id: "frontline-mlrs", weight: 1 },
+    { id: "frontline-fpv-drone", weight: 3 },
+  ],
+};
+
+const GUNFIRE_IDS = new Set<AudioEventId>([
   "frontline-gunfire",
-  "frontline-gunfire",
-  "frontline-artillery-shot",
-  "frontline-artillery-shot",
-  "frontline-bombing",
-  "neptun-impact",
-  "frontline-mlrs",
-];
+  "frontline-gunfire-distant-auto",
+]);
+
+function toFrontlineSoundLod(tier: GlobeLodTier | undefined): FrontlineSoundLod {
+  if (tier === "village") return "village";
+  if (tier === "near") return "near";
+  return "regional";
+}
+
+function pickWeighted(pool: WeightedPick[]): AudioEventId {
+  const total = pool.reduce((sum, row) => sum + row.weight, 0);
+  let roll = Math.random() * total;
+  for (const row of pool) {
+    roll -= row.weight;
+    if (roll <= 0) return row.id;
+  }
+  return pool[pool.length - 1]!.id;
+}
+
+function randBetween(min: number, max: number): number {
+  return min + Math.random() * (max - min);
+}
+
+/** FPV: 아주 작게 → 파도형 음량 → 하드컷 → 폭발 연쇄 */
+function playFrontlineFpvPass(
+  play: (id: AudioEventId, opts?: PlaySoundOptions) => void | Promise<void>,
+  lod: FrontlineSoundLod,
+  cameraAltitude: number | undefined,
+) {
+  const volumeScale =
+    lod === "village" ? randBetween(0.85, 1.05) : lod === "near" ? randBetween(0.55, 0.75) : randBetween(0.35, 0.5);
+  const boomId: AudioEventId = Math.random() < 0.55 ? "neptun-impact" : "frontline-fpv-detonation";
+  void play("frontline-fpv-drone", {
+    altitude: cameraAltitude,
+    volumeScale,
+    force: true,
+    overlap: true,
+    durationMs: Math.round(randBetween(6500, 10500)),
+    waveVolume: {
+      minFactor: 0.35,
+      maxFactor: 1,
+      periodMs: Math.round(randBetween(1700, 2600)),
+    },
+    chain: {
+      eventId: boomId,
+      volumeScale:
+        boomId === "frontline-fpv-detonation"
+          ? randBetween(1.15, 1.4)
+          : randBetween(0.95, 1.25),
+      durationMs:
+        boomId === "frontline-fpv-detonation"
+          ? Math.round(randBetween(3200, 4000))
+          : Math.round(randBetween(2800, 4200)),
+      force: true,
+      overlap: true,
+    },
+  });
+}
+
+/** 원샷별 LOD 볼륨·컷 길이 */
+function frontlineOneshotOpts(
+  id: AudioEventId,
+  lod: FrontlineSoundLod,
+): { volumeScale: number; durationMs?: number } {
+  if (lod === "regional" && id === "neptun-impact") {
+    return {
+      volumeScale: randBetween(0.55, 1.15),
+      durationMs: Math.round(randBetween(2500, 3500)),
+    };
+  }
+  if (id === "neptun-impact") {
+    return { volumeScale: randBetween(0.85, 1.15), durationMs: 4500 };
+  }
+  if (GUNFIRE_IDS.has(id)) {
+    if (lod === "near") return { volumeScale: randBetween(0.42, 0.55), durationMs: id === "frontline-gunfire" ? 4000 : 3200 };
+    return {
+      volumeScale: randBetween(1.0, 1.15),
+      durationMs: id === "frontline-gunfire" ? 4500 : 3500,
+    };
+  }
+  if (id === "frontline-artillery-shot") {
+    return { volumeScale: randBetween(0.95, 1.12), durationMs: lod === "regional" ? 4500 : 5000 };
+  }
+  if (id === "frontline-bombing") {
+    return { volumeScale: randBetween(0.9, 1.1), durationMs: 4500 };
+  }
+  if (id === "frontline-mlrs") {
+    return { volumeScale: 1.25, durationMs: 5000 };
+  }
+  return { volumeScale: 1.05 };
+}
+
+/** 전선 베드 — 멀리서 키우고, 가까이선 총성에 자리 양보 */
+function frontlineBedVolumeScale(lod: FrontlineSoundLod): number {
+  if (lod === "regional") return 1.28;
+  if (lod === "near") return 1.0;
+  return 0.68;
+}
 
 export type EconomyAmbientKind = "port" | "construction" | "datacenter" | "pipeline" | null;
-export type ConflictAmbientKind = "frontline" | "tension" | "carrier" | null;
+export type ConflictAmbientKind = "frontline" | "taiwan-tension" | "tension" | "carrier" | null;
 
 type SoundEffectsBridgeProps = {
   viewerMode?: "conflict" | "economy";
@@ -56,19 +193,22 @@ type SoundEffectsBridgeProps = {
   /** 뷰포트 안 FIRMS 전투(폭격 추정) 화재가 있으면 true */
   firmsCombatInView?: boolean;
   /**
-   * 지정학 앰비언스 우선순위: frontline > tension > carrier
+   * 지정학 앰비언스 우선순위: frontline > taiwan-tension > tension > carrier
    * (전선 교전음 윈도우는 frontline일 때만)
    */
   conflictAmbient?: ConflictAmbientKind;
   /** 경제 허브/항만/파이프 등 해당 레이어 */
   economyAmbient?: EconomyAmbientKind;
   cameraAltitude?: number;
+  /** 전선 원샷 풀·베드 볼륨 LOD */
+  globeLodTier?: GlobeLodTier;
 };
 
 /**
  * 사운드 규칙
  * - 공습경보: 칩/버튼 fly 시에만 (emitDashboardSound)
  * - 그 외: 카메라가 해당 지역·레이어 위에 있을 때 자동 재생 (클릭 없음)
+ * - 전선: LOD별 원샷 풀 (regional=포격/짧은폭격, near=포격+작은총성, village=총성)
  */
 export function SoundEffectsBridge({
   viewerMode,
@@ -77,6 +217,7 @@ export function SoundEffectsBridge({
   conflictAmbient = null,
   economyAmbient = null,
   cameraAltitude,
+  globeLodTier,
 }: SoundEffectsBridgeProps) {
   const { play, setAmbient, stopAmbient, setCameraAltitude, canPlay } = useSoundStream();
 
@@ -84,6 +225,7 @@ export function SoundEffectsBridge({
   const neptunInViewRef = useRef(false);
   const firmsInViewRef = useRef(false);
   const frontlineAmbient = conflictAmbient === "frontline";
+  const frontlineLod = toFrontlineSoundLod(globeLodTier);
 
   useEffect(() => {
     setCameraAltitude(cameraAltitude);
@@ -97,12 +239,12 @@ export function SoundEffectsBridge({
     firmsInViewRef.current = firmsCombatInView;
   }, [canPlay, firmsCombatInView, neptunImpactInView]);
 
-  // 공습경보 버튼만
+  // 공습경보 · A급 속보 타전
   useEffect(() => {
     const onBus = (event: Event) => {
       const detail = (event as CustomEvent<DashboardSoundDetail>).detail;
       const eventId = detail?.eventId;
-      if (!eventId || !AIR_RAID_EVENT_IDS.has(eventId)) return;
+      if (!eventId || !DASHBOARD_BUS_EVENT_IDS.has(eventId)) return;
       if (!(eventId in AUDIO_MANIFEST)) return;
       void play(eventId, {
         altitude: detail.altitude ?? cameraAltitude,
@@ -125,6 +267,7 @@ export function SoundEffectsBridge({
       altitude: cameraAltitude,
       volumeScale: 1.2,
       force: true,
+      durationMs: 5000,
     });
   }, [cameraAltitude, canPlay, neptunImpactInView, play]);
 
@@ -138,6 +281,7 @@ export function SoundEffectsBridge({
         altitude: cameraAltitude,
         volumeScale: 1.15,
         force: true,
+        durationMs: 5000,
       });
     }
     if (!firmsCombatInView) return;
@@ -151,6 +295,7 @@ export function SoundEffectsBridge({
           altitude: cameraAltitude,
           volumeScale: 1.05,
           force: true,
+          durationMs: 5000,
         });
         schedule();
       }, 7000 + Math.floor(Math.random() * 8000));
@@ -169,23 +314,53 @@ export function SoundEffectsBridge({
       return;
     }
 
-    let ambient: AudioEventId | null = null;
     if (viewerMode === "conflict") {
-      if (conflictAmbient === "frontline") ambient = "frontline-artillery-ambient";
-      else if (conflictAmbient === "tension") ambient = "dispute-tension-high";
-      else if (conflictAmbient === "carrier") ambient = "carrier-deck-ambient";
-    } else if (viewerMode === "economy") {
-      if (economyAmbient === "pipeline") ambient = "pipeline-hum";
-      else if (economyAmbient === "datacenter") ambient = "datacenter-hum";
-      else if (economyAmbient === "port") ambient = "port-ambient";
-      else if (economyAmbient === "construction") ambient = "construction-ambient";
+      if (conflictAmbient === "frontline") {
+        void play("frontline-artillery-ambient", {
+          altitude: cameraAltitude,
+          volumeScale: frontlineBedVolumeScale(frontlineLod),
+        });
+        return;
+      }
+      if (conflictAmbient === "taiwan-tension") {
+        setAmbient("taiwan-strait-tension");
+        return;
+      }
+      if (conflictAmbient === "tension") {
+        setAmbient("dispute-tension-high");
+        return;
+      }
+      if (conflictAmbient === "carrier") {
+        setAmbient("carrier-deck-ambient");
+        return;
+      }
+      stopAmbient();
+      return;
     }
 
-    if (ambient) setAmbient(ambient);
-    else stopAmbient();
-  }, [canPlay, conflictAmbient, economyAmbient, setAmbient, stopAmbient, viewerMode]);
+    if (viewerMode === "economy") {
+      if (economyAmbient === "pipeline") setAmbient("pipeline-hum");
+      else if (economyAmbient === "datacenter") setAmbient("datacenter-hum");
+      else if (economyAmbient === "port") setAmbient("port-ambient");
+      else if (economyAmbient === "construction") setAmbient("construction-ambient");
+      else stopAmbient();
+      return;
+    }
 
-  // 전선 위 — ~20초 교전 윈도우(번갈이·겹침), 우크라·중동·대만·한반도 공통
+    stopAmbient();
+  }, [
+    cameraAltitude,
+    canPlay,
+    conflictAmbient,
+    economyAmbient,
+    frontlineLod,
+    play,
+    setAmbient,
+    stopAmbient,
+    viewerMode,
+  ]);
+
+  // 실제 교전 전장 — LOD 가중 풀 · ~20초 버스트 / 6초 쉼
   useEffect(() => {
     if (!canPlay || !primedRef.current) return;
     if (viewerMode !== "conflict" || !frontlineAmbient) return;
@@ -195,17 +370,21 @@ export function SoundEffectsBridge({
     let windowTimer: number | null = null;
     const WINDOW_MS = 20_000;
     const PAUSE_MS = 6_000;
+    const pool = FRONTLINE_POOL_BY_LOD[frontlineLod];
 
     const fireOne = () => {
-      const pick =
-        FRONTLINE_COMBAT_ONESHOTS[
-          Math.floor(Math.random() * FRONTLINE_COMBAT_ONESHOTS.length)
-        ]!;
+      const pick = pickWeighted(pool);
+      if (pick === "frontline-fpv-drone") {
+        playFrontlineFpvPass(play, frontlineLod, cameraAltitude);
+        return;
+      }
+      const opts = frontlineOneshotOpts(pick, frontlineLod);
       void play(pick, {
         altitude: cameraAltitude,
-        volumeScale: pick === "frontline-mlrs" ? 1.3 : 1.1,
+        volumeScale: opts.volumeScale,
         force: true,
         overlap: true,
+        durationMs: opts.durationMs,
       });
     };
 
@@ -220,7 +399,11 @@ export function SoundEffectsBridge({
           return;
         }
         fireOne();
-        const delay = 700 + Math.floor(Math.random() * 1100);
+        // 원거리는 폭격 스팅을 더 자주(짧게) 겹침
+        const delay =
+          frontlineLod === "regional"
+            ? 550 + Math.floor(Math.random() * 900)
+            : 700 + Math.floor(Math.random() * 1100);
         burstTimer = window.setTimeout(tick, delay);
       };
 
@@ -239,7 +422,7 @@ export function SoundEffectsBridge({
       if (burstTimer != null) window.clearTimeout(burstTimer);
       if (windowTimer != null) window.clearTimeout(windowTimer);
     };
-  }, [cameraAltitude, canPlay, frontlineAmbient, play, viewerMode]);
+  }, [cameraAltitude, canPlay, frontlineAmbient, frontlineLod, play, viewerMode]);
 
   return null;
 }

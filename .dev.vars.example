@@ -9,3 +9,21 @@ NASA_FIRMS_API_KEY=your_nasa_firms_map_key_here
 
 # Optional — if set, POST /run requires Authorization: Bearer <secret>
 # INGEST_CRON_SECRET=change-me
+
+# Optional — Cron이 Next 뉴스 워밍을 호출할 URL
+# NEWS_WARM_URL=http://127.0.0.1:3000/api/news-stream/warm
+
+# MarineTraffic AIS → D1
+# AIS_WARM_URL=http://127.0.0.1:3000/api/ais/warm
+
+# ADS-B mil + civ hubs → D1
+# ADSB_WARM_URL=http://127.0.0.1:3000/api/adsb/warm
+
+# 해저터널 시드 → D1
+# TUNNELS_WARM_URL=http://127.0.0.1:3000/api/submarine-tunnels/warm
+
+# 분쟁·이란 전선 hatch (POST)
+# DISPUTE_HATCH_WARM_URL=http://127.0.0.1:3000/api/render/dispute-paths?lod=overview
+
+# 우크라 전선 hatch (POST, VIINA 캐시 필요)
+# UKRAINE_HATCH_WARM_URL=http://127.0.0.1:3000/api/render/ukraine-control-paths?lod=overview

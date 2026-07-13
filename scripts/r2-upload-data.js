@@ -1,5 +1,5 @@
 /**
- * Upload public/data/{lite,full} (+ optional textures) to Cloudflare R2.
+ * Upload public/data/{lite,full} (+ optional textures/audio) to Cloudflare R2.
  *
  * Prerequisites (one-time):
  *   1. Cloudflare Dashboard → R2 → Enable R2
@@ -10,6 +10,8 @@
  *   node scripts/r2-upload-data.js --dry-run
  *   node scripts/r2-upload-data.js --profiles lite
  *   node scripts/r2-upload-data.js --with-textures
+ *   node scripts/r2-upload-data.js --with-audio
+ *   node scripts/r2-upload-data.js --audio-only
  */
 const { spawnSync } = require("child_process");
 const fs = require("fs");
@@ -22,6 +24,8 @@ const PREFIX = process.env.R2_DATA_PREFIX || "data";
 const args = process.argv.slice(2);
 const dryRun = args.includes("--dry-run");
 const withTextures = args.includes("--with-textures");
+const audioOnly = args.includes("--audio-only");
+const withAudio = args.includes("--with-audio") || audioOnly;
 const profilesArg = args.find((a) => a.startsWith("--profiles="));
 const profiles = profilesArg
   ? profilesArg.replace("--profiles=", "").split(",").map((s) => s.trim())
@@ -35,6 +39,7 @@ function contentType(filePath) {
   if (filePath.endsWith(".webp")) return "image/webp";
   if (filePath.endsWith(".mp3")) return "audio/mpeg";
   if (filePath.endsWith(".wav")) return "audio/wav";
+  if (filePath.endsWith(".ogg")) return "audio/ogg";
   return "application/octet-stream";
 }
 
@@ -84,9 +89,8 @@ function putObject(key, filePath) {
   return true;
 }
 
-function main() {
+function collectDataJobs() {
   const jobs = [];
-
   for (const profile of profiles) {
     const localRoot = path.join(ROOT, "public", "data", profile);
     const files = walkFiles(localRoot).filter(
@@ -100,13 +104,14 @@ function main() {
     }
   }
 
-  // Root public/data/*.json that are not under lite/full (seeds etc.) — skip live/
   const dataRoot = path.join(ROOT, "public", "data");
-  for (const entry of fs.readdirSync(dataRoot, { withFileTypes: true })) {
-    if (!entry.isFile()) continue;
-    if (!(entry.name.endsWith(".json") || entry.name.endsWith(".json.gz"))) continue;
-    const file = path.join(dataRoot, entry.name);
-    jobs.push({ key: `${PREFIX}/${entry.name}`, file });
+  if (fs.existsSync(dataRoot)) {
+    for (const entry of fs.readdirSync(dataRoot, { withFileTypes: true })) {
+      if (!entry.isFile()) continue;
+      if (!(entry.name.endsWith(".json") || entry.name.endsWith(".json.gz"))) continue;
+      const file = path.join(dataRoot, entry.name);
+      jobs.push({ key: `${PREFIX}/${entry.name}`, file });
+    }
   }
 
   if (withTextures) {
@@ -118,9 +123,29 @@ function main() {
       });
     }
   }
+  return jobs;
+}
+
+function collectAudioJobs() {
+  const audioRoot = path.join(ROOT, "public", "audio");
+  const jobs = [];
+  for (const file of walkFiles(audioRoot)) {
+    const lower = file.toLowerCase();
+    if (!(lower.endsWith(".mp3") || lower.endsWith(".wav") || lower.endsWith(".ogg"))) {
+      continue;
+    }
+    jobs.push({ key: `audio/${path.basename(file)}`, file });
+  }
+  return jobs;
+}
+
+function main() {
+  const jobs = [];
+  if (!audioOnly) jobs.push(...collectDataJobs());
+  if (withAudio) jobs.push(...collectAudioJobs());
 
   console.log(
-    `R2 upload → bucket=${BUCKET} objects=${jobs.length} dryRun=${dryRun}`,
+    `R2 upload → bucket=${BUCKET} objects=${jobs.length} dryRun=${dryRun} audio=${withAudio}`,
   );
   let ok = 0;
   let fail = 0;

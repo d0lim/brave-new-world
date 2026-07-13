@@ -55,18 +55,19 @@ export const AUDIO_MANIFEST = {
   },
 
   /**
-   * NEPTUN 탄착(드론·미사일·KAB 등) — 로컬 묵직 폭발음
+   * NEPTUN 탄착(드론·미사일·KAB 등) — 원거리 미사일 요격/폭파
+   * https://freesound.org/s/741267/ · the_yura · CC0
    */
   "neptun-impact": {
     eventId: "neptun-impact",
-    freesoundQuery: "heavy muffled explosion thud",
-    localSrc: "/audio/combat-explosion.wav",
-    volume: 0.55,
+    freesoundQuery: "distant missile explosion war",
+    freesoundId: 741267,
+    volume: 0.48,
     category: "conflict",
-    note: "로컬 폭발 thud · 드론/미사일 탄착",
+    note: "FS#741267 Destruction of the missile · CC0 · 원거리 폭발",
   },
 
-  /** Shahed/UAV — qubodup DJI 호버 루프 (짧은 프로펠러 윙윙) */
+  /** Shahed/UAV — qubodup DJI 호버 (짧은 프로펠러) */
   "neptun-uav-flyby": {
     eventId: "neptun-uav-flyby",
     freesoundQuery: "drone propeller buzz soft",
@@ -76,14 +77,43 @@ export const AUDIO_MANIFEST = {
     note: "FS#854382 qubodup · UAV 호버/프로펠러",
   },
 
-  /** 탄도 — 먼 whoosh만 (폭음 아님) */
+  /**
+   * 전선 FPV 드론 통과 — 아주 작게, 파도형 음량 후 하드컷→폭발
+   * https://freesound.org/s/854466/ · qubodup · CC0
+   */
+  "frontline-fpv-drone": {
+    eventId: "frontline-fpv-drone",
+    freesoundQuery: "FPV drone flight military UAV",
+    freesoundId: 854466,
+    volume: 0.07,
+    category: "conflict",
+    note: "FS#854466 qubodup FPV Drone Flight 3 · CC0 · 전선 저음량 파도→컷→폭발",
+  },
+
+  /**
+   * FPV 하드컷 직후 박격포/폭발 bang (짧게, 조금 크게)
+   * https://freesound.org/s/840902/ · klankbeeld · CC BY 4.0
+   */
+  "frontline-fpv-detonation": {
+    eventId: "frontline-fpv-detonation",
+    freesoundQuery: "mortar bomb fireworks bang echo",
+    freesoundId: 840902,
+    volume: 0.52,
+    category: "conflict",
+    note: "FS#840902 klankbeeld mortar bomb · BY 4.0 · FPV 컷 직후 bang",
+  },
+
+  /**
+   * 탄도 — 진입 whoosh + 폭발
+   * https://freesound.org/s/719426/ · zapsplat.com · CC0
+   */
   "neptun-ballistic": {
     eventId: "neptun-ballistic",
-    freesoundQuery: "distant rocket whoosh soft",
-    freesoundId: 211617,
-    volume: 0.18,
+    freesoundQuery: "missile bomb incoming whoosh explosion",
+    freesoundId: 719426,
+    volume: 0.36,
     category: "conflict",
-    note: "FS#211617 qubodup Far Away Rocket Launch · 통과음만",
+    note: "FS#719426 zapsplat Missile or bomb incoming whoosh and explosion · CC0",
   },
 
   /**
@@ -98,44 +128,71 @@ export const AUDIO_MANIFEST = {
     note: "로컬 Mega Siren (3-tone) · Freesound 미사용",
   },
 
-  /** Hero breaking — 뉴스룸 스팅 (사이렌·벨과 겹치지 않게) */
+  /**
+   * A급 속보(alert 히어로) 타전 — SOS 모스 + 스태틱
+   * https://freesound.org/s/395815/ · daytripper · CC BY 4.0
+   */
   "hero-breaking": {
     eventId: "hero-breaking",
-    freesoundQuery: "newsroom alert beep short",
-    freesoundId: 419493,
-    volume: 0.38,
+    freesoundQuery: "SOS Mayday Morse Code shortwave static",
+    freesoundId: 395815,
+    volume: 0.34,
     category: "conflict",
-    note: "FS#419493 plasterbrain Bell Chime Alert · 짧은 뉴스 스팅",
+    note: "FS#395815 daytripper SOS Mayday Morse · BY 4.0 · A급 속보 타전",
   },
 
-  /** 전선 총격 — 원거리 연발 */
+  /**
+   * 전선 총격 — 원거리 교전 (기관총·박격포·소총 혼합).
+   * https://freesound.org/s/404334/ Firefight · TheBuilder15 · CC0
+   */
   "frontline-gunfire": {
     eventId: "frontline-gunfire",
-    freesoundQuery: "distant gunfire burst",
-    localSrc: "/audio/combat-gunfire.wav",
-    volume: 0.42,
+    freesoundQuery: "distant machine gun firefight",
+    freesoundId: 404334,
+    localSrc: "/audio/combat-firefight-distant.mp3",
+    volume: 0.4,
     category: "conflict",
-    note: "로컬 총격 버스트 · 전선 간헐",
+    note: "FS#404334 TheBuilder15 Firefight · CC0 · 원거리 MG/박격포",
   },
 
-  /** 전선 폭격 */
+  /**
+   * 원거리 SMG 연사.
+   * https://freesound.org/s/417690/ · SuperPhat · CC0
+   */
+  "frontline-gunfire-distant-auto": {
+    eventId: "frontline-gunfire-distant-auto",
+    freesoundQuery: "distant rapid fire sub machine gun",
+    freesoundId: 417690,
+    localSrc: "/audio/combat-mg-distant-smg.mp3",
+    volume: 0.36,
+    category: "conflict",
+    note: "FS#417690 SuperPhat distant SMG · CC0",
+  },
+
+  /**
+   * 전선 폭격
+   * https://freesound.org/s/161806/ · Timbre · CC BY-NC 4.0
+   */
   "frontline-bombing": {
     eventId: "frontline-bombing",
-    freesoundQuery: "distant heavy bombing thud",
-    localSrc: "/audio/combat-bombing.wav",
-    volume: 0.48,
+    freesoundQuery: "missile strike explosion remix",
+    freesoundId: 161806,
+    volume: 0.44,
     category: "conflict",
-    note: "로컬 폭격 · 전선 간헐",
+    note: "FS#161806 Timbre missile-strike remix · BY-NC · 폭격",
   },
 
-  /** 전선 포격 단발 */
+  /**
+   * 전선 포격 단발
+   * https://freesound.org/s/486039/ · craigsmith · CC0
+   */
   "frontline-artillery-shot": {
     eventId: "frontline-artillery-shot",
-    freesoundQuery: "distant artillery boom",
-    localSrc: "/audio/combat-artillery.wav",
-    volume: 0.46,
+    freesoundQuery: "large guns artillery inside building",
+    freesoundId: 486039,
+    volume: 0.42,
     category: "conflict",
-    note: "로컬 포격 · 전선 간헐",
+    note: "FS#486039 craigsmith Large Guns Heard from Inside Building · CC0 · 포격",
   },
 
   /** 다련장로켓(MLRS) 살보 */
@@ -148,14 +205,15 @@ export const AUDIO_MANIFEST = {
     note: "로컬 MLRS 살보 · 저빈도",
   },
 
-  /** GDELT war — 총격 스팅 (전선 gunfire와 동일 로컬 샘플) */
+  /** GDELT war — 원거리 교전 스팅 (Firefight 짧게) */
   "gdelt-war-sting": {
     eventId: "gdelt-war-sting",
-    freesoundQuery: "distant gunfire soft",
-    localSrc: "/audio/combat-gunfire.wav",
-    volume: 0.28,
+    freesoundQuery: "distant machine gun firefight",
+    freesoundId: 404334,
+    localSrc: "/audio/combat-firefight-distant.mp3",
+    volume: 0.26,
     category: "conflict",
-    note: "로컬 총격 · GDELT/전선 공용",
+    note: "FS#404334 · GDELT 스팅 · ~2.5s 컷",
   },
 
   /** GDELT protest — 먼 군중 (총성과 구분) */
@@ -168,7 +226,7 @@ export const AUDIO_MANIFEST = {
     note: "FS#360758 dnlburnett Taxi protest distant · 군중/시위",
   },
 
-  /** 분쟁 고긴장 — 저음 긴장 rumble (항공기 드론과 혼동 방지) */
+  /** 분쟁 고긴장 — 저음 긴장 rumble (한반도·일반 고긴장) */
   "dispute-tension-high": {
     eventId: "dispute-tension-high",
     freesoundQuery: "low ominous rumble tension soft loop",
@@ -176,29 +234,48 @@ export const AUDIO_MANIFEST = {
     volume: 0.12,
     loop: true,
     category: "ambient",
-    note: "FS#593785 steaq Ominous Rumble · 전쟁구역/고긴장 위 앰비언트",
+    note: "FS#593785 steaq Ominous Rumble · 한반도/고긴장 구역",
   },
 
   /**
-   * FIRMS 폭격 추정 — 로컬 폭발음
+   * 대만해협 긴장 — 시계 틱 트레일러 톤
+   * https://freesound.org/s/264065/ · Paul368 · CC0
+   */
+  "taiwan-strait-tension": {
+    eventId: "taiwan-strait-tension",
+    freesoundQuery: "ticking clock tension trailer",
+    freesoundId: 264065,
+    volume: 0.14,
+    loop: true,
+    category: "ambient",
+    note: "FS#264065 Paul368 Ticking Clock tension · CC0 · 대만해협",
+  },
+
+  /**
+   * FIRMS 폭격 추정 — 원거리 미사일/폭발
+   * https://freesound.org/s/741267/ · the_yura · CC0
    */
   "firms-combat-burst": {
     eventId: "firms-combat-burst",
-    freesoundQuery: "muffled distant explosion thud",
-    localSrc: "/audio/combat-explosion.wav",
+    freesoundQuery: "distant missile explosion war",
+    freesoundId: 741267,
     volume: 0.4,
     category: "conflict",
-    note: "로컬 폭발 · FIRMS 전투 열감지",
+    note: "FS#741267 Destruction of the missile · CC0 · FIRMS 전투 열감지",
   },
 
-  /** 사격장 FIRMS — 아주 작은 둔탁음 (자동 재생 거의 없음) */
+  /**
+   * FIRMS 사격장/잔불 계열 — 큰 불 루프
+   * https://freesound.org/s/612277/ · Robinhood76 · BY-NC 4.0
+   */
   "firms-exercise": {
     eventId: "firms-exercise",
-    freesoundQuery: "soft distant thud muted",
-    freesoundId: 478189,
-    volume: 0.05,
+    freesoundQuery: "big fire burning loop",
+    freesoundId: 612277,
+    volume: 0.1,
+    loop: true,
     category: "ambient",
-    note: "FS#478189 JonnyRuss01 Beep_Soft_2 · 훈련 구역 극소 신호",
+    note: "FS#612277 Robinhood76 big fire loop · BY-NC",
   },
 
   /** 미분류 FIRMS — 먼 잔불 (자동 재생 OFF) */
@@ -267,14 +344,16 @@ export const AUDIO_MANIFEST = {
     note: "FS#380490 tahur1976 NYSEBell · 거래소 벨",
   },
 
-  /** VIX — 시장 경고 비프 (벨과 구분) */
+  /** VIX — 시장 경고 (알람 비프)
+   * https://freesound.org/s/369880/ · SpliceSound
+   */
   "vix-spike": {
     eventId: "vix-spike",
-    freesoundQuery: "soft warning beep short electronic",
-    freesoundId: 478189,
-    volume: 0.32,
+    freesoundQuery: "alarm clock beep close",
+    freesoundId: 369880,
+    volume: 0.28,
     category: "economy",
-    note: "FS#478189 JonnyRuss01 Beep_Soft_2 · 짧은 전자 경고",
+    note: "FS#369880 SpliceSound Alarm clock beep · VIX 경고",
   },
 
   /** 유가 급등 — 산업 압력/파이프 히스 */
@@ -285,16 +364,6 @@ export const AUDIO_MANIFEST = {
     volume: 0.3,
     category: "economy",
     note: "FS#234782 wubitog Steam/hiss · 배관 압력 해제",
-  },
-
-  /** 경제 허브 도착 — 항만 크레인·부두 산업음 */
-  "econ-hub-arrive": {
-    eventId: "econ-hub-arrive",
-    freesoundQuery: "harbor port crane industrial short",
-    freesoundId: 86739,
-    volume: 0.22,
-    category: "economy",
-    note: "FS#86739 dobroide Seville port crane scrap · 항만 산업",
   },
 
   /** 항만 레이어 앰비언스 */
@@ -308,15 +377,18 @@ export const AUDIO_MANIFEST = {
     note: "FS#254130 clif_creates Harbor Ambience 2 · 항구/파도/선박",
   },
 
-  /** 건설/경제 중심 */
+  /**
+   * 경제 중심지 앰비언스
+   * https://freesound.org/s/159470/ · JorgenJak · Bakken distant ambience
+   */
   "construction-ambient": {
     eventId: "construction-ambient",
-    freesoundQuery: "construction site hammering distant soft",
-    freesoundId: 366124,
-    volume: 0.11,
+    freesoundQuery: "distant urban ambience park soft",
+    freesoundId: 159470,
+    volume: 0.12,
     loop: true,
     category: "ambient",
-    note: "FS#366124 DCSFX Construction site [Loop] AMB · 현장 앰비언스",
+    note: "FS#159470 JorgenJak Bakken Distant Ambience · 경제중심",
   },
 
   /** 파이프라인 */

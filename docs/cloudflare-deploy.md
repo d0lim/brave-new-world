@@ -47,6 +47,8 @@ npm run cf:ingest:deploy
 
 자세한 내용은 [`workers/cron-ingest/README.md`](workers/cron-ingest/README.md)를 참고하세요.
 
+**전체 데이터 계층(2층 + 가드):** [`docs/data-architecture-2tier.md`](./data-architecture-2tier.md)
+
 ## R2 정적 데이터 (public/data)
 
 대용량 `public/data/{lite,full}` 은 Workers 번들이 아니라 **R2**에 올리는 것을 권장합니다.
@@ -62,7 +64,8 @@ Cloudflare Dashboard → **R2** → **Enable R2**
 npm run cf:r2:create          # 버킷 conflict-view-data
 npm run cf:r2:upload:dry      # 목록만
 npm run cf:r2:upload          # lite+full JSON(+gz) put
-# npm run cf:r2:upload -- --with-textures
+npm run cf:r2:upload:audio    # public/audio → R2 key audio/*
+# npm run cf:r2:upload -- --with-textures --with-audio
 ```
 
 버킷 public 도메인(또는 Worker 프록시)을 붙인 뒤:
@@ -72,14 +75,16 @@ npm run cf:r2:upload          # lite+full JSON(+gz) put
 NEXT_PUBLIC_DATA_CDN=https://<your-r2-public-host>
 ```
 
-`dataPath()` 가 CDN을 prefix 합니다. 비우면 기존 `/data/...` (로컬·ASSETS).
+`dataPath()` · `loadCloudStaticJson()` · `joinAudioCdnUrl()` / `/api/sound-stream` 이 CDN을 우선합니다.  
+오디오 키: `audio/<filename>` (예: `…/audio/combat-firefight-distant.mp3`).
 
-### wrangler.jsonc 바인딩 (앱에서 R2 직접 읽을 때)
+| 경로 | 동작 |
+|------|------|
+| 클라 `dataPath()` / `fetchAppDataStream` | CDN JSON 직접 fetch |
+| 클라 `localSrc` 사운드 | CDN `audio/*` 직접 재생 (`joinAudioCdnUrl`) |
+| 서버 viewport API | CDN → R2 바인딩 → 로컬 fs |
+| `/api/data-stream` | CDN 있으면 307 리다이렉트 |
+| `/api/sound-stream` (localSrc) | CDN 307 → R2 바인딩 → 로컬 fs |
 
-```jsonc
-"r2_buckets": [
-  { "binding": "DATA_BUCKET", "bucket_name": "conflict-view-data" }
-]
-```
-
-버킷 생성 후에만 추가하세요.
+`wrangler.jsonc` 에 `DATA_BUCKET` → `conflict-view-data` 바인딩이 포함되어 있습니다.
+버킷을 아직 안 만들었으면 `npm run cf:r2:create` 후 배포하세요.

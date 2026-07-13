@@ -7,6 +7,38 @@ export type IngestEnv = {
   FIRMS_MAP_KEY?: string;
   /** Optional bearer for manual HTTP trigger */
   INGEST_CRON_SECRET?: string;
+  /**
+   * Next 앱의 뉴스 워밍 URL.
+   * 예: https://your-app.example/api/news-stream/warm
+   * 설정 시 Cron이 FIRMS/GDELT 직후 POST로 D1 뉴스 스냅샷을 채운다.
+   */
+  NEWS_WARM_URL?: string;
+  /**
+   * Next AIS 워밍 URL (MarineTraffic → D1)
+   * 예: https://your-app.example/api/ais/warm
+   */
+  AIS_WARM_URL?: string;
+  /**
+   * Next ADS-B 워밍 URL (mil + civ hubs → D1)
+   * 예: https://your-app.example/api/adsb/warm
+   */
+  ADSB_WARM_URL?: string;
+  /**
+   * Next 해저터널 시드 워밍
+   * 예: https://your-app.example/api/submarine-tunnels/warm
+   */
+  TUNNELS_WARM_URL?: string;
+  /**
+   * 분쟁·중동(이란) 전선 hatch 재빌드
+   * 예: https://your-app.example/api/render/dispute-paths?lod=overview
+   * (POST — overview/detail 각각 또는 Cron이 두 번 호출)
+   */
+  DISPUTE_HATCH_WARM_URL?: string;
+  /**
+   * 우크라 전선 hatch 재빌드 (VIINA 캐시가 앱 서버에 있을 때만)
+   * 예: https://your-app.example/api/render/ukraine-control-paths?lod=overview
+   */
+  UKRAINE_HATCH_WARM_URL?: string;
   FIRMS_DAY_RANGE?: string;
   FIRMS_MAX_PER_THEATER?: string;
   GDELT_MAX_POINTS?: string;

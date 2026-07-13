@@ -12,15 +12,19 @@ const ONE_SHOT_ZOOM_IDS = new Set<AudioEventId>([
   "firms-exercise",
   "gdelt-war-sting",
   "frontline-gunfire",
+  "frontline-gunfire-distant-auto",
   "frontline-bombing",
   "frontline-artillery-shot",
   "frontline-mlrs",
+  "frontline-fpv-drone",
+  "frontline-fpv-detonation",
 ]);
 
 /** 루프 앰비언트 — 전선 rumble / 긴장 / 경제 현장 */
 const AMBIENT_ZOOM_IDS = new Set<AudioEventId>([
   "frontline-artillery-ambient",
   "dispute-tension-high",
+  "taiwan-strait-tension",
   "carrier-deck-ambient",
   "port-ambient",
   "construction-ambient",

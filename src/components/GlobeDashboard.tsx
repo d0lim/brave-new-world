@@ -19,9 +19,17 @@ import { LocalAlertPanel } from "@/components/LocalAlertPanel";
 import { type LayerCategory } from "@/components/LayerCategoryPanel";
 import { LayerCategoryDraftHost } from "@/components/LayerCategoryDraftHost";
 import { LayerPanelLanguagePicker } from "@/components/LayerPanelLanguagePicker";
+import { CompactPresetChips } from "@/components/CompactPresetChips";
 import { MapGlobeView } from "@/components/MapGlobeView";
 import { HoverNav } from "@/components/HoverNav";
 import { HoverHint } from "@/components/HoverHint";
+import { useCompactUi } from "@/hooks/useCompactUi";
+import {
+  buildCompactPrefs,
+  compactPresetsForMode,
+  defaultCompactChipId,
+  type CompactChipId,
+} from "@/lib/compactViewPreset";
 import { TheaterIntelSidebar } from "@/components/TheaterIntelSidebar";
 import { TheaterDetailCta } from "@/components/TheaterDetailCta";
 import { ExplorationTabs } from "@/components/ExplorationTabs";
@@ -91,6 +99,9 @@ import {
   liveGdeltPollMs,
   liveMilFetchMax,
   liveMilPollMs,
+  liveAirTrafficFetchMax,
+  liveAirTrafficPollMs,
+  airTrafficDistNm,
   liveTelegramPollMs,
   liveTelegramSyncPollMs,
   liveTzevaPollMs,
@@ -156,6 +167,7 @@ import { useLayerPrefsController } from "@/hooks/useLayerPrefsController";
 import {
   applyViewPackages,
   DEFAULT_PACKAGE_SELECTION,
+  packagesForViewerMode,
   resolveIntroFlyTarget,
   viewerModeFromPackages,
   type MergedViewConfig,
@@ -190,6 +202,11 @@ import {
   savePerfPrefs,
   ultraLiteGdeltPinScale,
 } from "@/lib/ultraLiteMode";
+import {
+  buildDomainOverviewPrefs,
+  DOMAIN_OVERVIEW_THEN_DETAIL_MS,
+  ENTRY_GATE,
+} from "@/lib/entryOverview";
 import { lookupOceanName } from "@/lib/oceanNames";
 import { getGlobeTextures } from "@/lib/mapStyles";
 import {
@@ -201,6 +218,7 @@ import {
   EXTREME_ZOOM_ALTITUDE,
   globeDistanceForAltitude,
   MIN_GLOBE_ALTITUDE,
+  COMPACT_THEATER_MAX_SPAN_DEG,
   ORBITAL_OVERVIEW_ALTITUDE,
   THEATER_ENTRY_MIN_ALTITUDE,
 } from "@/lib/globeCamera";
@@ -249,7 +267,6 @@ import { resolveDisputeCenter } from "@/lib/disputeCenter";
 import {
   conflictZoneToOutlineAndHatchPaths,
   disputeMatchesWarDiplomaticLayers,
-  disputeToOutlineAndHatchPaths,
   getConflictZoneHatchColor,
   getConflictZoneOutlineColor,
   getDisputeHatchColor,
@@ -257,7 +274,6 @@ import {
   getDisputeOutlineColor,
   isCombatHazard,
   parseConflictHatchGrade,
-  rankDisputesForDisplay,
   TENSION_GRADE_STYLES,
 } from "@/lib/disputeHatch";
 import { selectViinaPolygons } from "@/lib/viinaLod";
@@ -268,19 +284,15 @@ import {
 import { prefetchNeptun } from "@/lib/neptunPrefetch";
 import { buildViinaFrontEvents, type ViinaFrontEvent } from "@/lib/viinaFrontEvents";
 import { filterUkraineSettlementsForView } from "@/lib/ukraineSettlements";
-import { ukraineAxisToTransportPath } from "@/lib/ukraineAdvancePaths";
+import { computeUkraineFrontFitBbox } from "@/lib/ukraineFrontPaths";
 import {
-  buildUkraineFrontRender,
-  computeUkraineFrontFitBbox,
-} from "@/lib/ukraineFrontPaths";
-import {
-  filterHatchPathsByView,
-  lodTierToHatchLod,
-} from "@/lib/ukraineHatchPrecompute";
-import {
-  prefetchUkraineHatchPaths,
-  readUkraineHatchPathsCache,
-} from "@/lib/ukraineHatchPrefetch";
+  buildUkraineMacroGeoJson,
+  buildUkraineMacroSeedGeoJson,
+  buildUkraineMicroGeoJson,
+  buildUkraineMicroSeedGeoJson,
+  emptyUkraineFrontGeoJson,
+} from "@/lib/ukraineFrontGeojson";
+import { filterHatchPathsByView } from "@/lib/ukraineHatchPrecompute";
 import {
   prefetchDisputeHatchPaths,
   readDisputeHatchPathsCache,
@@ -306,6 +318,7 @@ import {
   type SituationCallout,
 } from "@/data/situationCalloutTypes";
 import {
+  resolveActiveWarTheaterAt,
   resolveCombatTheaterAt,
 } from "@/lib/theaterCombat";
 import type {
@@ -357,6 +370,10 @@ import {
 } from "@/lib/news/theaterMap";
 import { UsCarrierFixedToggle } from "@/components/UsCarrierFixedToggle";
 import { carrierLabelOffsets, createUsCarrierBadge, CARRIER_MARKER_ROOT_CLASS, filterVisibleCarriers, isOperationalCarrier } from "@/lib/usCarrierMarkers";
+import { mergeCarriersWithAisPositions } from "@/lib/aisCarrierMatch";
+import { classifyMilAircraft, milAircraftRoleLabel } from "@/lib/milAircraftKind";
+import { createMilAircraftBadge } from "@/lib/milAircraftMarkers";
+import { milAircraftIconSvg } from "@/lib/milAircraftIcon";
 import { US_CARRIER_STATUS_COLORS, US_CARRIER_STATUS_LABELS } from "@/data/usCarriers";
 
 type Selection =
@@ -379,6 +396,12 @@ type Selection =
   | {
       kind: "ais";
       item: AisVessel;
+    }
+  | {
+      kind: "mil";
+      item: MilitaryAircraft;
+      /** 지경학 민간 운항 vs 지정학 군용 */
+      traffic?: "military" | "civil";
     }
   | {
       kind: "ukraine-control";
@@ -408,6 +431,13 @@ type GlobePoint = ScoredEvent & { markerId: string; displayKind: "event" };
 type StaticGlobePoint = StaticPoint & { markerId: string; displayKind: "static" };
 
 type MilGlobePoint = MilitaryAircraft & { markerId: string; displayKind: "mil" };
+
+type MilHtmlMarker = MilitaryAircraft & {
+  markerId: string;
+  displayKind: "mil-html" | "civ-html";
+};
+
+type AisGlobePoint = AisVessel & { markerId: string; displayKind: "ais" };
 
 type FirmsFireGlobePoint = FirmsFire & { markerId: string; displayKind: "firms-fire" };
 
@@ -461,6 +491,7 @@ type GlobeDisplayPoint =
   | GdeltTagHtmlMarker
   | StaticGlobePoint
   | MilGlobePoint
+  | AisGlobePoint
   | FirmsFireGlobePoint
   | ConflictClusterPoint
   | TzevaAdomGlobePoint;
@@ -483,6 +514,7 @@ type HtmlOverlayMarker =
   | StaticGlobePoint
   | GlobePoint
   | UsCarrierHtmlMarker
+  | MilHtmlMarker
   | GdeltTagHtmlMarker
   | SituationCalloutMarker
   | UkraineSettlementHtmlMarker
@@ -652,6 +684,7 @@ const STATIC_KIND_LABELS: Record<StaticPoint["kind"], string> = {
   "lng-terminal": "액화가스 터미널",
   chokepoint: "해상 초크포인트",
   "logistics-hub": "핵심 물류 거점",
+  "submarine-tunnel": "해저터널",
 };
 
 function staticKindLabelLocal(kind: StaticPoint["kind"], lang: "ko" | "en" = "ko") {
@@ -916,10 +949,23 @@ const INTRO_CAMERA_DELAY_MS = 900;
 const INTRO_SESSION_KEY = "cv-intro-seen";
 const WELCOME_GATE_KEY = "geowatch-welcome-gate-v1";
 
-type EntryGate = "caution" | "welcome" | "domain" | "mode" | null;
+/** 로딩→환영→도메인→확 줌아웃→세부. 입·출구(1회), 로테이션 아님. */
+type EntryGate = "caution" | "welcome" | "domain" | "overview" | "mode" | null;
+
+/** 의도적 재진입만 — ?entry=1 (개발 매 새로고침 루프 금지) */
+function forceEntryGateReplay(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    const q = new URLSearchParams(window.location.search);
+    return q.get("entry") === "1" || q.get("welcome") === "1";
+  } catch {
+    return false;
+  }
+}
 
 function readWelcomeGateDone(): boolean {
   if (typeof window === "undefined") return true;
+  if (forceEntryGateReplay()) return false;
   try {
     return localStorage.getItem(WELCOME_GATE_KEY) === "1";
   } catch {
@@ -928,6 +974,7 @@ function readWelcomeGateDone(): boolean {
 }
 
 function markWelcomeGateDone() {
+  if (forceEntryGateReplay()) return;
   try {
     localStorage.setItem(WELCOME_GATE_KEY, "1");
   } catch {
@@ -1191,8 +1238,11 @@ export function GlobeDashboard({
   const packageEconFocusPlayedRef = useRef(false);
   const lastViewUpdateAt = useRef(0);
   const lastFilterCenterUpdateAt = useRef(0);
-  const layerCenterRef = useRef<{ lat: number; lng: number }>({ lat: 25, lng: 105 });
-  const layerAltitudeRef = useRef(2.25);
+  const layerCenterRef = useRef<{ lat: number; lng: number }>({
+    lat: ENTRY_GATE.bootLookAt.lat,
+    lng: ENTRY_GATE.bootLookAt.lng,
+  });
+  const layerAltitudeRef = useRef(ENTRY_GATE.bootAltitude);
   const layerLodTierRef = useRef<GlobeLodTier>("global");
   const moveIdleTimerRef = useRef<number | null>(null);
   const renderStabilizeIdleRef = useRef<number | null>(null);
@@ -1249,10 +1299,16 @@ export function GlobeDashboard({
   const viewerMode = viewerModeFromPackages(viewPackages);
   const viewerChromePreset = getViewerChrome(viewerMode);
   const isEconomyViewer = viewerMode === "economy";
+  const isCompactUi = useCompactUi();
+  const [compactChipId, setCompactChipId] = useState<CompactChipId>("frontline");
+  const desktopSnapshotRef = useRef<{ layers: LayerPrefs; ultraLite: boolean } | null>(null);
+  const compactWasActiveRef = useRef(false);
+  const layerPrefsLiveRef = useRef<LayerPrefs>(DEFAULT_LAYER_PREFS);
   const [showModePicker, setShowModePicker] = useState(false);
   const [modePickerLockMode, setModePickerLockMode] = useState(false);
   const [modePickerInitialMode, setModePickerInitialMode] = useState<ViewerMode | null>(null);
   const [entryGate, setEntryGate] = useState<EntryGate>(null);
+  const domainThenDetailTimerRef = useRef<number | null>(null);
   const [showViewerIntro, setShowViewerIntro] = useState(false);
   const [showFeatureGuide, setShowFeatureGuide] = useState(false);
   const [showQuickStart, setShowQuickStart] = useState(false);
@@ -1331,13 +1387,21 @@ export function GlobeDashboard({
   const ukraineFetchStartedRef = useRef(false);
   const ukraineZoomPendingRef = useRef(false);
   const neptunZoomPendingRef = useRef(false);
+  /** 도메인 선택~세부 확정 전: 우크라/NEPTUN/인트로 자동 줌 억제 */
+  const suppressAutoRegionZoomRef = useRef(false);
   const [aisVessels, setAisVessels] = useState<AisVessel[]>([]);
   const [aisLoading, setAisLoading] = useState(false);
   const [aisError, setAisError] = useState<string | null>(null);
   const [milAircraft, setMilAircraft] = useState<MilitaryAircraft[]>([]);
+  const [civAircraft, setCivAircraft] = useState<MilitaryAircraft[]>([]);
+  const [milLoading, setMilLoading] = useState(false);
+  const [civLoading, setCivLoading] = useState(false);
+  const [milError, setMilError] = useState<string | null>(null);
+  const [civError, setCivError] = useState<string | null>(null);
   const [usCarriers, setUsCarriers] = useState<UsCarrier[]>([]);
   const [usCarriersLoading, setUsCarriersLoading] = useState(false);
   const [hoveredCarrier, setHoveredCarrier] = useState<UsCarrier | null>(null);
+  const [hoveredMilAircraft, setHoveredMilAircraft] = useState<MilitaryAircraft | null>(null);
   const mapSectionRef = useRef<HTMLElement>(null);
   const enterTheaterFocusRef = useRef<
     (selection: NavSelection, tab?: TheaterSidebarTab) => void
@@ -1347,8 +1411,6 @@ export function GlobeDashboard({
   const [hoverGlobeCoords, setHoverGlobeCoords] = useState<{ lat: number; lng: number } | null>(
     null,
   );
-  const [milLoading, setMilLoading] = useState(false);
-  const [milError, setMilError] = useState<string | null>(null);
   const [cyberEvents, setCyberEvents] = useState<ConflictEvent[]>([]);
   const [electionEvents, setElectionEvents] = useState<ConflictEvent[]>([]);
   const [firmsFires, setFirmsFires] = useState<FirmsFire[]>([]);
@@ -1380,14 +1442,84 @@ export function GlobeDashboard({
 
   const handleUltraLiteToggle = useCallback(
     (on: boolean) => {
+      if (isCompactUi) return;
       ultraLiteRef.current = on;
       setUltraLite(on);
       savePerfPrefs({ ultraLite: on });
       const base = showLeftPanel ? draftPrefs : layerPrefs;
       applyLayerPrefs(on ? applyUltraLiteToLayerPrefs(base) : applyNormalCapToLayerPrefs(base));
     },
-    [applyLayerPrefs, draftPrefs, layerPrefs, showLeftPanel],
+    [applyLayerPrefs, draftPrefs, isCompactUi, layerPrefs, showLeftPanel],
   );
+
+  layerPrefsLiveRef.current = layerPrefs;
+
+  const handleCompactChipSelect = useCallback(
+    (chipId: CompactChipId) => {
+      setCompactChipId(chipId);
+      ultraLiteRef.current = true;
+      setUltraLite(true);
+      applyLayerPrefs(buildCompactPrefs(viewerMode, chipId, layerPrefsLiveRef.current));
+    },
+    [applyLayerPrefs, viewerMode],
+  );
+
+  /** Compact 진입/해제 — 데스크톱 prefs 스냅샷 분리 */
+  useEffect(() => {
+    if (isCompactUi) {
+      if (!compactWasActiveRef.current) {
+        desktopSnapshotRef.current = {
+          layers: { ...loadLayerPrefs() },
+          ultraLite: loadPerfPrefs().ultraLite,
+        };
+        compactWasActiveRef.current = true;
+        savePerfPrefs({ ultraLite: true });
+        ultraLiteRef.current = true;
+        setUltraLite(true);
+        setShowLeftPanel(false);
+        setHoveredPoint(null);
+        setHoveredPolygon(null);
+        setHoveredPath(null);
+        setHoverPointer(null);
+        const chip = defaultCompactChipId(viewerMode);
+        setCompactChipId(chip);
+        const compactPrefs = buildCompactPrefs(viewerMode, chip, layerPrefsLiveRef.current);
+        applyLayerPrefs(compactPrefs);
+        // 초기 loadLayerPrefs / Ultra-Lite effect와 경합 시 Compact가 이기도록 재적용
+        const t = window.setTimeout(() => {
+          if (!compactWasActiveRef.current) return;
+          ultraLiteRef.current = true;
+          applyLayerPrefs(compactPrefs);
+        }, 0);
+        return () => window.clearTimeout(t);
+      }
+      return;
+    }
+    if (!compactWasActiveRef.current) return;
+    compactWasActiveRef.current = false;
+    const snap = desktopSnapshotRef.current;
+    desktopSnapshotRef.current = null;
+    if (!snap) return;
+    ultraLiteRef.current = snap.ultraLite;
+    setUltraLite(snap.ultraLite);
+    savePerfPrefs({ ultraLite: snap.ultraLite });
+    applyLayerPrefs(snap.layers);
+  }, [applyLayerPrefs, isCompactUi, viewerMode]);
+
+  /** Compact 중 모드 전환 시 칩·프리셋 재적용 */
+  useEffect(() => {
+    if (!isCompactUi || !compactWasActiveRef.current) return;
+    const presets = compactPresetsForMode(viewerMode);
+    const chip = presets.some((p) => p.id === compactChipId)
+      ? compactChipId
+      : defaultCompactChipId(viewerMode);
+    if (chip !== compactChipId) setCompactChipId(chip);
+    ultraLiteRef.current = true;
+    setUltraLite(true);
+    applyLayerPrefs(buildCompactPrefs(viewerMode, chip, layerPrefsLiveRef.current));
+    // chipId intentionally omitted — selection goes through handleCompactChipSelect
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [applyLayerPrefs, isCompactUi, viewerMode]);
 
   const handlePanelDraftPatch = useCallback((patch: Partial<LayerPrefs>) => {
     panelDraftPatchRef.current = { ...panelDraftPatchRef.current, ...patch };
@@ -1405,6 +1537,7 @@ export function GlobeDashboard({
     showAis,
     showShippingLanes,
     showSubmarineCables,
+    showSubmarineTunnels,
     showOilPipelines,
     showGasPipelines,
     showLngTerminals,
@@ -1418,6 +1551,7 @@ export function GlobeDashboard({
     showRefugeeCamps,
     showUcdpEvents,
     showMilitaryActivity,
+    showAirTraffic,
     showUsCarriers,
     showSpaceLaunches,
     showIntelHotspots,
@@ -1517,6 +1651,7 @@ export function GlobeDashboard({
   const setShowAis = (v: boolean) => togglePref("showAis", v);
   const setShowShippingLanes = (v: boolean) => togglePref("showShippingLanes", v);
   const setShowSubmarineCables = (v: boolean) => togglePref("showSubmarineCables", v);
+  const setShowSubmarineTunnels = (v: boolean) => togglePref("showSubmarineTunnels", v);
   const setShowOilPipelines = (v: boolean) => togglePref("showOilPipelines", v);
   const setShowGasPipelines = (v: boolean) => togglePref("showGasPipelines", v);
   const setShowLngTerminals = (v: boolean) => togglePref("showLngTerminals", v);
@@ -1530,6 +1665,7 @@ export function GlobeDashboard({
   const setShowRefugeeCamps = (v: boolean) => togglePref("showRefugeeCamps", v);
   const setShowUcdpEvents = (v: boolean) => togglePref("showUcdpEvents", v);
   const setShowMilitaryActivity = (v: boolean) => togglePref("showMilitaryActivity", v);
+  const setShowAirTraffic = (v: boolean) => togglePref("showAirTraffic", v);
   const setShowUsCarriers = (v: boolean) => togglePref("showUsCarriers", v);
   const setShowSpaceLaunches = (v: boolean) => togglePref("showSpaceLaunches", v);
   const setShowIntelHotspots = (v: boolean) => togglePref("showIntelHotspots", v);
@@ -1577,15 +1713,15 @@ export function GlobeDashboard({
   const [econNavSelection, setEconNavSelection] = useState<NavSelection | null>(null);
   const [theaterSidebarTab, setTheaterSidebarTab] = useState<TheaterSidebarTab>("news");
   const [viewState, setViewState] = useState<ViewState>({
-    lat: 25,
-    lng: 105,
-    altitude: 2.25,
+    lat: ENTRY_GATE.bootLookAt.lat,
+    lng: ENTRY_GATE.bootLookAt.lng,
+    altitude: ENTRY_GATE.bootAltitude,
   });
   const [filterCenter, setFilterCenter] = useState<{ lat: number; lng: number }>({
-    lat: 25,
-    lng: 105,
+    lat: ENTRY_GATE.bootLookAt.lat,
+    lng: ENTRY_GATE.bootLookAt.lng,
   });
-  const [layerAltitude, setLayerAltitude] = useState(LOD_TIER_ANCHOR_ALTITUDE.global);
+  const [layerAltitude, setLayerAltitude] = useState(ENTRY_GATE.bootAltitude);
   const [isCameraMoving, setIsCameraMoving] = useState(false);
 
   const { layerViewState, mapZoom } = useCameraViewport(filterCenter, layerAltitude);
@@ -1765,6 +1901,7 @@ export function GlobeDashboard({
   }, [showNeptun, showNeptunPreviousTrails]);
 
   useEffect(() => {
+    if (suppressAutoRegionZoomRef.current) return;
     if (!showUkraineControl || !viinaMeta?.available) return;
     ukraineZoomPendingRef.current = true;
     if (showNeptun) neptunZoomPendingRef.current = true;
@@ -1994,6 +2131,7 @@ export function GlobeDashboard({
     showDisputeBoundaries: showAnyDisputeOverlay && globeReady,
     showShippingLanes,
     showSubmarineCables,
+    showSubmarineTunnels,
     showOilPipelines,
     showGasPipelines,
     showLngTerminals,
@@ -2061,29 +2199,6 @@ export function GlobeDashboard({
     viewportCountries,
   ]);
 
-  const ukraineHatchLod = lodTierToHatchLod(globeLod.tier);
-  const [ukraineHatchCachePaths, setUkraineHatchCachePaths] = useState<TransportPath[]>(
-    () => readUkraineHatchPathsCache(ukraineHatchLod)?.paths ?? [],
-  );
-
-  useEffect(() => {
-    if (!showUkraineControl || viinaDisplay.lod.mode === "hidden") {
-      return;
-    }
-    let cancelled = false;
-    const cached = readUkraineHatchPathsCache(ukraineHatchLod);
-    if (cached?.paths?.length) {
-      setUkraineHatchCachePaths(cached.paths);
-    }
-    void prefetchUkraineHatchPaths(ukraineHatchLod).then((payload) => {
-      if (cancelled || !payload?.paths?.length) return;
-      setUkraineHatchCachePaths(payload.paths);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [showUkraineControl, ukraineHatchLod, viinaDisplay.lod.mode, ukraineControlDate]);
-
   const disputeHatchLod: DisputeHatchLod =
     globeLod.tier === "global" || globeLod.tier === "continent" ? "overview" : "detail";
   const [disputeHatchCachePaths, setDisputeHatchCachePaths] = useState<TransportPath[]>(
@@ -2104,60 +2219,10 @@ export function GlobeDashboard({
     };
   }, [disputeHatchLod, showAnyDisputeOverlay]);
 
-  const rawUkraineFrontRender = useMemo(() => {
-    if (!showUkraineControl || viinaDisplay.lod.mode === "hidden") {
-      return { paths: [] as TransportPath[] };
-    }
-
-    const maxPaths =
-      globeLod.tier === "global" || globeLod.tier === "continent"
-        ? 1800
-        : globeLod.tier === "regional"
-          ? 3200
-          : 5000;
-    const radiusDeg = VIEWPORT_RADIUS_BY_TIER[globeLod.tier] + 4;
-
-    // 서버/D1 사전계산 path 우선 — 클라에서는 뷰포트 필터만
-    if (ukraineHatchCachePaths.length > 0) {
-      return {
-        paths: filterHatchPathsByView(
-          ukraineHatchCachePaths,
-          layerViewState,
-          radiusDeg,
-          maxPaths,
-        ),
-      };
-    }
-
-    // 캐시 없을 때만 기존 클라 계산 폴백
-    const maxZones =
-      globeLod.tier === "global" || globeLod.tier === "continent"
-        ? 900
-        : globeLod.tier === "regional"
-          ? 1400
-          : 2200;
-    return buildUkraineFrontRender(
-      viinaDisplay.ruZones,
-      viinaDisplay.uaZones,
-      viinaDisplay.contestedZones,
-      layerViewState,
-      { maxZones, lodTier: globeLod.tier },
-    );
-  }, [
-    globeLod.tier,
-    layerViewState,
-    showUkraineControl,
-    ukraineHatchCachePaths,
-    viinaDisplay.contestedZones,
-    viinaDisplay.lod.mode,
-    viinaDisplay.ruZones,
-    viinaDisplay.uaZones,
-  ]);
-
   const overlayPolygonData = useMemo<PolygonLayerFeature[]>(() => {
     const layers: PolygonLayerFeature[] = [];
 
-    // 우크라이나 점령·주장: 면 채우기 없음 — 얇은 테두리+빗금(paths)만
+    // 우크라이나 점령·주장: MapLibre macro/micro GeoJSON — deck.gl overlay 면 없음
 
     if (showMilitaryBases && visibleMilitaryBaseAreas.length > 0) {
       layers.push(
@@ -2176,8 +2241,6 @@ export function GlobeDashboard({
     const radiusDeg = VIEWPORT_RADIUS_BY_TIER[globeLod.tier] + 6;
     const maxZones = DISPUTE_MAX_BY_TIER[globeLod.tier];
     const maxPaths = Math.max(400, maxZones * 24);
-    const preferDetailSegments =
-      globeLod.tier === "regional" || globeLod.tier === "near" || globeLod.tier === "village";
     const paths: TransportPath[] = [];
 
     if (showAnyDisputeOverlay) {
@@ -2196,23 +2259,8 @@ export function GlobeDashboard({
           return disputeMatchesWarDiplomaticLayers(dispute, showWarZones, showDiplomaticTension);
         });
         paths.push(...filtered);
-      } else {
-        const ranked = rankDisputesForDisplay(data.disputes ?? [])
-          .filter((dispute) =>
-            disputeMatchesWarDiplomaticLayers(dispute, showWarZones, showDiplomaticTension),
-          )
-          .filter((dispute) =>
-            isCenterInView(resolveDisputeCenter(dispute), layerViewState, radiusDeg),
-          )
-          .slice(0, maxZones);
-        for (const dispute of ranked) {
-          paths.push(
-            ...disputeToOutlineAndHatchPaths(dispute, {
-              preferDetailSegments,
-            }),
-          );
-        }
       }
+      // 클라우드 스냅샷 대기 — 클라 geometry hatch 폴백 없음 (이란·중동 포함)
     }
 
     if (showConflictZones) {
@@ -2323,37 +2371,42 @@ export function GlobeDashboard({
     [countryPolygonData, stableOverlayPolygons],
   );
 
-  const ukraineSituationPaths = useMemo<TransportPath[]>(() => {
-    if (!showUkraineControl) return [];
-    // UA 진격 화살 제외 — RU 진격 방향만 표시. 점령/주장은 빗금·테두리
-    return UKRAINE_SITUATION_PATHS.filter((path) => path.kind !== "ua-advance").map(
-      (path) => ukraineAxisToTransportPath(path),
-    );
-  }, [showUkraineControl]);
+  const ukraineMacroGeoJson = useMemo(() => {
+    if (!showUkraineControl || viinaDisplay.lod.mode === "hidden") {
+      return emptyUkraineFrontGeoJson();
+    }
+    if (viinaDisplay.ruZones.length > 0 || viinaDisplay.contestedZones.length > 0) {
+      return buildUkraineMacroGeoJson(
+        viinaDisplay.ruZones,
+        viinaDisplay.uaZones,
+        viinaDisplay.contestedZones,
+      );
+    }
+    return buildUkraineMacroSeedGeoJson();
+  }, [
+    showUkraineControl,
+    viinaDisplay.contestedZones,
+    viinaDisplay.lod.mode,
+    viinaDisplay.ruZones,
+    viinaDisplay.uaZones,
+  ]);
 
-  const rawUkraineFrontPaths = rawUkraineFrontRender.paths;
+  const ukraineMicroGeoJson = useMemo(() => {
+    if (!showUkraineControl || viinaDisplay.lod.mode === "hidden") {
+      return emptyUkraineFrontGeoJson();
+    }
+    if (viinaDisplay.ruZones.length > 0 || viinaDisplay.contestedZones.length > 0) {
+      return buildUkraineMicroGeoJson(viinaDisplay.ruZones, viinaDisplay.contestedZones);
+    }
+    return buildUkraineMicroSeedGeoJson();
+  }, [
+    showUkraineControl,
+    viinaDisplay.contestedZones,
+    viinaDisplay.lod.mode,
+    viinaDisplay.ruZones,
+  ]);
 
-  const [stableUkraineFrontPaths, setStableUkraineFrontPaths] =
-    useState<TransportPath[]>(rawUkraineFrontPaths);
-  useEffect(() => {
-    const bypass = Date.now() < immediateUntilRef.current || showUkraineControl;
-    if (isCameraMoving && !bypass) return;
-    setStableUkraineFrontPaths((prev) =>
-      pathsEqual(prev, rawUkraineFrontPaths) ? prev : rawUkraineFrontPaths,
-    );
-  }, [immediateUntilRef, isCameraMoving, rawUkraineFrontPaths, showUkraineControl]);
-
-  const ukraineFrontPaths = stableUkraineFrontPaths;
-
-  const ukraineBoundaryPaths = useMemo(
-    () => ukraineFrontPaths,
-    [ukraineFrontPaths],
-  );
-
-  const polygonDataWithUkraine = useMemo<PolygonLayerFeature[]>(
-    () => polygonData,
-    [polygonData],
-  );
+  const polygonDataWithUkraine = polygonData;
 
   const rawGlobePaths = useMemo<TransportPath[]>(
     () => [
@@ -2365,15 +2418,11 @@ export function GlobeDashboard({
       ...visibleGasPipelines,
       ...railPaths,
       ...armsEmbargoFramePaths,
-      ...ukraineBoundaryPaths,
-      ...ukraineSituationPaths,
     ],
     [
       armsEmbargoFramePaths,
       disputeZonePaths,
       railPaths,
-      ukraineBoundaryPaths,
-      ukraineSituationPaths,
       visibleCables,
       visibleDisputeBoundaries,
       visibleGasPipelines,
@@ -2519,9 +2568,14 @@ export function GlobeDashboard({
     [staticGlobePoints],
   );
 
+  const carrierAisMerge = useMemo(
+    () => mergeCarriersWithAisPositions(usCarriers, aisVessels),
+    [aisVessels, usCarriers],
+  );
+
   const visibleUsCarriers = useMemo(
-    () => filterVisibleCarriers(usCarriers, showUsCarriers),
-    [showUsCarriers, usCarriers],
+    () => filterVisibleCarriers(carrierAisMerge.carriers, showUsCarriers),
+    [carrierAisMerge.carriers, showUsCarriers],
   );
 
   const deployedCarrierCount = useMemo(
@@ -2547,13 +2601,68 @@ export function GlobeDashboard({
   const milDisplayPoints = useMemo<MilGlobePoint[]>(
     () =>
       showMilitaryActivity
-        ? milAircraft.map((aircraft) => ({
-            ...aircraft,
-            markerId: `mil-${aircraft.hex || aircraft.id}`,
-            displayKind: "mil" as const,
-          }))
+        ? milAircraft
+            .filter((aircraft) =>
+              isCenterInView(aircraft, layerViewState, VIEWPORT_RADIUS_BY_TIER[globeLod.tier] + 4),
+            )
+            .slice(0, liveMilFetchMax())
+            .map((aircraft) => ({
+              ...aircraft,
+              markerId: `mil-${aircraft.hex || aircraft.id}`,
+              displayKind: "mil" as const,
+            }))
         : [],
-    [milAircraft, showMilitaryActivity],
+    [globeLod.tier, layerViewState, milAircraft, showMilitaryActivity],
+  );
+
+  const milHtmlMarkers = useMemo<MilHtmlMarker[]>(
+    () =>
+      milDisplayPoints.map((aircraft) => ({
+        ...aircraft,
+        markerId: `mil-html-${aircraft.hex || aircraft.id}`,
+        displayKind: "mil-html" as const,
+      })),
+    [milDisplayPoints],
+  );
+
+  const civDisplayPoints = useMemo(
+    () =>
+      showAirTraffic
+        ? civAircraft
+            .filter((aircraft) =>
+              isCenterInView(aircraft, layerViewState, VIEWPORT_RADIUS_BY_TIER[globeLod.tier] + 4),
+            )
+            .slice(0, liveAirTrafficFetchMax())
+        : [],
+    [civAircraft, globeLod.tier, layerViewState, showAirTraffic],
+  );
+
+  const civHtmlMarkers = useMemo<MilHtmlMarker[]>(
+    () =>
+      civDisplayPoints.map((aircraft) => ({
+        ...aircraft,
+        markerId: `civ-html-${aircraft.hex || aircraft.id}`,
+        displayKind: "civ-html" as const,
+      })),
+    [civDisplayPoints],
+  );
+
+  const aisDisplayPoints = useMemo<AisGlobePoint[]>(
+    () =>
+      showAis
+        ? aisVessels
+            .filter((vessel) => !carrierAisMerge.matchedMmsi.has(vessel.mmsi))
+            .filter((vessel) =>
+              isCenterInView(vessel, layerViewState, VIEWPORT_RADIUS_BY_TIER[globeLod.tier] + 6),
+            )
+            .slice(0, liveAisFetchMax())
+            .map((vessel) => ({
+              ...vessel,
+              markerId: `ais-${vessel.mmsi}`,
+              displayKind: "ais" as const,
+            }))
+        : [],
+    [aisVessels, carrierAisMerge.matchedMmsi, globeLod.tier, layerViewState, showAis],
   );
 
   const visibleFirmsFires = useMemo(() => {
@@ -2677,7 +2786,7 @@ export function GlobeDashboard({
 
   const firmsCombatInView = firmsCombatFireIds.length > 0;
 
-  /** 우크라·중동·대만·한반도 등 교전 전장 위 regional 이하 → 전장 사운드 */
+  /** 실제 교전(우크라·중동/이란) 위 regional 이하 → 전장 사운드. 대만·한반도 제외 */
   const soundFrontlineAmbient = useMemo(() => {
     if (isEconomyViewer) return false;
     const nearEnough =
@@ -2686,17 +2795,33 @@ export function GlobeDashboard({
       globeLod.tier === "village";
     if (!nearEnough) return false;
     if (showUkraineControl) return true;
-    return resolveCombatTheaterAt(filterCenter.lat, filterCenter.lng) != null;
+    return resolveActiveWarTheaterAt(filterCenter.lat, filterCenter.lng) != null;
   }, [filterCenter.lat, filterCenter.lng, globeLod.tier, isEconomyViewer, showUkraineControl]);
 
-  /** 전쟁/고긴장 분쟁 구역이 뷰에 있으면 긴장 rumble (전선보다 낮은 우선순위) */
-  const soundTensionAmbient = useMemo(() => {
-    if (isEconomyViewer || soundFrontlineAmbient || !showAnyDisputeOverlay) return false;
+  /** 대만해협 — 시계 틱 긴장 앰비언트 */
+  const soundTaiwanTensionAmbient = useMemo(() => {
+    if (isEconomyViewer || soundFrontlineAmbient) return false;
     const nearEnough =
       globeLod.tier === "regional" ||
       globeLod.tier === "near" ||
       globeLod.tier === "village";
     if (!nearEnough) return false;
+    return resolveCombatTheaterAt(filterCenter.lat, filterCenter.lng) === "china-taiwan";
+  }, [filterCenter.lat, filterCenter.lng, globeLod.tier, isEconomyViewer, soundFrontlineAmbient]);
+
+  /** 긴장 rumble: 한반도 박스, 또는 고긴장 분쟁 구역 (대만·전장음 제외) */
+  const soundTensionAmbient = useMemo(() => {
+    if (isEconomyViewer || soundFrontlineAmbient || soundTaiwanTensionAmbient) return false;
+    const nearEnough =
+      globeLod.tier === "regional" ||
+      globeLod.tier === "near" ||
+      globeLod.tier === "village";
+    if (!nearEnough) return false;
+
+    const theater = resolveCombatTheaterAt(filterCenter.lat, filterCenter.lng);
+    if (theater === "korea") return true;
+
+    if (!showAnyDisputeOverlay) return false;
     const radiusDeg = VIEWPORT_RADIUS_BY_TIER[globeLod.tier] + 2;
     return (data.disputes ?? []).some((dispute) => {
       if (!disputeMatchesWarDiplomaticLayers(dispute, showWarZones, showDiplomaticTension)) {
@@ -2707,6 +2832,8 @@ export function GlobeDashboard({
     });
   }, [
     data.disputes,
+    filterCenter.lat,
+    filterCenter.lng,
     globeLod.tier,
     isEconomyViewer,
     layerViewState,
@@ -2714,11 +2841,18 @@ export function GlobeDashboard({
     showDiplomaticTension,
     showWarZones,
     soundFrontlineAmbient,
+    soundTaiwanTensionAmbient,
   ]);
 
   /** 미 항모가 뷰에 있으면 갑판 앰비언스 */
   const soundCarrierAmbient = useMemo(() => {
-    if (isEconomyViewer || soundFrontlineAmbient || soundTensionAmbient || !showUsCarriers) {
+    if (
+      isEconomyViewer ||
+      soundFrontlineAmbient ||
+      soundTaiwanTensionAmbient ||
+      soundTensionAmbient ||
+      !showUsCarriers
+    ) {
       return false;
     }
     if (visibleUsCarriers.length === 0) return false;
@@ -2732,16 +2866,28 @@ export function GlobeDashboard({
     layerViewState,
     showUsCarriers,
     soundFrontlineAmbient,
+    soundTaiwanTensionAmbient,
     soundTensionAmbient,
     visibleUsCarriers,
   ]);
 
-  const soundConflictAmbient = useMemo((): "frontline" | "tension" | "carrier" | null => {
+  const soundConflictAmbient = useMemo(():
+    | "frontline"
+    | "taiwan-tension"
+    | "tension"
+    | "carrier"
+    | null => {
     if (soundFrontlineAmbient) return "frontline";
+    if (soundTaiwanTensionAmbient) return "taiwan-tension";
     if (soundTensionAmbient) return "tension";
     if (soundCarrierAmbient) return "carrier";
     return null;
-  }, [soundCarrierAmbient, soundFrontlineAmbient, soundTensionAmbient]);
+  }, [
+    soundCarrierAmbient,
+    soundFrontlineAmbient,
+    soundTaiwanTensionAmbient,
+    soundTensionAmbient,
+  ]);
 
   const soundEconomyAmbient = useMemo((): "port" | "construction" | "datacenter" | "pipeline" | null => {
     if (!isEconomyViewer) return null;
@@ -2844,20 +2990,20 @@ export function GlobeDashboard({
     );
   }, [immediateUntilRef, isCameraMoving, neptunArchivedTrackPathsRaw]);
 
-  /** 정적 포인트(자원/기지/착륙지) + ADS-B 군용기 + AI 전쟁지역 + FIRMS 화재 (이벤트는 HTML 핀 마커) */
+  /** 정적 포인트 + AIS 선박 + AI 전쟁지역 + FIRMS (군용기는 HTML 이모지 마커) */
   const globeDisplayPoints = useMemo<GlobeDisplayPoint[]>(() => {
     const points: GlobeDisplayPoint[] = [
       ...staticGlobePoints.filter((point) => !isEmojiStaticKind(point.kind)),
-      ...milDisplayPoints,
+      ...aisDisplayPoints,
       ...firmsDisplayPoints,
       ...conflictClusterPoints,
       ...tzevaAdomDisplayPoints,
     ];
     return points;
   }, [
+      aisDisplayPoints,
       conflictClusterPoints,
       firmsDisplayPoints,
-      milDisplayPoints,
       staticGlobePoints,
       tzevaAdomDisplayPoints,
   ]);
@@ -2871,14 +3017,23 @@ export function GlobeDashboard({
   );
 
   const handleHtmlMarkerHover = useCallback((point: GlobeDisplayPoint | null) => {
+    if (isCompactUi) {
+      setHoveredPoint(null);
+      return;
+    }
     setHoveredPoint(point);
-  }, []);
+  }, [isCompactUi]);
 
   const handleGlobeMouseMove = useCallback((coords: { lat: number; lng: number } | null) => {
+    if (isCompactUi) {
+      setHoverGlobeCoords(null);
+      return;
+    }
     setHoverGlobeCoords(coords);
-  }, []);
+  }, [isCompactUi]);
 
   const handleMapPointerMove = useCallback((event: React.MouseEvent<HTMLElement>) => {
+    if (isCompactUi) return;
     const section = mapSectionRef.current;
     if (!section) return;
     const rect = section.getBoundingClientRect();
@@ -2886,7 +3041,7 @@ export function GlobeDashboard({
       x: event.clientX - rect.left,
       y: event.clientY - rect.top,
     });
-  }, []);
+  }, [isCompactUi]);
 
   const handleMapPointerLeave = useCallback(() => {
     setHoverPointer(null);
@@ -3033,6 +3188,8 @@ export function GlobeDashboard({
       ...situationCalloutMarkers,
       ...ukraineSettlementHtmlMarkers,
       ...usCarrierHtmlMarkers,
+      ...milHtmlMarkers,
+      ...civHtmlMarkers,
       ...gdeltTagHtmlMarkers,
       ...neptunHtmlMarkers,
       ...neptunImpactHtmlMarkers,
@@ -3042,8 +3199,10 @@ export function GlobeDashboard({
       airportPortHtmlMarkers,
       gdeltTagHtmlMarkers,
       globePoints,
+      milHtmlMarkers,
+      civHtmlMarkers,
       neptunHtmlMarkers,
-    neptunImpactHtmlMarkers,
+      neptunImpactHtmlMarkers,
       situationCalloutMarkers,
       ukraineSettlementHtmlMarkers,
       usCarrierHtmlMarkers,
@@ -3196,6 +3355,28 @@ export function GlobeDashboard({
         meta: `${hoveredCarrier.hull} · ${hoveredCarrier.location}`,
       };
     }
+    if (hoveredMilAircraft) {
+      const kind = classifyMilAircraft(hoveredMilAircraft);
+      const isCiv = civAircraft.some(
+        (a) => a.id === hoveredMilAircraft.id || a.hex === hoveredMilAircraft.hex,
+      );
+      return {
+        kind: "event",
+        title: hoveredMilAircraft.callsign || hoveredMilAircraft.hex.toUpperCase(),
+        detail: `${milAircraftRoleLabel(kind, lang)} · ${
+          isCiv ? HOVER.civAircraft(lang) : HOVER.milAircraft(lang)
+        }`,
+        meta: [
+          hoveredMilAircraft.type,
+          hoveredMilAircraft.altitude != null ? `${hoveredMilAircraft.altitude} ft` : null,
+          hoveredMilAircraft.groundSpeed != null ? `${hoveredMilAircraft.groundSpeed} kn` : null,
+          hoveredMilAircraft.track != null ? `${Math.round(hoveredMilAircraft.track)}°` : null,
+        ]
+          .filter(Boolean)
+          .join(" · ") || undefined,
+        hint: HOVER.hintDetail(lang),
+      };
+    }
     if (hoveredNeptunThreat) {
       return {
         kind: "event",
@@ -3218,7 +3399,11 @@ export function GlobeDashboard({
     }
     if (hoveredPoint) {
       if (hoveredPoint.displayKind === "static") {
-        if (hoveredPoint.kind === "chokepoint" || hoveredPoint.kind === "logistics-hub") {
+        if (
+          hoveredPoint.kind === "chokepoint" ||
+          hoveredPoint.kind === "logistics-hub" ||
+          hoveredPoint.kind === "submarine-tunnel"
+        ) {
           const riskNote = hoveredPoint.meta?.riskNote;
           const relatedTickers = hoveredPoint.meta?.relatedTickers;
           const throughput = hoveredPoint.meta?.throughput;
@@ -3268,9 +3453,36 @@ export function GlobeDashboard({
           kind: "event",
           title: hoveredPoint.callsign || hoveredPoint.hex || "Military aircraft",
           detail: HOVER.milAircraft(lang),
-          meta: [hoveredPoint.type, hoveredPoint.altitude != null ? `${hoveredPoint.altitude} ft` : null]
+          meta: [
+            hoveredPoint.type,
+            hoveredPoint.registration,
+            hoveredPoint.altitude != null ? `${hoveredPoint.altitude} ft` : null,
+            hoveredPoint.groundSpeed != null ? `${hoveredPoint.groundSpeed} kn` : null,
+            hoveredPoint.squawk ? `SQK ${hoveredPoint.squawk}` : null,
+          ]
             .filter(Boolean)
             .join(" · ") || undefined,
+          hint: HOVER.hintDetail(lang),
+        };
+      }
+      if (hoveredPoint.displayKind === "ais") {
+        const kind =
+          hoveredPoint.category === "military"
+            ? "군용 함정"
+            : hoveredPoint.category === "commercial"
+              ? "민간 선박"
+              : "선박";
+        return {
+          kind: "static",
+          title: hoveredPoint.shipName || `MMSI ${hoveredPoint.mmsi}`,
+          detail: `AIS · ${kind}`,
+          meta: [
+            hoveredPoint.shipTypeLabel,
+            hoveredPoint.speedOverGround != null ? `${hoveredPoint.speedOverGround} kn` : null,
+          ]
+            .filter(Boolean)
+            .join(" · ") || undefined,
+          hint: HOVER.hintDetail(lang),
         };
       }
       if (hoveredPoint.displayKind === "firms-fire") {
@@ -3454,6 +3666,8 @@ export function GlobeDashboard({
     disputeOverviews,
     firmsCombatHotspots,
     hoveredCarrier,
+    hoveredMilAircraft,
+    civAircraft,
     hoverGlobeCoords,
     hoveredNeptunThreat,
     hoveredPath,
@@ -3480,21 +3694,17 @@ export function GlobeDashboard({
   }, []);
 
   const refreshAis = useCallback(async () => {
-    if (isClientApiStubMode()) {
-      setAisVessels([]);
-      setAisError(null);
-      setAisLoading(false);
-      return;
-    }
     if (shouldDeferLiveNetworkRefresh(isCameraMovingRef.current)) return;
     setAisLoading(true);
     setAisError(null);
 
     try {
       const max = liveAisFetchMax();
-      const response = await fetch(`/api/ais?seconds=8&max=${max}`, {
-        cache: "no-store",
-      });
+      const aisClass = isEconomyViewer ? "commercial" : "military";
+      const response = await fetch(
+        `/api/ais?seconds=8&max=${max}&class=${aisClass}&provider=auto`,
+        { cache: "no-store" },
+      );
       const payload = (await response.json()) as {
         vessels?: AisVessel[];
         error?: string;
@@ -3510,15 +3720,9 @@ export function GlobeDashboard({
     } finally {
       setAisLoading(false);
     }
-  }, []);
+  }, [isEconomyViewer]);
 
   const refreshMilAircraft = useCallback(async () => {
-    if (isClientApiStubMode()) {
-      setMilAircraft([]);
-      setMilError(null);
-      setMilLoading(false);
-      return;
-    }
     if (shouldDeferLiveNetworkRefresh(isCameraMovingRef.current)) return;
     setMilLoading(true);
     setMilError(null);
@@ -3544,6 +3748,42 @@ export function GlobeDashboard({
       setMilLoading(false);
     }
   }, []);
+
+  const refreshCivAircraft = useCallback(async () => {
+    if (shouldDeferLiveNetworkRefresh(isCameraMovingRef.current)) return;
+    setCivLoading(true);
+    setCivError(null);
+
+    try {
+      const max = liveAirTrafficFetchMax();
+      const dist = airTrafficDistNm(layerAltitude);
+      const lat = Math.round(layerViewState.lat * 100) / 100;
+      const lng = Math.round(layerViewState.lng * 100) / 100;
+      const params = new URLSearchParams({
+        lat: String(lat),
+        lng: String(lng),
+        dist: String(dist),
+        max: String(max),
+      });
+      const response = await fetch(`/api/adsb-traffic?${params}`, {
+        cache: "no-store",
+      });
+      const payload = (await response.json()) as {
+        aircraft?: MilitaryAircraft[];
+        error?: string;
+      };
+
+      if (!response.ok || payload.error) {
+        throw new Error(payload.error || `ADS-B traffic 요청 실패: ${response.status}`);
+      }
+
+      setCivAircraft((payload.aircraft || []).slice(0, max));
+    } catch (error) {
+      setCivError(error instanceof Error ? error.message : "민간 항적 로드 실패");
+    } finally {
+      setCivLoading(false);
+    }
+  }, [layerAltitude, layerViewState.lat, layerViewState.lng]);
 
   const refreshUsCarriers = useCallback(async () => {
     if (shouldDeferLiveNetworkRefresh(isCameraMovingRef.current)) return;
@@ -3718,6 +3958,18 @@ export function GlobeDashboard({
   }, [refreshMilAircraft, showMilitaryActivity]);
 
   useEffect(() => {
+    if (!showAirTraffic) {
+      setCivAircraft([]);
+      return;
+    }
+    void refreshCivAircraft();
+    const timer = window.setInterval(() => {
+      void refreshCivAircraft();
+    }, liveAirTrafficPollMs());
+    return () => window.clearInterval(timer);
+  }, [refreshCivAircraft, showAirTraffic]);
+
+  useEffect(() => {
     if (!showUsCarriers) return;
     void refreshUsCarriers();
     const timer = window.setInterval(() => {
@@ -3866,17 +4118,24 @@ export function GlobeDashboard({
     }
   }, []);
 
+  /** 이스라엘 공습경보 레이어 ON일 때만 폴링 (배너·마커 공통) */
   useEffect(() => {
+    if (!showTzevaAdom) {
+      setTzevaAdomActive([]);
+      setTzevaAdomHistory([]);
+      setTzevaAdomLive(false);
+      setTzevaAdomGeoRestricted(false);
+      setTzevaAdomError(null);
+      setTzevaAdomStatus("idle");
+      return;
+    }
     void refreshTzevaAdom();
-  }, [refreshTzevaAdom]);
-
-  useEffect(() => {
     const pollMs = liveTzevaPollMs();
     const timer = window.setInterval(() => {
       void refreshTzevaAdom();
     }, pollMs);
     return () => window.clearInterval(timer);
-  }, [refreshTzevaAdom]);
+  }, [refreshTzevaAdom, showTzevaAdom]);
 
   useEffect(() => {
     if (!showFirmsFires) {
@@ -3972,8 +4231,10 @@ export function GlobeDashboard({
             detail:
               ukraineControlStatus === "loading"
                 ? "불러오는 중…"
-                : showUkraineControl && ukraineFrontPaths.length > 0
-                  ? `테두리·빗금 ${ukraineFrontPaths.length.toLocaleString()}개 · 지표면 · ${zoom}`
+                : showUkraineControl &&
+                    (ukraineMacroGeoJson.features.length > 0 ||
+                      ukraineMicroGeoJson.features.length > 0)
+                  ? `거시 ${ukraineMacroGeoJson.features.length} · 미시 ${ukraineMicroGeoJson.features.length} · Zoom LOD`
                   : showUkraineControl
                     ? viinaMeta?.available
                       ? ukraineControlStatus === "ok"
@@ -4302,6 +4563,16 @@ export function GlobeDashboard({
             accent: "blue",
           },
           {
+            id: "tunnels",
+            label: "해저터널",
+            detail: showSubmarineTunnels
+              ? `${visibleStaticPoints.filter((p) => p.kind === "submarine-tunnel").length.toLocaleString()}곳`
+              : "꺼짐",
+            checked: layerPrefs.showSubmarineTunnels,
+            onChange: setShowSubmarineTunnels,
+            accent: "blue",
+          },
+          {
             id: "airports",
             label: "공항",
             detail: showAirports
@@ -4339,8 +4610,10 @@ export function GlobeDashboard({
           },
           {
             id: "ais",
-            label: "선박 위치",
-            detail: showAis ? `선박 ${aisVessels.length.toLocaleString()}척` : "꺼짐",
+            label: isEconomyViewer ? "민간 선박 (AIS)" : "군용 함정 (AIS)",
+            detail: showAis
+              ? `${isEconomyViewer ? "민간" : "군용"} ${aisVessels.length.toLocaleString()}척`
+              : "꺼짐",
             checked: layerPrefs.showAis,
             onChange: setShowAis,
             accent: "blue",
@@ -4350,6 +4623,7 @@ export function GlobeDashboard({
           toggleCategoryPrefs({
             showShippingLanes: enabled,
             showSubmarineCables: enabled,
+            showSubmarineTunnels: enabled,
             showAirports: enabled,
             showPorts: enabled,
             showInternetExchanges: enabled,
@@ -4378,7 +4652,7 @@ export function GlobeDashboard({
             id: "military-air",
             label: "군사 항공기",
             detail: showMilitaryActivity
-              ? `비행기 ${milAircraft.length.toLocaleString()}대`
+              ? `비행기 ${milAircraft.length.toLocaleString()}대 · 탑다운 실루엣`
               : "꺼짐",
             checked: layerPrefs.showMilitaryActivity,
             onChange: setShowMilitaryActivity,
@@ -4480,6 +4754,16 @@ export function GlobeDashboard({
         hint: "허브, 데이터센터, 제재",
         items: [
           {
+            id: "air-traffic",
+            label: "항공기 운항",
+            detail: showAirTraffic
+              ? `민항 ${civAircraft.length.toLocaleString()}대 · 군용 제외`
+              : "꺼짐",
+            checked: layerPrefs.showAirTraffic,
+            onChange: setShowAirTraffic,
+            accent: "blue",
+          },
+          {
             id: "economic",
             label: "경제 중심지",
             detail: showEconomicCenters ? "금융·무역 허브" : "꺼짐",
@@ -4504,8 +4788,22 @@ export function GlobeDashboard({
             accent: "fuchsia",
           },
         ],
+        footer: (
+          <>
+            <button
+              type="button"
+              onClick={() => startTransition(() => void refreshCivAircraft())}
+              disabled={civLoading || !showAirTraffic}
+              className="w-full rounded-lg border border-sky-300/30 bg-sky-300/10 px-3 py-2 text-xs text-sky-100 transition hover:border-sky-200 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {civLoading ? "민간 항적 불러오는 중…" : "민간 항적 새로고침"}
+            </button>
+            {civError ? <p className="mt-2 text-xs leading-5 text-red-200">{civError}</p> : null}
+          </>
+        ),
         onToggleAll: (enabled) =>
           toggleCategoryPrefs({
+            showAirTraffic: enabled,
             showEconomicCenters: enabled,
             showAiDataCenters: enabled,
             showSanctionsEntities: enabled,
@@ -4545,6 +4843,10 @@ export function GlobeDashboard({
     lpg(milAircraft.length, 0),
     lpg(milError, null),
     lpg(milLoading, false),
+    lpg(civAircraft.length, 0),
+    lpg(civError, null),
+    lpg(civLoading, false),
+    lpg(showAirTraffic, false),
     lpg(railPaths.length, 0),
     lpg(refreshMilAircraft, null),
     lpg(refreshUsCarriers, null),
@@ -4579,6 +4881,7 @@ export function GlobeDashboard({
     lpg(showShippingLanes, false),
     lpg(showSpaceLaunches, false),
     lpg(showSubmarineCables, false),
+    lpg(showSubmarineTunnels, false),
     lpg(showTelegramOsint, false),
     lpg(showTzevaAdom, false),
     lpg(showNeptun, false),
@@ -4589,7 +4892,7 @@ export function GlobeDashboard({
     lpg(ukraineControlStatus, "idle"),
     lpg(ukraineRuCellCount, 0),
     lpg(viinaDisplay.lod.mode, "hidden"),
-    lpg(ukraineFrontPaths.length, 0),
+    lpg(ukraineMacroGeoJson.features.length, 0),
     lpg(viinaMeta?.featureCount, 0),
     lpg(telegramAlerts.length, 0),
     lpg(telegramLive, false),
@@ -4664,6 +4967,7 @@ export function GlobeDashboard({
   );
 
   const toggleLeftPanel = useCallback(() => {
+    if (isCompactUi) return;
     startTransition(() => {
       setShowLeftPanel((open) => {
         if (open) {
@@ -4676,7 +4980,7 @@ export function GlobeDashboard({
         return true;
       });
     });
-  }, [dismissLayerPanel]);
+  }, [dismissLayerPanel, isCompactUi]);
 
   const closeLeftPanel = useCallback(() => {
     dismissLayerPanel(true);
@@ -4718,7 +5022,15 @@ export function GlobeDashboard({
     if (!globe) return;
 
     configuredGlobe.current = true;
-    globe.pointOfView({ lat: 25, lng: 105, altitude: 2.25 }, 0);
+    // 로딩 시점부터 줌아웃된 궤도 (ENTRY_GATE 하드코딩)
+    globe.pointOfView(
+      {
+        lat: ENTRY_GATE.bootLookAt.lat,
+        lng: ENTRY_GATE.bootLookAt.lng,
+        altitude: ENTRY_GATE.bootAltitude,
+      },
+      0,
+    );
     setGlobeReady(true);
 
     const controls = globe.controls();
@@ -4907,19 +5219,34 @@ export function GlobeDashboard({
       durationMs = 850,
       mode: "overview" | "detail" = "overview",
     ) => {
-    const targetLat = (selection.bbox.minLat + selection.bbox.maxLat) / 2;
-    const targetLng = (selection.bbox.minLng + selection.bbox.maxLng) / 2;
+      const targetLat = (selection.bbox.minLat + selection.bbox.maxLat) / 2;
+      const targetLng = (selection.bbox.minLng + selection.bbox.maxLng) / 2;
       const fittedAltitude = computeRegionFitAltitude(selection.bbox, selection.altitude);
-      const targetAltitude =
-        mode === "overview"
-          ? Math.max(
-              fittedAltitude,
-              selection.altitude,
-              THEATER_ENTRY_MIN_ALTITUDE,
-              ORBITAL_OVERVIEW_ALTITUDE * 0.92,
-            )
-          : fittedAltitude;
-    flyTo(targetLat, targetLng, targetAltitude, durationMs);
+      const latSpan = Math.max(0.1, selection.bbox.maxLat - selection.bbox.minLat);
+      const lngSpan = Math.max(0.1, longitudeDistance(selection.bbox.minLng, selection.bbox.maxLng));
+      const spanDeg = Math.max(latSpan, lngSpan);
+      const isCompactTheater = spanDeg <= COMPACT_THEATER_MAX_SPAN_DEG;
+
+      let targetAltitude: number;
+      if (mode === "detail") {
+        targetAltitude = fittedAltitude;
+      } else if (isCompactTheater) {
+        // 한반도·대만급: 궤도 하한 없이 작성 고도 위주로 화면을 채움
+        targetAltitude = clamp(
+          selection.altitude * 0.82 + fittedAltitude * 0.18,
+          REGION_MIN_ALTITUDE,
+          1.2,
+        );
+      } else {
+        // 중동·우크라 전역 등 넓은 전장만 ISS급 하한 유지
+        targetAltitude = Math.max(
+          fittedAltitude,
+          selection.altitude,
+          THEATER_ENTRY_MIN_ALTITUDE,
+          ORBITAL_OVERVIEW_ALTITUDE * 0.92,
+        );
+      }
+      flyTo(targetLat, targetLng, targetAltitude, durationMs);
     },
     [computeRegionFitAltitude, flyTo],
   );
@@ -5036,6 +5363,7 @@ export function GlobeDashboard({
   }
 
   useEffect(() => {
+    if (suppressAutoRegionZoomRef.current) return;
     if (!showUkraineControl || !globeReady || !ukraineZoomPendingRef.current) return;
     if (ukraineControl.length === 0) return;
 
@@ -5061,6 +5389,7 @@ export function GlobeDashboard({
   }, [isUkraineTheaterFocus]);
 
   useEffect(() => {
+    if (suppressAutoRegionZoomRef.current) return;
     if (!showNeptun || !globeReady || !neptunZoomPendingRef.current) return;
     neptunZoomPendingRef.current = false;
     const targetLat = 49;
@@ -5075,10 +5404,10 @@ export function GlobeDashboard({
   }, [flyTo, globeReady, showNeptun]);
 
   useEffect(() => {
-    if (!initialViewConfig?.ui.openLayerPanel) return;
+    if (!initialViewConfig?.ui.openLayerPanel || isCompactUi) return;
     const timer = window.setTimeout(() => setShowLeftPanel(true), 0);
     return () => window.clearTimeout(timer);
-  }, [initialViewConfig?.ui.openLayerPanel]);
+  }, [initialViewConfig?.ui.openLayerPanel, isCompactUi]);
 
   function applyMergedViewConfig(
     merged: MergedViewConfig,
@@ -5086,6 +5415,10 @@ export function GlobeDashboard({
     theater: ViewTheaterChoice,
     economyHub: EconomyHubChoice = merged.economyHub ?? "auto",
   ) {
+    if (domainThenDetailTimerRef.current != null) {
+      window.clearTimeout(domainThenDetailTimerRef.current);
+      domainThenDetailTimerRef.current = null;
+    }
     dismissLayerPanel(true);
     startTransition(() => {
       applyLayerPrefs(merged.layers);
@@ -5099,7 +5432,7 @@ export function GlobeDashboard({
       setModePickerInitialMode(null);
       setEntryGate(null);
       markWelcomeGateDone();
-      if (merged.ui.openLayerPanel) {
+      if (merged.ui.openLayerPanel && !isCompactUi) {
         setShowLeftPanel(true);
       }
       if (merged.ui.autoOpenIntelSheet) {
@@ -5122,9 +5455,13 @@ export function GlobeDashboard({
     setSelected(null);
     packageTheaterFocusPlayedRef.current = false;
     packageEconFocusPlayedRef.current = false;
-    introPlayedRef.current = false;
+    // 세부 확정 직후에도 우크라/NEPTUN 강제 줌은 잠시 막고, autoEnter 전장/허브 fly만 허용
+    suppressAutoRegionZoomRef.current = true;
+    ukraineZoomPendingRef.current = false;
+    neptunZoomPendingRef.current = false;
+    introPlayedRef.current = true;
     if (typeof window !== "undefined") {
-      sessionStorage.removeItem(INTRO_SESSION_KEY);
+      sessionStorage.setItem(INTRO_SESSION_KEY, "1");
     }
     const effectiveTheater = mode === "conflict" ? theater : "auto";
     const effectiveHub = mode === "economy" ? economyHub : "auto";
@@ -5138,6 +5475,11 @@ export function GlobeDashboard({
       setTelegramLive(false);
       setTelegramStatus("idle");
     }
+    window.setTimeout(() => {
+      ukraineZoomPendingRef.current = false;
+      neptunZoomPendingRef.current = false;
+      suppressAutoRegionZoomRef.current = false;
+    }, 1600);
   }
 
   function handleCustomLayerApply() {
@@ -5158,6 +5500,7 @@ export function GlobeDashboard({
 
   useEffect(() => {
     if (isLoading || loadError || !globeReady || introPlayedRef.current) return;
+    if (entryGate !== null || showModePicker) return;
     if (viewUi.autoEnterTheaterNavId ?? initialViewConfig?.ui.autoEnterTheaterNavId) return;
     if (viewUi.autoEnterEconNavId ?? initialViewConfig?.ui.autoEnterEconNavId) return;
 
@@ -5168,6 +5511,7 @@ export function GlobeDashboard({
 
     introPlayedRef.current = true;
 
+    // 지정학 기본 레이어에 우크라가 있어도 인트로로 우크라 강제 진입하지 않음
     if (showUkraineControl) {
       sessionStorage.setItem(INTRO_SESSION_KEY, "1");
       return;
@@ -5215,6 +5559,7 @@ export function GlobeDashboard({
       window.clearTimeout(hintTimer);
     };
   }, [
+    entryGate,
     flyTo,
     globeReady,
     initialViewConfig?.ui.autoEnterEconNavId,
@@ -5223,6 +5568,7 @@ export function GlobeDashboard({
     isLoading,
     loadError,
     localDisputeAlerts,
+    showModePicker,
     showUkraineControl,
     viewEconomyHub,
     viewTheater,
@@ -5237,6 +5583,15 @@ export function GlobeDashboard({
     if (readWelcomeGateDone()) return;
     setEntryGate("caution");
   }, [entryGate, globeReady, isLoading, loadError, showModePicker]);
+
+  useEffect(() => {
+    return () => {
+      if (domainThenDetailTimerRef.current != null) {
+        window.clearTimeout(domainThenDetailTimerRef.current);
+        domainThenDetailTimerRef.current = null;
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (showModePicker || entryGate !== null || isLoading || !globeReady || loadError) return;
@@ -5255,22 +5610,65 @@ export function GlobeDashboard({
     ultraLiteRef.current = ultraLiteOn;
     setUltraLite(ultraLiteOn);
     savePerfPrefs({ ultraLite: ultraLiteOn });
-    applyLayerPrefs(
-      ultraLiteOn
-        ? applyUltraLiteToLayerPrefs(loadLayerPrefs())
-        : applyNormalCapToLayerPrefs(loadLayerPrefs()),
+
+    // 세부 선택 전: 전체 지구본 + 모드별 오버뷰 레이어만 (우크라 바로 진입 금지)
+    suppressAutoRegionZoomRef.current = true;
+    ukraineZoomPendingRef.current = false;
+    neptunZoomPendingRef.current = false;
+    introPlayedRef.current = true;
+    if (typeof window !== "undefined") {
+      sessionStorage.setItem(INTRO_SESSION_KEY, "1");
+    }
+
+    const overviewPrefs = buildDomainOverviewPrefs(mode, {
+      labelLanguage: layerPrefsLiveRef.current.labelLanguage,
+      ultraLite: ultraLiteOn,
+    });
+    applyLayerPrefs(overviewPrefs);
+    setViewPackages(packagesForViewerMode(mode));
+
+    layerCenterRef.current = {
+      lat: ENTRY_GATE.bootLookAt.lat,
+      lng: ENTRY_GATE.bootLookAt.lng,
+    };
+    layerAltitudeRef.current = ENTRY_GATE.zoomOutAltitude;
+    layerLodTierRef.current = getGlobeLod(ENTRY_GATE.zoomOutAltitude).tier;
+    setFilterCenter({
+      lat: ENTRY_GATE.bootLookAt.lat,
+      lng: ENTRY_GATE.bootLookAt.lng,
+    });
+    setLayerAltitude(ENTRY_GATE.zoomOutAltitude);
+    // 도메인 선택 후 — 전체 지구본 확 줌아웃, 그다음 세부설정
+    flyTo(
+      ENTRY_GATE.bootLookAt.lat,
+      ENTRY_GATE.bootLookAt.lng,
+      ENTRY_GATE.zoomOutAltitude,
+      ENTRY_GATE.zoomOutFlyMs,
     );
+
     setModePickerInitialMode(mode);
     setModePickerLockMode(true);
-    setEntryGate("mode");
-    setShowModePicker(true);
+    setShowModePicker(false);
+    setEntryGate("overview");
+    if (domainThenDetailTimerRef.current != null) {
+      window.clearTimeout(domainThenDetailTimerRef.current);
+    }
+    domainThenDetailTimerRef.current = window.setTimeout(() => {
+      domainThenDetailTimerRef.current = null;
+      setEntryGate("mode");
+      setShowModePicker(true);
+    }, DOMAIN_OVERVIEW_THEN_DETAIL_MS);
   }
 
   function handleModePickerCancel() {
+    if (domainThenDetailTimerRef.current != null) {
+      window.clearTimeout(domainThenDetailTimerRef.current);
+      domainThenDetailTimerRef.current = null;
+    }
     setShowModePicker(false);
     setModePickerLockMode(false);
     setModePickerInitialMode(null);
-    if (entryGate === "mode" && !readWelcomeGateDone()) {
+    if ((entryGate === "mode" || entryGate === "overview") && !readWelcomeGateDone()) {
       setEntryGate("domain");
     } else {
       setEntryGate(null);
@@ -5444,6 +5842,16 @@ export function GlobeDashboard({
     flyTo(carrier.lat, carrier.lng, 0.75);
   }, [flyTo]);
 
+  const handleMilAircraftSelect = useCallback((aircraft: MilitaryAircraft) => {
+    openSelection({ kind: "mil", item: aircraft, traffic: "military" });
+    flyTo(aircraft.lat, aircraft.lng, 0.55);
+  }, [flyTo]);
+
+  const handleCivAircraftSelect = useCallback((aircraft: MilitaryAircraft) => {
+    openSelection({ kind: "mil", item: aircraft, traffic: "civil" });
+    flyTo(aircraft.lat, aircraft.lng, 0.55);
+  }, [flyTo]);
+
   const createHtmlOverlayElement = useCallback(
     (point: object) => {
       const item = point as HtmlOverlayMarker;
@@ -5469,6 +5877,20 @@ export function GlobeDashboard({
             onClick: handleCarrierSelect,
           },
           { labelOffsetY: usCarrierLabelOffsets.get(item.id) ?? 0 },
+        );
+      }
+      if (item.displayKind === "mil-html" || item.displayKind === "civ-html") {
+        const isCiv = item.displayKind === "civ-html";
+        return createMilAircraftBadge(
+          item,
+          {
+            onHover: setHoveredMilAircraft,
+            onClick: isCiv ? handleCivAircraftSelect : handleMilAircraftSelect,
+          },
+          {
+            lang: labelLanguage,
+            palette: isCiv ? "civil" : "military",
+          },
         );
       }
       if (item.displayKind === "gdelt-tag-html") {
@@ -5503,16 +5925,31 @@ export function GlobeDashboard({
       }
       return createAirportPortBadge(item as StaticGlobePoint, handleHtmlMarkerHover, alt);
     },
-    [handleCarrierSelect, handleHtmlMarkerHover, handleNeptunThreatSelect, openIntelFromCoords, usCarrierLabelOffsets],
+    [handleCarrierSelect, handleCivAircraftSelect, handleHtmlMarkerHover, handleMilAircraftSelect, handleNeptunThreatSelect, labelLanguage, openIntelFromCoords, usCarrierLabelOffsets],
   );
 
   function handleGlobePointClick(point: GlobeDisplayPoint) {
     if (
       point.displayKind === "static" ||
       point.displayKind === "mil" ||
+      point.displayKind === "ais" ||
       point.displayKind === "firms-fire" ||
       point.displayKind === "conflict-cluster"
     ) {
+      if (point.displayKind === "mil") {
+        skipNextGlobeClickRef.current = true;
+        const { markerId: _markerId, displayKind: _dk, ...aircraft } = point;
+        openSelection({ kind: "mil", item: aircraft, traffic: "military" });
+        flyTo(point.lat, point.lng, 0.55);
+        return;
+      }
+      if (point.displayKind === "ais") {
+        skipNextGlobeClickRef.current = true;
+        const { markerId: _markerId, displayKind: _dk, ...vessel } = point;
+        openSelection({ kind: "ais", item: vessel });
+        flyTo(point.lat, point.lng, 0.45);
+        return;
+      }
       if (point.displayKind === "conflict-cluster") {
         skipNextGlobeClickRef.current = true;
         openIntelFromCoords(point.lat, point.lng, 0.85);
@@ -5524,7 +5961,9 @@ export function GlobeDashboard({
       }
       if (
         point.displayKind === "static" &&
-        (point.kind === "chokepoint" || point.kind === "logistics-hub")
+        (point.kind === "chokepoint" ||
+          point.kind === "logistics-hub" ||
+          point.kind === "submarine-tunnel")
       ) {
         flyTo(point.lat, point.lng, 0.72);
       }
@@ -5584,6 +6023,7 @@ export function GlobeDashboard({
     setSelected(null);
     setHoveredPoint(null);
     setHoveredCarrier(null);
+    setHoveredMilAircraft(null);
     setHoveredPolygon(null);
     setHoveredPath(null);
 
@@ -5623,6 +6063,7 @@ export function GlobeDashboard({
         conflictAmbient={soundConflictAmbient}
         economyAmbient={soundEconomyAmbient}
         cameraAltitude={layerAltitude}
+        globeLodTier={globeLod.tier}
       />
 
       <HoverNav
@@ -5697,6 +6138,11 @@ export function GlobeDashboard({
               pointColor={(point: GlobeDisplayPoint) => {
                 if (point.displayKind === "static") return STATIC_POINT_COLORS[point.kind];
                 if (point.displayKind === "mil") return "rgba(248, 113, 113, 0.92)";
+                if (point.displayKind === "ais") {
+                  return point.category === "military"
+                    ? "rgba(52, 211, 153, 0.92)"
+                    : "rgba(56, 189, 248, 0.9)";
+                }
                 if (point.displayKind === "firms-fire") {
                   return INTEL_NASA_FIRE;
                 }
@@ -5715,6 +6161,9 @@ export function GlobeDashboard({
                 const alt = viewState.altitude;
                 if (point.displayKind === "static") return staticPointRadius(point.kind, alt);
                 if (point.displayKind === "mil") return 0.22 * getZoomOutScale(alt);
+                if (point.displayKind === "ais") {
+                  return (point.category === "military" ? 0.2 : 0.14) * getZoomOutScale(alt);
+                }
                 if (point.displayKind === "firms-fire") {
                   const frp = point.frp ?? 0;
                   const base = frp >= 50 ? 0.28 : frp >= 20 ? 0.22 : 0.17;
@@ -5757,11 +6206,32 @@ export function GlobeDashboard({
                 }
                 if (point.displayKind === "mil") {
                   return `
-                  <div style="max-width: 260px">
-                    <strong>군사 항공기</strong><br/>
+                  <div style="max-width: 280px">
+                    <strong>군사 항공기 (ADS-B)</strong><br/>
                     ${escapeHtml(point.callsign || point.hex)}
                     ${point.type ? `<br/>기종 ${escapeHtml(point.type)}` : ""}
+                    ${point.registration ? `<br/>등록 ${escapeHtml(point.registration)}` : ""}
                     ${point.altitude != null ? `<br/>고도 ${escapeHtml(String(point.altitude))} ft` : ""}
+                    ${point.groundSpeed != null ? `<br/>속도 ${escapeHtml(String(point.groundSpeed))} kn` : ""}
+                    ${point.track != null ? `<br/>침로 ${escapeHtml(String(Math.round(point.track)))}°` : ""}
+                    ${point.squawk ? `<br/>스쿼크 ${escapeHtml(point.squawk)}` : ""}
+                    ${point.emergency ? `<br/>비상 ${escapeHtml(point.emergency)}` : ""}
+                  </div>
+                `;
+                }
+                if (point.displayKind === "ais") {
+                  const kind =
+                    point.category === "military"
+                      ? "군용 함정"
+                      : point.category === "commercial"
+                        ? "민간 선박"
+                        : "선박";
+                  return `
+                  <div style="max-width: 280px">
+                    <strong>${escapeHtml(kind)} (AIS)</strong><br/>
+                    ${escapeHtml(point.shipName || `MMSI ${point.mmsi}`)}
+                    ${point.shipTypeLabel ? `<br/>유형 ${escapeHtml(point.shipTypeLabel)}` : ""}
+                    ${point.speedOverGround != null ? `<br/>속력 ${escapeHtml(String(point.speedOverGround))} kn` : ""}
                   </div>
                 `;
                 }
@@ -5984,7 +6454,7 @@ export function GlobeDashboard({
               }}
               onPolygonClick={(feature: PolygonLayerFeature) => handlePolygonClick(feature)}
               onPolygonHover={
-                isViinaCloseZoom && showUkraineControl
+                isCompactUi || (isViinaCloseZoom && showUkraineControl)
                   ? undefined
                   : (feature: PolygonLayerFeature | null) => {
                 setHoveredPolygon(feature);
@@ -5995,6 +6465,8 @@ export function GlobeDashboard({
                   ? [...globePaths, ...airRaidFocusPaths]
                   : globePaths
               }
+              ukraineMacroGeoJson={ukraineMacroGeoJson}
+              ukraineMicroGeoJson={ukraineMicroGeoJson}
               pathPoints={(path: TransportPath) => path.points}
               pathPointLat={(point: { lat: number; lng: number }) => point.lat}
               pathPointLng={(point: { lat: number; lng: number }) => point.lng}
@@ -6219,9 +6691,13 @@ export function GlobeDashboard({
                   </div>
                 `;
               }}
-              onPathHover={(path: TransportPath | null) => {
-                setHoveredPath(path);
-              }}
+              onPathHover={
+                isCompactUi
+                  ? undefined
+                  : (path: TransportPath | null) => {
+                      setHoveredPath(path);
+                    }
+              }
               onPathClick={(path: TransportPath) => handlePathClick(path)}
               onGlobeClick={(coords: { lat: number; lng: number }) => handleGlobeClick(coords)}
             />
@@ -6317,7 +6793,7 @@ export function GlobeDashboard({
             onClose={() => setShowLocalAlertPanel(false)}
           />
         )}
-        {!showLeftPanel && !selected && !regionNavSelection && hoverPointer && (
+        {!showLeftPanel && !selected && !regionNavSelection && !isCompactUi && hoverPointer && (
           <CursorHoverCard
             visible
             x={hoverPointer.x}
@@ -6419,7 +6895,7 @@ export function GlobeDashboard({
         onDismiss={() => setShowViewerIntro(false)}
       />
 
-      {showLeftPanel ? (
+      {showLeftPanel && !isCompactUi ? (
         <button
           type="button"
           aria-label={t("ariaClosePanel", labelLanguage)}
@@ -6429,30 +6905,39 @@ export function GlobeDashboard({
       ) : null}
 
       <div className="pointer-events-none absolute left-3 top-3 z-[60]">
-        <div className="pointer-events-auto flex shrink-0 items-center gap-2">
-          <HoverHint
-            placement="bottom"
-            title={
-              showLeftPanel
-                ? t("hoverLayerPanelClose", labelLanguage)
-                : t("hoverLayerPanel", labelLanguage)
-            }
-            detail={t("hoverLayerPanelHint", labelLanguage)}
-          >
-            <button
-              type="button"
-              aria-label={
+        {isCompactUi ? (
+          <CompactPresetChips
+            mode={viewerMode}
+            activeId={compactChipId}
+            lang={labelLanguage}
+            onSelect={handleCompactChipSelect}
+          />
+        ) : (
+          <div className="pointer-events-auto flex shrink-0 items-center gap-2">
+            <HoverHint
+              placement="bottom"
+              title={
                 showLeftPanel
                   ? t("hoverLayerPanelClose", labelLanguage)
-                  : t("hoverLayerPanelOpenAria", labelLanguage)
+                  : t("hoverLayerPanel", labelLanguage)
               }
-              onClick={() => toggleLeftPanel()}
-              className="flex h-10 w-10 items-center justify-center rounded-xl border border-sky-200/15 bg-[#1e3a5f]/55 text-sky-50/90 shadow-lg backdrop-blur-md transition hover:border-sky-200/30 hover:bg-[#254875]/65"
+              detail={t("hoverLayerPanelHint", labelLanguage)}
             >
-              <HamburgerIcon open={showLeftPanel} />
-            </button>
-          </HoverHint>
-        </div>
+              <button
+                type="button"
+                aria-label={
+                  showLeftPanel
+                    ? t("hoverLayerPanelClose", labelLanguage)
+                    : t("hoverLayerPanelOpenAria", labelLanguage)
+                }
+                onClick={() => toggleLeftPanel()}
+                className="flex h-10 w-10 items-center justify-center rounded-xl border border-sky-200/15 bg-[#1e3a5f]/55 text-sky-50/90 shadow-lg backdrop-blur-md transition hover:border-sky-200/30 hover:bg-[#254875]/65"
+              >
+                <HamburgerIcon open={showLeftPanel} />
+              </button>
+            </HoverHint>
+          </div>
+        )}
       </div>
 
       <div className="pointer-events-none absolute right-3 top-3 z-[60] flex items-start justify-end gap-2">
@@ -6468,7 +6953,7 @@ export function GlobeDashboard({
             />
           </div>
         ) : null}
-        {!isEconomyViewer && (showTzevaAdom || tzevaAdomActive.length > 0) ? (
+        {!isEconomyViewer && showTzevaAdom ? (
           <div className="pointer-events-auto">
             <TzevaAdomPanel
               active={tzevaAdomActive}
@@ -6516,7 +7001,7 @@ export function GlobeDashboard({
         <MethodologySourcesPanel open={showSourcesPanel} onClose={() => setShowSourcesPanel(false)} />
       ) : null}
 
-      {showLeftPanel ? (
+      {showLeftPanel && !isCompactUi ? (
         <aside className="intel-panel pointer-events-auto absolute left-3 top-14 z-50 flex max-h-[calc(100vh-4.5rem)] w-[min(calc(100vw-1.5rem),384px)] flex-col gap-4 overflow-y-auto rounded-2xl p-4 shadow-2xl">
         <div className="flex items-start justify-between gap-3">
           <div>
@@ -6695,6 +7180,7 @@ export function GlobeDashboard({
             <Metric label="철도" value={railPaths.length.toLocaleString()} />
             <Metric label="AIS" value={aisVessels.length.toLocaleString()} />
             <Metric label="ADS-B mil" value={milAircraft.length.toLocaleString()} />
+            <Metric label="ADS-B civ" value={civAircraft.length.toLocaleString()} />
             <Metric label="FIRMS" value={visibleFirmsFires.length.toLocaleString()} />
             <Metric label="국가" value={data.countries.length.toLocaleString()} />
             <Metric label="도시 라벨" value={labelPlaces.length.toLocaleString()} />
@@ -7074,20 +7560,28 @@ function AnalysisPanel({
 
   if (selection.kind === "ais") {
     const vessel = selection.item;
+    const categoryLabel =
+      vessel.category === "military"
+        ? "군용"
+        : vessel.category === "commercial"
+          ? "민간"
+          : "기타";
     return (
       <div className="flex flex-col gap-4">
         <PanelHeader
-          eyebrow="AIS PositionReport"
+          eyebrow={`AIS · ${categoryLabel}`}
           title={vessel.shipName || `MMSI ${vessel.mmsi}`}
-          badge="AISstream"
+          badge={vessel.shipTypeLabel || "AIS"}
           onClose={onClose}
         />
 
         <section className="grid grid-cols-2 gap-3">
           <Metric label="MMSI" value={vessel.mmsi} />
+          <Metric label="유형" value={vessel.shipTypeLabel || (vessel.shipType != null ? String(vessel.shipType) : "N/A")} />
           <Metric label="SOG" value={vessel.speedOverGround === null ? "N/A" : `${vessel.speedOverGround} kn`} />
           <Metric label="COG" value={vessel.courseOverGround === null ? "N/A" : vessel.courseOverGround.toString()} />
           <Metric label="Heading" value={vessel.trueHeading === null ? "N/A" : vessel.trueHeading.toString()} />
+          <Metric label="구분" value={categoryLabel} />
         </section>
 
         <section className="rounded-xl border border-slate-800 bg-black/25 p-4">
@@ -7099,8 +7593,125 @@ function AnalysisPanel({
         </section>
 
         <p className="mt-auto text-xs leading-5 text-slate-500">
-          현재 AIS는 서버 프록시가 짧게 스트림을 열어 수집한 샘플입니다. 장시간 실시간 반영은 별도 백엔드/WebSocket 브로드캐스트로 확장하는 구조가 맞습니다.
+          지정학 창은 군용(Type 35 등), 지경학 창은 민간(화물·탱커·여객) AIS를 표시합니다. MarineTraffic 키가 있으면 민간 선박을 보강합니다.
         </p>
+      </div>
+    );
+  }
+
+  if (selection.kind === "mil") {
+    const ac = selection.item;
+    const kind = classifyMilAircraft(ac);
+    const isCivil = selection.traffic === "civil";
+    const fmt = (v: number | null | undefined, suffix = "") =>
+      v == null || !Number.isFinite(v) ? "N/A" : `${v}${suffix}`;
+    const flags = ac.dbFlags ?? 0;
+    const flagBits = [
+      (flags & 1) === 1 ? "military" : null,
+      (flags & 2) === 2 ? "interesting" : null,
+      (flags & 4) === 4 ? "PIA" : null,
+      (flags & 8) === 8 ? "LADD" : null,
+    ].filter(Boolean);
+    return (
+      <div className="flex flex-col gap-4">
+        <PanelHeader
+          eyebrow={isCivil ? "ADS-B Civilian" : "ADS-B Military"}
+          title={ac.callsign || ac.hex.toUpperCase()}
+          badge={milAircraftRoleLabel(kind, "ko")}
+          onClose={onClose}
+        />
+        <section
+          className={`flex items-center gap-3 rounded-xl border px-3 py-2 text-sm text-slate-200 ${
+            isCivil
+              ? "border-sky-500/30 bg-sky-950/20"
+              : "border-red-500/30 bg-red-950/20"
+          }`}
+        >
+          <span
+            className="inline-block shrink-0"
+            style={{ width: 36, height: 36 }}
+            dangerouslySetInnerHTML={{
+              __html: milAircraftIconSvg(kind.role, { width: 36, height: 36 }, {
+                palette: isCivil ? "civil" : "military",
+              }),
+            }}
+          />
+          <span>
+            {milAircraftRoleLabel(kind, "ko")}
+            {ac.type ? ` · ${ac.type}` : ""}
+            <span className="mt-0.5 block text-[10px] text-slate-500">
+              {isCivil
+                ? "민간 운항 · 군용(dbFlags&1) 제외"
+                : "탑다운 실루엣 (항모 아이콘과 동일 계열)"}
+            </span>
+          </span>
+        </section>
+        {ac.emergency ? (
+          <section className="rounded-xl border border-red-500/40 bg-red-500/10 p-3 text-sm text-red-100">
+            Emergency: {ac.emergency}
+          </section>
+        ) : null}
+        {ac.acasAdvisory ? (
+          <section className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-3 text-sm text-amber-100">
+            ACAS RA: {ac.acasAdvisory}
+          </section>
+        ) : null}
+        <section className="grid grid-cols-2 gap-3">
+          <Metric label="ICAO hex" value={ac.hex.toUpperCase()} />
+          <Metric label="등록" value={ac.registration || "N/A"} />
+          <Metric label="기종 (t)" value={ac.type || "N/A"} />
+          <Metric label="Category" value={ac.category || "N/A"} />
+          <Metric label="고도 baro" value={fmt(ac.altitude, " ft")} />
+          <Metric label="고도 geom" value={fmt(ac.altitudeGeom, " ft")} />
+          <Metric label="GS" value={fmt(ac.groundSpeed, " kn")} />
+          <Metric label="IAS" value={fmt(ac.indicatedAirspeed, " kn")} />
+          <Metric label="TAS" value={fmt(ac.trueAirspeed, " kn")} />
+          <Metric label="Mach" value={fmt(ac.mach)} />
+          <Metric
+            label="Track"
+            value={fmt(ac.track != null ? Math.round(ac.track) : null, "°")}
+          />
+          <Metric
+            label="True HDG"
+            value={fmt(ac.trueHeading != null ? Math.round(ac.trueHeading) : null, "°")}
+          />
+          <Metric
+            label="Mag HDG"
+            value={fmt(ac.magHeading != null ? Math.round(ac.magHeading) : null, "°")}
+          />
+          <Metric label="수직속도" value={fmt(ac.baroRate, " fpm")} />
+          <Metric label="스쿼크" value={ac.squawk || "N/A"} />
+          <Metric
+            label="Wind"
+            value={
+              ac.windSpeed != null
+                ? `${ac.windSpeed} kn @ ${ac.windDirection ?? "?"}°`
+                : "N/A"
+            }
+          />
+        </section>
+        <section className="rounded-xl border border-slate-800 bg-black/25 p-4">
+          <p className="text-xs uppercase tracking-[0.24em] text-slate-500">상세</p>
+          <dl className="mt-3 space-y-3 text-sm leading-6 text-slate-300">
+            <MetaRow label="좌표" value={`${ac.lat.toFixed(4)}, ${ac.lng.toFixed(4)}`} />
+            <MetaRow
+              label="dbFlags"
+              value={flagBits.length ? flagBits.join(", ") : String(ac.dbFlags ?? "N/A")}
+            />
+            <MetaRow label="Nav MCP alt" value={fmt(ac.navAltitudeMcp, " ft")} />
+            <MetaRow
+              label="Nav modes"
+              value={ac.navModes?.length ? ac.navModes.join(", ") : "N/A"}
+            />
+            <MetaRow label="Seen" value={ac.seen != null ? `${ac.seen.toFixed(1)} s` : "N/A"} />
+            <MetaRow
+              label="Seen pos"
+              value={ac.seenPos != null ? `${ac.seenPos.toFixed(1)} s` : "N/A"}
+            />
+            <MetaRow label="RSSI" value={fmt(ac.rssi)} />
+            <MetaRow label="수신" value={ac.timestamp || "N/A"} />
+          </dl>
+        </section>
       </div>
     );
   }

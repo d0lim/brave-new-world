@@ -176,7 +176,8 @@ export type StaticPointKind =
   | "space-launch"
   | "lng-terminal"
   | "chokepoint"
-  | "logistics-hub";
+  | "logistics-hub"
+  | "submarine-tunnel";
 
 export type StaticPoint = {
   id: string;
@@ -238,19 +239,61 @@ export type AisVessel = {
   courseOverGround: number | null;
   trueHeading: number | null;
   timestamp: string | null;
+  /** ITU AIS ship & cargo type (e.g. 70 cargo, 35 military) */
+  shipType: number | null;
+  shipTypeLabel: string | null;
+  /** 지정학=military · 지경학=commercial */
+  category: "military" | "commercial" | "other";
 };
 
 export type MilitaryAircraft = {
   id: string;
   hex: string;
   callsign: string | null;
+  /** 등록번호 (registration) */
+  registration: string | null;
   lat: number;
   lng: number;
+  /** 기압 고도 ft */
   altitude: number | null;
+  /** 기하 고도 ft */
+  altitudeGeom: number | null;
+  /** 지상속도 kn */
   groundSpeed: number | null;
+  /** IAS kn */
+  indicatedAirspeed: number | null;
+  /** TAS kn */
+  trueAirspeed: number | null;
+  mach: number | null;
+  /** true track deg */
   track: number | null;
+  trackRate: number | null;
+  roll: number | null;
+  magHeading: number | null;
+  trueHeading: number | null;
+  /** ft/min */
+  baroRate: number | null;
+  geomRate: number | null;
   squawk: string | null;
+  emergency: string | null;
+  /** ICAO type designator (t) */
   type: string | null;
+  /** emitter category */
+  category: string | null;
+  /** ADS-B dbFlags raw */
+  dbFlags: number | null;
+  windDirection: number | null;
+  windSpeed: number | null;
+  navAltitudeMcp: number | null;
+  navHeading: number | null;
+  navModes: string[] | null;
+  /** 초 — 마지막 메시지 */
+  seen: number | null;
+  /** 초 — 마지막 위치 */
+  seenPos: number | null;
+  rssi: number | null;
+  /** ACAS RA advisory text if present */
+  acasAdvisory: string | null;
   timestamp: string | null;
 };
 

@@ -52,6 +52,16 @@ export async function GET(request: Request) {
         attribution: "NASA FIRMS (via Cloudflare D1 cron ingest)",
       });
     }
+    // D1 비면 NASA 직접 호출 금지 — cron 채움 또는 ?live=1
+    return NextResponse.json({
+      receivedAt: new Date().toISOString(),
+      fires: [],
+      count: 0,
+      source: "d1",
+      waiting: true,
+      bbox,
+      attribution: "NASA FIRMS — D1 empty; wait for cron or ?live=1",
+    });
   }
 
   if (!isFirmsLiveEnabled()) {

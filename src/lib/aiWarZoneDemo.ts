@@ -1,10 +1,8 @@
-import fs from "fs";
-import path from "path";
 import type { ConflictEvent, ConflictZoneFeature, DisputeArea, GeoJsonGeometry } from "@/data/geoTypes";
+import { loadCloudStaticJson } from "@/lib/cloudStaticJson";
 import { resolveDisputeCenter } from "@/lib/disputeCenter";
 import { disputeGeometryBbox, isCombatHazard } from "@/lib/disputeHatch";
-
-const ROOT = process.cwd();
+import { loadServerDisputes } from "@/lib/serverDisputes";
 
 export type AiWarZoneFeature = ConflictZoneFeature & {
   aiScore: number;
@@ -14,19 +12,6 @@ export type AiWarZoneFeature = ConflictZoneFeature & {
 };
 
 type GdeltPoint = { lat: number; lng: number; tier?: string };
-
-function readJson<T>(relativePath: string): T | null {
-  for (const base of ["lite", "full"]) {
-    const filePath = path.join(ROOT, "public", "data", base, relativePath);
-    if (!fs.existsSync(filePath)) continue;
-    try {
-      return JSON.parse(fs.readFileSync(filePath, "utf8")) as T;
-    } catch {
-      // next
-    }
-  }
-  return null;
-}
 
 function centerDistanceDeg(a: { lat: number; lng: number }, b: { lat: number; lng: number }) {
   const latDist = Math.abs(a.lat - b.lat);
@@ -107,8 +92,10 @@ function buildAiSummary(dispute: DisputeArea, warHits: number, score: number): s
   return parts.join(" · ");
 }
 
-function loadWarGdeltPoints(): GdeltPoint[] {
-  const raw = readJson<{ events?: ConflictEvent[] } | ConflictEvent[]>("gdelt-events.json");
+async function loadWarGdeltPoints(): Promise<GdeltPoint[]> {
+  const raw = await loadCloudStaticJson<{ events?: ConflictEvent[] } | ConflictEvent[]>(
+    "gdelt-events.json",
+  );
   const events = Array.isArray(raw) ? raw : raw?.events;
   if (!Array.isArray(events)) return [];
   return events
@@ -157,20 +144,12 @@ function zoneFromDispute(dispute: DisputeArea, warPoints: GdeltPoint[]): AiWarZo
   };
 }
 
-function loadDisputes(): DisputeArea[] {
-  const chunk = readJson<DisputeArea[]>("disputes.json");
-  if (Array.isArray(chunk)) return chunk;
-  const appData = readJson<{ disputes?: DisputeArea[] }>("app-data.json");
-  if (Array.isArray(appData?.disputes) && appData.disputes.length > 0) return appData.disputes;
-  return [];
-}
-
 /**
  * AI API 없이 데모: Natural Earth 분쟁 구역 + GDELT 전투 뉴스 밀도로 전쟁지역 자동 탐지.
  */
-export function detectAiWarZonesDemo(): AiWarZoneFeature[] {
-  const disputes = loadDisputes();
-  const warPoints = loadWarGdeltPoints();
+export async function detectAiWarZonesDemo(): Promise<AiWarZoneFeature[]> {
+  const disputes = await loadServerDisputes();
+  const warPoints = await loadWarGdeltPoints();
 
   const candidates = disputes.filter((dispute) => {
     if (isCombatHazard(dispute)) return true;

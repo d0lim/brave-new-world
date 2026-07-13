@@ -11,54 +11,66 @@ export type EconomyNewsGenre =
   | "energy"
   | "shipping"
   | "chips"
+  | "tech"
+  | "auto"
   | "markets";
 
 export type EconomyGenreFilter = EconomyNewsGenre | "all";
 
 export const ECONOMY_GENRE_ORDER: EconomyNewsGenre[] = [
-  "macro",
-  "infra",
+  "tech",
+  "chips",
+  "auto",
   "energy",
   "shipping",
-  "chips",
+  "infra",
+  "macro",
   "markets",
 ];
 
 const GENRE_LABELS: Record<LabelLanguage, Record<EconomyNewsGenre, string>> = {
   ko: {
-    macro: "거시",
-    infra: "인프라·투자",
-    energy: "에너지",
-    shipping: "물류·항로",
+    tech: "AI·빅테크",
     chips: "반도체",
-    markets: "시장·일반",
+    auto: "전기차·모빌리티",
+    energy: "에너지·메이저",
+    shipping: "물류·해운",
+    infra: "인프라·광물",
+    macro: "거시·정책",
+    markets: "시장·와이어",
   },
   en: {
-    macro: "Macro",
-    infra: "Infra · FDI",
-    energy: "Energy",
-    shipping: "Shipping",
-    chips: "Chips",
-    markets: "Markets",
+    tech: "AI · Big Tech",
+    chips: "Semiconductors",
+    auto: "EV · Mobility",
+    energy: "Energy majors",
+    shipping: "Shipping · Logistics",
+    infra: "Infra · Minerals",
+    macro: "Macro · Policy",
+    markets: "Markets · Wires",
   },
 };
 
 const GENRE_HINTS: Record<LabelLanguage, Record<EconomyNewsGenre, string>> = {
   ko: {
-    macro: "금리·인플레·중앙은행·IMF·관세·제재",
-    infra: "국제 인프라·개발은행·항만·전력·광물·FDI",
-    energy: "원유·가스·LNG·OPEC",
-    shipping: "수에즈·호르무즈·운임·해운",
-    chips: "반도체·TSMC·수출통제",
-    markets: "지수·증시·일반 비즈니스",
+    tech: "Apple · Microsoft · Google · Amazon · Meta · OpenAI",
+    chips: "Nvidia · TSMC · ASML · Samsung · SK hynix · Intel",
+    auto: "Tesla · BYD · Toyota · Hyundai · CATL · 배터리",
+    energy: "Exxon · Shell · Aramco · Chevron · OPEC · LNG",
+    shipping: "Maersk · COSCO · 운임 · 호르무즈 · 수에즈",
+    infra: "희토류 · 해저케이블 · 데이터센터 · FDI",
+    macro: "연준 · ECB · 관세 · 제재 · IMF",
+    markets: "Reuters · WSJ · CNBC · FT · 지수·속보",
   },
   en: {
-    macro: "Rates · inflation · central banks · IMF · tariffs",
-    infra: "Global infra · MDBs · ports · power · minerals · FDI",
-    energy: "Oil · gas · LNG · OPEC",
-    shipping: "Suez · Hormuz · freight · shipping",
-    chips: "Semiconductors · TSMC · export controls",
-    markets: "Indices · equities · general business",
+    tech: "Apple · Microsoft · Google · Amazon · Meta · OpenAI",
+    chips: "Nvidia · TSMC · ASML · Samsung · SK hynix · Intel",
+    auto: "Tesla · BYD · Toyota · Hyundai · CATL · batteries",
+    energy: "Exxon · Shell · Aramco · Chevron · OPEC · LNG",
+    shipping: "Maersk · COSCO · freight · Hormuz · Suez",
+    infra: "Rare earths · subsea cables · data centers · FDI",
+    macro: "Fed · ECB · tariffs · sanctions · IMF",
+    markets: "Reuters · WSJ · CNBC · FT · indices",
   },
 };
 

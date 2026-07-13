@@ -1,6 +1,7 @@
 "use client";
 
 import { SoundMuteControl } from "@/components/SoundMuteControl";
+import { brandName } from "@/lib/brand";
 import type { LabelLanguage } from "@/lib/layerPrefs";
 import { ACTIVE_LAYER_CAP_DEFAULT, ACTIVE_LAYER_CAP_ULTRA } from "@/lib/layerExclusiveCap";
 import { t } from "@/lib/uiStrings";
@@ -25,8 +26,8 @@ export function EntryCautionOverlay({ lang, onContinue }: EntryCautionOverlayPro
         <p className="text-center text-sm font-bold tracking-wide text-amber-200 sm:text-base">
           {t("entryCautionMustRead", lang)}
         </p>
-        <p className="mt-3 text-center text-[11px] font-medium uppercase tracking-[0.42em] text-amber-200/70">
-          Conflict View
+        <p className="mt-3 text-center text-[11px] font-medium tracking-[0.28em] text-amber-200/70 sm:tracking-[0.36em]">
+          {brandName(lang)}
         </p>
         <h1
           id="entry-caution-title"

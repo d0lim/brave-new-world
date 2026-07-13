@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 const TTL_MS = 4 * 60 * 60 * 1000;
 
 async function loadEconomicCenters(): Promise<StaticPoint[]> {
-  const snapshot = loadLocalStaticPoints("economic-centers.json");
+  const snapshot = await loadLocalStaticPoints("economic-centers.json");
   if (snapshot.length > 0) return snapshot;
   return [];
 }

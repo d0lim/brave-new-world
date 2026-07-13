@@ -36,7 +36,7 @@ export async function GET(request: Request) {
 
   try {
     if (layer === "military-base-areas") {
-      const result = queryViewportMilitaryBaseAreas({
+      const result = await queryViewportMilitaryBaseAreas({
         lat,
         lng,
         radiusDeg,
@@ -60,7 +60,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "invalid-layer", points: [] }, { status: 400 });
     }
 
-    const result = queryViewportPoints(layer, {
+    const result = await queryViewportPoints(layer, {
       lat,
       lng,
       radiusDeg,

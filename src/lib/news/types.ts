@@ -13,6 +13,9 @@ export type MediaTrustTier = 1 | 2 | 3;
 
 export type HeroStatus = "confirmed" | "breaking" | "unverified";
 
+/** 내부 1~10 눈금 → 유저 S/A/B */
+export type BreakingUiRank = "S" | "A" | "B";
+
 export type NewsFeedTopic = "defense" | "economy";
 
 export type { EconomyNewsGenre, EconomyGenreFilter } from "@/lib/news/economyGenres";
@@ -38,7 +41,12 @@ export type NewsStreamItem = {
 
 export type HeroBreakingItem = NewsStreamItem & {
   heroStatus: HeroStatus;
+  /** grade × 10 — 정렬·하위 호환 */
   urgencyScore: number;
+  /** 내부 1~10 */
+  breakingGrade: number;
+  /** S=SOS · A=배너 · B=시트만 */
+  breakingRank: BreakingUiRank;
   ageMinutes: number;
   clusterId?: string;
 };

@@ -122,7 +122,7 @@ export const VIEWER_CHROME: Record<ViewerMode, ViewerChromePreset> = {
     },
     navProfile: NAV_MENU_GROUPS,
     searchPlaceholder: "지명 · 국가 · 분쟁 검색",
-    navHeaderLabel: "멋진신세계",
+    navHeaderLabel: "멋진 신세계",
     modePickerTitle: "지정학",
     modePickerTagline: "전선 · GDELT · Telegram OSINT",
     modePickerBullets: [
@@ -149,7 +149,7 @@ export const VIEWER_CHROME: Record<ViewerMode, ViewerChromePreset> = {
     },
     navProfile: ECON_NAV_MENU_GROUPS,
     searchPlaceholder: "유가 · 제재 · 항로 · 허브 검색",
-    navHeaderLabel: "멋진신세계 · 시장",
+    navHeaderLabel: "멋진 신세계 · 시장",
     modePickerTitle: "경제 · 시장",
     modePickerTagline: "유가 · VIX · 제재 · 물류",
     modePickerBullets: [

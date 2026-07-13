@@ -203,7 +203,7 @@ export const NEWS_LAYER_SOURCE_CATALOG: NewsLayerSourceNote[] = [
     source: "Curated seed",
     url: "src/data/logisticsRiskPoints.ts",
     cadence: "Project versioned",
-    attribution: "멋진신세계 editorial",
+    attribution: "멋진 신세계 editorial",
     notes:
       "Maritime chokepoints (Suez, Hormuz, Malacca, etc.) and critical logistics hubs (Eurotunnel, Crimea bridge). Hover shows risk note and related macro tickers.",
     status: "shipped",

@@ -53,7 +53,7 @@ const UI = {
   },
   domainGateTitle: { ko: "어느 창으로 들어설까요?", en: "Which window will you enter?" },
   domainGateSubtitle: {
-    ko: "포화의 창, 혹은 이익의 창 — 멋진신세계의 두 문",
+    ko: "포화의 창, 혹은 이익의 창 — 멋진 신세계의 두 문",
     en: "The window of shells, or of fortune — two doors into Brave New World",
   },
   domainUltraLiteLabel: { ko: "Ultra-Lite 모드", en: "Ultra-Lite mode" },

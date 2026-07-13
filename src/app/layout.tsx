@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Cormorant_Garamond, Gowun_Batang } from "next/font/google";
+import { Cormorant_Garamond } from "next/font/google";
 import localFont from "next/font/local";
 import "./globals.css";
 
@@ -14,11 +14,10 @@ const geistMono = localFont({
   weight: "100 900",
 });
 
-/** 환영 편지지 — 옛 고문헌·필사본 느낌의 한글 바탕 */
-const letterClassical = Gowun_Batang({
-  weight: ["400", "700"],
-  subsets: ["latin"],
-  variable: "--font-letter-serif",
+/** 환영 편지지 — Griun PolSensibility 필체 */
+const letterHand = localFont({
+  src: "./fonts/Griun_PolSensibility-Rg.ttf",
+  variable: "--font-letter-hand",
   display: "swap",
 });
 
@@ -32,7 +31,7 @@ const letterScript = Cormorant_Garamond({
 });
 
 export const metadata: Metadata = {
-  title: "멋진신세계",
+  title: "멋진 신세계",
   description:
     "Aldous Huxley 《Brave New World》를 모티브로—전쟁과 이익이 같은 지도를 공유하는 3D 지구본 관측대",
 };
@@ -45,7 +44,7 @@ export default function RootLayout({
   return (
     <html lang="ko" suppressHydrationWarning style={{ background: "#02040a" }}>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} ${letterClassical.variable} ${letterScript.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} ${letterHand.variable} ${letterScript.variable} antialiased`}
         style={{
           background: "#02040a",
           minHeight: "100vh",

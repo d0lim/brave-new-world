@@ -1,6 +1,6 @@
 /** 사용자-facing 브랜드. 인프라 식별자(conflict-view, geowatch-*)는 유지. */
 export const BRAND_NAME = {
-  ko: "멋진신세계",
+  ko: "멋진 신세계",
   en: "Brave New World",
 } as const;
 

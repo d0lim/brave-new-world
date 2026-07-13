@@ -1,4 +1,4 @@
-# 멋진신세계 (Brave New World)
+# 멋진 신세계 (Brave New World)
 
 Aldous Huxley 《Brave New World》를 모티브로 한 3D 지구본 관측대입니다. 한쪽에서는 포화가 울리고 공습 사이렌이 울려 대는데, 다른 한쪽에서는 누군가가 돈을 법니다—그 서사시를 한 지도 위에 겹쳐 둡니다.
 

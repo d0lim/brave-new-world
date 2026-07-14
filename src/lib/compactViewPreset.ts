@@ -61,6 +61,7 @@ export const COMPACT_ECONOMY_PRESETS: CompactChipDef[] = [
       showShippingLanes: true,
       showPorts: true,
       showLogisticsRisk: true,
+      showCriticalNodes: true,
     },
   },
   {

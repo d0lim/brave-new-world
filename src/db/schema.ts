@@ -329,6 +329,32 @@ export const disputeHatchBuilds = sqliteTable(
   }),
 );
 
+/**
+ * 동영상 뉴스 메타 스냅샷 (YouTube Atom → 제목·썸네일·URL만).
+ * 본 `news_stream_*` 와 분리 — 클릭 재생용.
+ */
+export const videoNewsSnapshots = sqliteTable(
+  "video_news_snapshots",
+  {
+    /** e.g. video:defense:ko | video:economy:en */
+    cacheKey: text("cache_key").primaryKey(),
+    topic: text("topic").notNull(),
+    lang: text("lang").notNull().default("ko"),
+    packages: text("packages"),
+    /** JSON: VideoNewsPayload */
+    payloadJson: text("payload_json").notNull(),
+    itemCount: integer("item_count").notNull().default(0),
+    fetchedAt: text("fetched_at").notNull(),
+    ingestedAt: text("ingested_at")
+      .notNull()
+      .default(sql`(datetime('now'))`),
+  },
+  (t) => ({
+    fetchedIdx: index("idx_video_news_fetched").on(t.fetchedAt),
+    topicIdx: index("idx_video_news_topic").on(t.topic),
+  }),
+);
+
 /** Cron / 빌드 실행 로그 */
 export const ingestRuns = sqliteTable("ingest_runs", {
   id: integer("id").primaryKey({ autoIncrement: true }),
@@ -348,6 +374,7 @@ export type NewUkraineControlPathRow = typeof ukraineControlPaths.$inferInsert;
 export type UkraineControlBuildRow = typeof ukraineControlBuilds.$inferSelect;
 export type NewsStreamSnapshotRow = typeof newsStreamSnapshots.$inferSelect;
 export type NewsStreamItemRow = typeof newsStreamItems.$inferSelect;
+export type VideoNewsSnapshotRow = typeof videoNewsSnapshots.$inferSelect;
 export type AisVesselRow = typeof aisVessels.$inferSelect;
 export type AdsbAircraftRow = typeof adsbAircraft.$inferSelect;
 export type SubmarineTunnelRow = typeof submarineTunnels.$inferSelect;

@@ -8,7 +8,7 @@ import {
 import type { GlobeLodTier } from "@/lib/globeLod";
 import { useSoundStream, type PlaySoundOptions } from "@/hooks/useSoundStream";
 
-/** 공습경보·A급 속보 타전 버스 — 티커/일반 UI 클릭음은 차단 */
+/** 공습경보·A급 속보 타전·양피지 UI 버스 — 티커/일반 UI 클릭음은 차단 */
 export const CV_SOUND_EVENT = "cv-sound";
 
 /** 버스 허용 이벤트 */
@@ -17,6 +17,9 @@ const DASHBOARD_BUS_EVENT_IDS = new Set<AudioEventId>([
   "tzeva-all-clear",
   "neptun-air-alert",
   "hero-breaking",
+  "parchment-unfold",
+  "parchment-fold",
+  "parchment-flyaway",
 ]);
 
 export type DashboardSoundDetail = {
@@ -42,6 +45,33 @@ export function emitBreakingDispatchSound() {
     force: true,
     volumeScale: 0.9,
     durationMs: 9000,
+  });
+}
+
+/** 양피지 펼칠 때 — 종이 바스락 */
+export function emitParchmentUnfoldSound() {
+  emitDashboardSound("parchment-unfold", {
+    force: true,
+    volumeScale: 1,
+    /** waveVolume으로 루프 버스트 방지 · 클립 한 번만 */
+    durationMs: 3600,
+    waveVolume: { minFactor: 1, maxFactor: 1, periodMs: 2000 },
+  });
+}
+
+/** 양피지 접기 CTA — 접히는 소리 + 날아가는 소리 */
+export function emitParchmentFoldSound() {
+  emitDashboardSound("parchment-fold", {
+    force: true,
+    volumeScale: 1,
+    durationMs: 1200,
+    waveVolume: { minFactor: 1, maxFactor: 1, periodMs: 900 },
+    chain: {
+      eventId: "parchment-flyaway",
+      force: true,
+      volumeScale: 1.15,
+      overlap: true,
+    },
   });
 }
 
@@ -251,6 +281,9 @@ export function SoundEffectsBridge({
         volumeScale: detail.volumeScale,
         durationMs: detail.durationMs,
         force: detail.force,
+        overlap: detail.overlap,
+        chain: detail.chain,
+        waveVolume: detail.waveVolume,
       });
     };
     window.addEventListener(CV_SOUND_EVENT, onBus);

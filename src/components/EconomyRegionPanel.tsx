@@ -9,6 +9,7 @@ import {
 import { useNewsStreamContext } from "@/components/BottomIntelStack";
 import { NewsArticleCard } from "@/components/NewsArticleCard";
 import { ECONOMY_TIER_LABELS } from "@/lib/news/mediaTiers";
+import type { MapFlyTarget } from "@/lib/news/theaterMap";
 import { useLocale } from "@/contexts/LocaleContext";
 import { localizedDisplayText, useLocalizedTextMap } from "@/hooks/useLocalizedTextMap";
 
@@ -16,6 +17,7 @@ type EconomyRegionPanelProps = {
   selection: NavSelection;
   onClose: () => void;
   onOpenIntel: () => void;
+  onFlyToMap?: (target: MapFlyTarget) => void;
 };
 
 function matchesRegionKeywords(text: string, keywords: string[]): boolean {
@@ -27,6 +29,7 @@ export function EconomyRegionPanel({
   selection,
   onClose,
   onOpenIntel,
+  onFlyToMap,
 }: EconomyRegionPanelProps) {
   const { lang } = useLocale();
   const { payload } = useNewsStreamContext();
@@ -74,6 +77,7 @@ export function EconomyRegionPanel({
           ? localizedDisplayText(localizedMap, `summary:${item.id}`, item.summary)
           : undefined
       }
+      onFlyToMap={onFlyToMap}
     />
   );
 

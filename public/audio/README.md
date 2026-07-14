@@ -72,6 +72,9 @@
 | `panel-open` | 419493 |
 | `load-error` | 423169 |
 | `stream-disconnect` | 524205 |
+| `parchment-unfold` | [360646](https://freesound.org/s/360646/) · 종이 펼침 |
+| `parchment-fold` | [234886](https://freesound.org/s/234886/) · 접기(초반 컷) |
+| `parchment-flyaway` | 833599 · 날아가는 whoosh |
 
 ---
 

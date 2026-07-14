@@ -14,6 +14,11 @@ export type IngestEnv = {
    */
   NEWS_WARM_URL?: string;
   /**
+   * Next 동영상 뉴스 워밍 URL (YouTube Atom 메타 → D1)
+   * 예: https://your-app.example/api/video-news/warm
+   */
+  VIDEO_NEWS_WARM_URL?: string;
+  /**
    * Next AIS 워밍 URL (MarineTraffic → D1)
    * 예: https://your-app.example/api/ais/warm
    */

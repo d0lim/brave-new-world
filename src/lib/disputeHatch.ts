@@ -5,7 +5,7 @@ export type DisputeHatchStyle = "slash" | "backslash" | "horizontal" | "cross";
 /** 긴장·분쟁 등급 — 등급마다 고유 색·패턴 */
 export type TensionGrade = "combat" | "gray" | "high" | "medium" | "low";
 
-/** 하단 MapLegend(전쟁·외교·동맹) 색상과 맞춤 — 보라는 동맹 핀 전용 */
+/** 하단 MapLegend(전쟁·외교) 색상과 맞춤 — 동맹 핀은 틸(자홍 채널 제거) */
 export const TENSION_GRADE_STYLES: Record<
   TensionGrade,
   { outline: string; hatch: string; pattern: DisputeHatchStyle; label: string }

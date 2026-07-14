@@ -21,8 +21,12 @@ const COLUMN_INDEX = {
 };
 
 const ROOT_CATEGORY = {
+  "11": "Strategic developments",
+  "12": "Strategic developments",
+  "13": "Strategic developments",
   "14": "Protests",
   "15": "Riots",
+  "16": "Strategic developments",
   "17": "Strategic developments",
   "18": "Violence against civilians",
   "19": "Battles",

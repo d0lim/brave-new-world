@@ -57,7 +57,9 @@ export function applyBattlefieldPreset(
       });
     case "middle-east":
       return patch(current, {
+        // 호르무즈·홍해 등 위험 항로 — AIS·ADS-B(군용) 필수
         showLogisticsRisk: true,
+        showShippingLanes: true,
         showOilPipelines: true,
         showGasPipelines: true,
         showFirmsFires: true,

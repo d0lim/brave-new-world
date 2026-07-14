@@ -1,5 +1,9 @@
 import type { ConflictEvent, EventTier, GreatPowerScope } from "@/data/geoTypes";
 import { getZoomOutScale } from "@/lib/zoomScale";
+import {
+  classifyGdeltImportance,
+  type GdeltImportanceGrade,
+} from "@/lib/gdeltImportance";
 
 export { getZoomOutScale } from "@/lib/zoomScale";
 
@@ -9,7 +13,7 @@ export const ALLOWED_EVENT_TIERS: EventTier[] = ["war", "diplomatic", "alliance"
 export const TIER_LABELS: Record<EventTier, string> = {
   war: "전쟁·군사 충돌",
   diplomatic: "외교적 긴장",
-  alliance: "동맹국 갈등",
+  alliance: "동맹·축 관계",
   protest: "시위",
 };
 
@@ -28,9 +32,9 @@ export const TIER_COLORS: Record<
     dot: "rgba(251, 146, 60, 0.95)",
   },
   alliance: {
-    point: "rgba(217, 70, 239, 0.92)",
-    label: "rgba(250, 232, 255, 0.96)",
-    dot: "rgba(217, 70, 239, 0.95)",
+    point: "rgba(20, 184, 166, 0.92)",
+    label: "rgba(204, 251, 241, 0.96)",
+    dot: "rgba(20, 184, 166, 0.95)",
   },
   protest: {
     point: "rgba(226, 232, 240, 0.96)",
@@ -49,9 +53,14 @@ const DIPLOMATIC_PAIRS = new Set([
   "IND|CHN", "CHN|IND", "CHN|VNM", "VNM|CHN", "CHN|PHL", "PHL|CHN", "CHN|MYS", "MYS|CHN",
   "RUS|DEU", "DEU|RUS", "RUS|POL", "POL|RUS", "ISR|IRN", "IRN|ISR", "SAU|IRN", "IRN|SAU",
   "USA|IRN", "IRN|USA", "USA|RUS", "RUS|USA",
+  // 축 vs 서방·지역 대립
+  "USA|PRK", "PRK|USA", "JPN|PRK", "PRK|JPN", "USA|BLR", "BLR|USA",
+  "USA|SYR", "SYR|USA", "ISR|SYR", "SYR|ISR", "ISR|LBN", "LBN|ISR",
+  "GBR|RUS", "RUS|GBR", "FRA|RUS", "RUS|FRA", "DEU|IRN", "IRN|DEU",
+  "USA|VEN", "VEN|USA", "USA|CUB", "CUB|USA",
 ]);
 
-/** 동일 동맹·우호 블록 (블록 내부 actor1↔actor2 → alliance) */
+/** 동일 동맹·우호 블록 (블록 내부 actor1↔actor2 → alliance) — 서방·우호 */
 const ALLIANCE_BLOCS: ReadonlyArray<ReadonlySet<string>> = [
   new Set(["USA", "GBR", "FRA", "DEU", "POL", "TUR", "NOR", "ITA", "ESP", "NLD", "BEL", "CAN", "DNK", "CZE", "ROU"]),
   new Set(["USA", "JPN", "KOR", "AUS"]),
@@ -60,6 +69,12 @@ const ALLIANCE_BLOCS: ReadonlyArray<ReadonlySet<string>> = [
   new Set(["USA", "ISR"]),
   new Set(["SAU", "ARE", "QAT", "BHR", "KWT", "OMN"]),
 ];
+
+/** IRN–CHN–RUS–PRK 축 정렬 블록 — 내부 뉴스 → alliance (관계망) */
+const AXIS_ALIGNMENT_BLOC = new Set([
+  "IRN", "CHN", "RUS", "PRK", "BLR", "SYR", "IRQ", "YEM", "LBN",
+  "KAZ", "UZB", "TKM", "KGZ", "TJK", "CUB", "VEN", "MMR", "PAK",
+]);
 
 type Hotspot = { minLat: number; maxLat: number; minLng: number; maxLng: number };
 
@@ -71,6 +86,10 @@ const DIPLOMATIC_HOTSPOTS: Hotspot[] = [
   { minLat: 4, maxLat: 22, minLng: 98, maxLng: 122 },
   { minLat: 24, maxLat: 37, minLng: 68, maxLng: 78 },
   { minLat: 26, maxLat: 37, minLng: 73, maxLng: 97 },
+  /** 벨라루스·서부 러 */
+  { minLat: 51, maxLat: 57, minLng: 23, maxLng: 35 },
+  /** 중앙아시아 */
+  { minLat: 35, maxLat: 56, minLng: 50, maxLng: 87 },
 ];
 
 export const GREAT_POWERS = new Set([
@@ -82,6 +101,9 @@ export const GREAT_POWERS = new Set([
   "DEU",
   "JPN",
   "IND",
+  /** 축 허브 — 관계망 지정학 */
+  "IRN",
+  "PRK",
 ]);
 
 export type { GreatPowerScope };
@@ -104,7 +126,9 @@ function isDiplomaticPair(a: string | null | undefined, b: string | null | undef
 
 export function isAlliancePair(a: string | null | undefined, b: string | null | undefined) {
   if (!a || !b || a === b) return false;
-  return ALLIANCE_BLOCS.some((bloc) => bloc.has(a) && bloc.has(b));
+  if (ALLIANCE_BLOCS.some((bloc) => bloc.has(a) && bloc.has(b))) return true;
+  /** 축 정렬 블록 (이란·중·러·북 + 스포크) 내부 */
+  return AXIS_ALIGNMENT_BLOC.has(a) && AXIS_ALIGNMENT_BLOC.has(b);
 }
 
 function normalizeStoredTier(tier: EventTier | string | undefined): EventTier | null {
@@ -216,7 +240,7 @@ export function isDestructiveWar(event: ConflictEvent): boolean {
  * GDELT CAMEO → 지정학 4종.
  * - war: 전투·민간인 폭력 (파괴적)
  * - diplomatic: 적대·핫스팟 외교 긴장
- * - alliance: 동맹·우호국 간 마찰
+ * - alliance: 서방 동맹 내부 마찰 + IRN·CHN·RUS·PRK 축·스포크 관계 뉴스
  * - protest: 시위
  */
 export function classifyEventTier(event: ConflictEvent): EventTier | null {
@@ -279,19 +303,38 @@ export type ScoredEvent = ConflictEvent & {
   eventTier: EventTier;
   tensionScore: number;
   greatPowerScope: GreatPowerScope | null;
+  /** S/A/B/C — 지정학 뉴스 중요도 (S·A만 UI 강조) */
+  importanceGrade: GdeltImportanceGrade;
 };
 
 export function scoreEvents(events: ConflictEvent[]): ScoredEvent[] {
   const scored: ScoredEvent[] = [];
+  const now = Date.now();
 
   for (const event of events) {
     const tier = classifyEventTier(event);
     if (!tier) continue;
+    const tensionScore = getTensionScore(event, tier);
+    const greatPowerScope = getGreatPowerScope({ ...event, eventTier: tier });
+    const importanceGrade = classifyGdeltImportance(
+      {
+        eventTier: tier,
+        greatPowerScope,
+        tensionScore,
+        severity: event.severity,
+        createdAt: event.createdAt,
+        eventDate: event.eventDate,
+        category: event.category,
+        goldsteinScale: event.goldsteinScale,
+      },
+      now,
+    );
     scored.push({
       ...event,
       eventTier: tier,
-      tensionScore: getTensionScore(event, tier),
-      greatPowerScope: getGreatPowerScope({ ...event, eventTier: tier }),
+      tensionScore,
+      greatPowerScope,
+      importanceGrade,
     });
   }
 

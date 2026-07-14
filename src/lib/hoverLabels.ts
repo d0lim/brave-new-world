@@ -27,6 +27,7 @@ const STATIC_KIND: Record<string, Bi> = {
   chokepoint: { ko: "해상 초크포인트", en: "Maritime chokepoint" },
   "logistics-hub": { ko: "핵심 물류 거점", en: "Logistics hub" },
   "submarine-tunnel": { ko: "해저터널", en: "Submarine tunnel" },
+  "critical-node": { ko: "크리티컬 노드", en: "Critical node" },
 };
 
 const PATH_KIND: Partial<Record<TransportPath["kind"], Bi>> = {
@@ -42,6 +43,7 @@ const PATH_KIND: Partial<Record<TransportPath["kind"], Bi>> = {
   "dispute-zone": { ko: "분쟁·긴장 테두리", en: "Dispute / tension outline" },
   "dispute-hatch": { ko: "분쟁 빗금", en: "Dispute hatch" },
   "conflict-hatch": { ko: "분쟁 구역 빗금", en: "Conflict zone hatch" },
+  "axis-link": { ko: "축 관계망", en: "Axis relationship link" },
   "ua-axis": { ko: "UA 작전 축", en: "UA axis of advance" },
   "ru-axis": { ko: "RU 방어선", en: "RU defensive line" },
   "ua-advance": { ko: "UA 진격 방향", en: "UA advance" },

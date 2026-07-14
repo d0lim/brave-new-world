@@ -6,6 +6,8 @@ import {
   type NavSelection,
   type RegionBBox,
 } from "@/data/navRegions";
+import { HUB_DEFINITIONS } from "@/data/hubNav";
+import { gdeltImportanceRankWeight } from "@/lib/gdeltImportance";
 
 export type MenuRegionMatch = {
   id: string;
@@ -46,6 +48,28 @@ function matchesActors(event: RegionLocateInput, actors: string[] | undefined) {
 
 function flattenMenuRegions(): FlatMenuRegion[] {
   const regions: FlatMenuRegion[] = [];
+
+  for (const hub of HUB_DEFINITIONS) {
+    regions.push({
+      id: hub.id,
+      label: hub.label,
+      groupId: "axis-hubs",
+      bbox: hub.bbox,
+      actorCountries: [hub.iso, ...hub.allies.map((a) => a.code)],
+      strictGeo: false,
+    });
+    for (const claim of hub.claims) {
+      regions.push({
+        id: claim.id,
+        label: claim.label,
+        groupId: "axis-hubs",
+        parentLabel: hub.label,
+        bbox: claim.bbox,
+        actorCountries: [hub.iso],
+        strictGeo: false,
+      });
+    }
+  }
 
   for (const group of [CONFLICT_ZONE_GROUP, INTERCONTINENTAL_GROUP]) {
     for (const item of group.items) {
@@ -176,11 +200,12 @@ export function pickMenuCoreAlerts(
             : event.eventTier === "alliance"
               ? 2e11
               : 1e11;
+      const importanceBoost = gdeltImportanceRankWeight(event.importanceGrade);
 
       return {
         ...event,
         menuRegion,
-        alertScore: conflictBoost + tierBoost + eventRecencyMs(event),
+        alertScore: conflictBoost + importanceBoost + tierBoost + eventRecencyMs(event),
       };
     })
     .filter((event): event is MenuCoreAlert & { alertScore: number } => Boolean(event))

@@ -1,5 +1,6 @@
 import type { ExplorationPreset, NavMenuGroup, NavSelection } from "@/data/navRegions";
-import { NAV_MENU_GROUPS, toNavSelection } from "@/data/navRegions";
+import { toNavSelection } from "@/data/navRegions";
+import { HUB_NAV_GROUP } from "@/data/hubNav";
 import { navSelectionFromId } from "@/lib/theaterFocus";
 
 /** 경제 nav id → RSS 필터 키워드 */
@@ -17,11 +18,24 @@ export const ECON_REGION_KEYWORDS: Record<string, string[]> = {
   london: ["london", "ftse", "bank of england", "sterling"],
   "hong-kong": ["hong kong", "hang seng", "china markets"],
   "taiwan-chip": ["tsmc", "taiwan", "semiconductor", "chip"],
-  "red-sea-shipping": ["red sea", "shipping", "freight", "houthi"],
-  sanctions: ["sanctions", "ofac", "export control", "tariff"],
+  "nova-ai": ["ashburn", "northern virginia", "data center", "aws", "hyperscaler", "ai infra"],
+  "korea-fab": ["pyeongtaek", "yongin", "samsung", "hynix", "평택", "용인", "반도체"],
+  "kumamoto-fab": ["kumamoto", "구마모토", "tsmc japan", "japan fab"],
+  "arizona-fab": ["arizona", "phoenix", "tsmc arizona", "애리조나"],
+  "vietnam-mfg": ["vietnam", "베트남", "hanoi", "bac ninh", "foxconn", "samsung vietnam"],
+  "battery-nickel": ["indonesia", "nickel", "battery", "니켈", "배터리", "리튬"],
+  "fed-dc": ["federal reserve", "the fed", "fomc", "rate cut", "rate hike", "연준", "금리"],
+  "ecb-frankfurt": ["ecb", "european central bank", "frankfurt", "eur", "유럽중앙은행"],
+  "boj-tokyo": ["bank of japan", "boj", "yen", "엔화", "일본은행", "엔저"],
+  "pboc-shanghai": ["pboc", "yuan", "renminbi", "shanghai", "위안", "중국 인민은행", "상하이"],
+  "chicago-cme": ["cme", "chicago", "corn", "soybean", "wheat futures", "시카고", "곡물"],
+  "black-sea-grain": ["black sea", "odessa", "grain corridor", "wheat", "흑해", "곡물 회랑", "오데사"],
+  "pilbara-iron": ["pilbara", "iron ore", "perth", "australia mining", "철광", "퍼스"],
+  "chile-copper": ["chile", "copper", "codelco", "구리", "칠레"],
+  "lithium-aus": ["lithium", "리튬", "pilbara lithium", "배터리 광물"],
 };
 
-/** nav id → logisticsRiskPoints relatedTickers (override) */
+/** nav id → 관련 티커 힌트 */
 export const ECON_REGION_TICKERS: Record<string, string> = {
   hormuz: "Brent · DXY · VIX",
   suez: "Brent · DXY · VIX",
@@ -29,7 +43,21 @@ export const ECON_REGION_TICKERS: Record<string, string> = {
   malacca: "Shanghai · Hang Seng · Brent",
   panama: "S&P 500 · Brent",
   "taiwan-chip": "NASDAQ · Hang Seng · Shanghai",
-  "red-sea-shipping": "Brent · VIX",
+  "nova-ai": "NASDAQ · NVDA · MSFT",
+  "korea-fab": "KOSPI · Samsung · SK Hynix",
+  "kumamoto-fab": "Nikkei · TSM · NASDAQ",
+  "arizona-fab": "NASDAQ · TSM · SOX",
+  "vietnam-mfg": "VN-Index · USD/VND",
+  "battery-nickel": "Nickel · Lithium · EV",
+  "fed-dc": "DXY · US10Y · S&P 500",
+  "ecb-frankfurt": "EUR/USD · Bund · Stoxx",
+  "boj-tokyo": "USD/JPY · Nikkei · JGBs",
+  "pboc-shanghai": "USD/CNH · Hang Seng · CSI 300",
+  "chicago-cme": "Corn · Soy · Wheat",
+  "black-sea-grain": "Wheat · Corn · Brent",
+  "pilbara-iron": "Iron Ore · AUD · BHP",
+  "chile-copper": "Copper · CLP · Codelco",
+  "lithium-aus": "Lithium · AUD · EV",
 };
 
 export const ENERGY_CHOKEPOINTS_GROUP: NavMenuGroup = {
@@ -211,9 +239,10 @@ export const FINANCE_TRADE_GROUP: NavMenuGroup = {
   ],
 };
 
-export const SANCTIONS_SUPPLY_GROUP: NavMenuGroup = {
-  id: "sanctions-supply",
-  label: "제재 · 공급망 · 칩",
+/** 반도체·AI 인프라·배터리·이전 생산 */
+export const SUPPLY_MANUFACTURING_GROUP: NavMenuGroup = {
+  id: "supply-manufacturing",
+  label: "공급망 · 제조",
   items: [
     {
       id: "taiwan-chip",
@@ -221,28 +250,174 @@ export const SANCTIONS_SUPPLY_GROUP: NavMenuGroup = {
       lat: 22.7,
       lng: 122.9,
       altitude: 0.98,
-      description: "반도체 공급망 · 푸젠·대만·오키나와 프레임",
+      description: "첨단 칩 · 대만 해협 공급망",
       bbox: { minLat: 18.2, maxLat: 27.2, minLng: 116.8, maxLng: 129.0 },
       subItems: [],
     },
     {
-      id: "red-sea-shipping",
-      label: "홍해 · 운송",
-      lat: 15.0,
-      lng: 42.0,
-      altitude: 1.0,
-      description: "운임·보험 · 우회 항로",
-      bbox: { minLat: 12, maxLat: 20, minLng: 38, maxLng: 45 },
+      id: "korea-fab",
+      label: "평택 · 용인",
+      lat: 37.12,
+      lng: 127.2,
+      altitude: 0.72,
+      description: "삼성·SK하이닉스 메모리·파운드리",
+      bbox: { minLat: 36.6, maxLat: 37.7, minLng: 126.6, maxLng: 127.8 },
       subItems: [],
     },
     {
-      id: "sanctions",
-      label: "제재 · OFAC",
+      id: "arizona-fab",
+      label: "애리조나 Fab",
+      lat: 33.3,
+      lng: -111.75,
+      altitude: 0.95,
+      description: "TSMC · 미국 온쇼어링",
+      bbox: { minLat: 32.6, maxLat: 34.0, minLng: -112.8, maxLng: -110.8 },
+      subItems: [],
+    },
+    {
+      id: "kumamoto-fab",
+      label: "구마모토 Fab",
+      lat: 32.8,
+      lng: 130.71,
+      altitude: 0.9,
+      description: "TSMC 일본 · 일본 반도체 르네상스",
+      bbox: { minLat: 32.2, maxLat: 33.4, minLng: 130.0, maxLng: 131.4 },
+      subItems: [],
+    },
+    {
+      id: "nova-ai",
+      label: "노스버지니아 AI",
+      lat: 39.04,
+      lng: -77.49,
+      altitude: 0.95,
+      description: "Ashburn · 하이퍼스케일 DC · AI 인프라",
+      bbox: { minLat: 38.5, maxLat: 39.5, minLng: -78.0, maxLng: -76.8 },
+      subItems: [],
+    },
+    {
+      id: "vietnam-mfg",
+      label: "베트남 제조",
+      lat: 21.0,
+      lng: 106.5,
+      altitude: 1.25,
+      description: "전자기기·조립 · 차이나+1",
+      bbox: { minLat: 10.0, maxLat: 23.0, minLng: 102.0, maxLng: 110.0 },
+      subItems: [],
+    },
+    {
+      id: "battery-nickel",
+      label: "인니 니켈 · 배터리",
+      lat: -2.5,
+      lng: 118.0,
+      altitude: 1.65,
+      description: "EV 배터리 원료 · 다운스트림 투자",
+      bbox: { minLat: -11, maxLat: 6, minLng: 95, maxLng: 141 },
+      subItems: [],
+    },
+  ],
+};
+
+/** 중앙은행 · 환율 · 금리 사이클 */
+export const RATES_CURRENCY_GROUP: NavMenuGroup = {
+  id: "rates-currency",
+  label: "통화 · 금리",
+  items: [
+    {
+      id: "fed-dc",
+      label: "연준 · 워싱턴",
       lat: 38.9,
-      lng: -77.0,
+      lng: -77.04,
+      altitude: 1.15,
+      description: "FOMC · DXY · 미 국채",
+      bbox: { minLat: 37.5, maxLat: 40.5, minLng: -79, maxLng: -75 },
+      subItems: [],
+    },
+    {
+      id: "ecb-frankfurt",
+      label: "ECB · 프랑크푸르트",
+      lat: 50.11,
+      lng: 8.68,
+      altitude: 1.05,
+      description: "유로 정책금리 · Bund",
+      bbox: { minLat: 49.2, maxLat: 51.0, minLng: 7.5, maxLng: 10.0 },
+      subItems: [],
+    },
+    {
+      id: "boj-tokyo",
+      label: "일본은행 · 도쿄",
+      lat: 35.68,
+      lng: 139.76,
+      altitude: 1.0,
+      description: "엔화 · YCC · Nikkei",
+      bbox: { minLat: 34.8, maxLat: 36.5, minLng: 138.5, maxLng: 141.0 },
+      subItems: [],
+    },
+    {
+      id: "pboc-shanghai",
+      label: "인민은행 · 상하이",
+      lat: 31.23,
+      lng: 121.47,
+      altitude: 1.05,
+      description: "위안 · 신용·부동산 리스크",
+      bbox: { minLat: 29.5, maxLat: 32.5, minLng: 119.5, maxLng: 123.0 },
+      subItems: [],
+    },
+  ],
+};
+
+/** 곡물 · 금속 · 배터리 광물 */
+export const COMMODITIES_FOOD_GROUP: NavMenuGroup = {
+  id: "commodities-food",
+  label: "원자재 · 식량",
+  items: [
+    {
+      id: "chicago-cme",
+      label: "시카고 · CME",
+      lat: 41.88,
+      lng: -87.63,
+      altitude: 1.05,
+      description: "곡물·유지 선물 · 글로벌 가격 기준",
+      bbox: { minLat: 40.8, maxLat: 42.5, minLng: -88.5, maxLng: -86.5 },
+      subItems: [],
+    },
+    {
+      id: "black-sea-grain",
+      label: "흑해 곡물 회랑",
+      lat: 44.5,
+      lng: 33.5,
       altitude: 1.35,
-      description: "미국·EU 제재 · SWIFT",
-      bbox: { minLat: 35, maxLat: 42, minLng: -82, maxLng: -72 },
+      description: "밀·옥수수 · 오데사–보스포루스",
+      bbox: { minLat: 40, maxLat: 48, minLng: 28, maxLng: 42 },
+      subItems: [],
+    },
+    {
+      id: "pilbara-iron",
+      label: "필바라 · 철광",
+      lat: -22.0,
+      lng: 118.5,
+      altitude: 1.35,
+      description: "호주 철광석 · 중국 수요",
+      bbox: { minLat: -26, maxLat: -18, minLng: 114, maxLng: 122 },
+      subItems: [],
+    },
+    {
+      id: "chile-copper",
+      label: "칠레 구리",
+      lat: -23.5,
+      lng: -69.5,
+      altitude: 1.4,
+      description: "세계 구리 공급 · 전력망·EV",
+      bbox: { minLat: -28, maxLat: -18, minLng: -72, maxLng: -66 },
+      subItems: [],
+    },
+    {
+      id: "lithium-aus",
+      label: "호주 리튬",
+      lat: -30.75,
+      lng: 121.5,
+      altitude: 1.25,
+      description: "배터리급 리튬 · EV 원료",
+      bbox: { minLat: -33, maxLat: -28, minLng: 118, maxLng: 125 },
       subItems: [],
     },
   ],
@@ -251,8 +426,10 @@ export const SANCTIONS_SUPPLY_GROUP: NavMenuGroup = {
 export const ECON_NAV_MENU_GROUPS: NavMenuGroup[] = [
   ENERGY_CHOKEPOINTS_GROUP,
   ENERGY_HUBS_GROUP,
+  RATES_CURRENCY_GROUP,
   FINANCE_TRADE_GROUP,
-  SANCTIONS_SUPPLY_GROUP,
+  SUPPLY_MANUFACTURING_GROUP,
+  COMMODITIES_FOOD_GROUP,
 ];
 
 export const ECON_EXPLORATION_PRESETS: ExplorationPreset[] = [
@@ -264,30 +441,30 @@ export const ECON_EXPLORATION_PRESETS: ExplorationPreset[] = [
     groupId: ENERGY_CHOKEPOINTS_GROUP.id,
   },
   {
-    id: "suez",
-    label: "수에즈",
-    tagline: "운하 · 운임",
-    navItem: ENERGY_CHOKEPOINTS_GROUP.items[1]!,
-    groupId: ENERGY_CHOKEPOINTS_GROUP.id,
+    id: "fed-dc",
+    label: "연준",
+    tagline: "금리 · DXY",
+    navItem: RATES_CURRENCY_GROUP.items[0]!,
+    groupId: RATES_CURRENCY_GROUP.id,
   },
   {
     id: "taiwan-chip",
     label: "대만·칩",
     tagline: "TSMC · NASDAQ",
-    navItem: SANCTIONS_SUPPLY_GROUP.items[0]!,
-    groupId: SANCTIONS_SUPPLY_GROUP.id,
+    navItem: SUPPLY_MANUFACTURING_GROUP.items[0]!,
+    groupId: SUPPLY_MANUFACTURING_GROUP.id,
   },
   {
-    id: "nyc",
-    label: "뉴욕",
-    tagline: "Fed · S&P",
-    navItem: FINANCE_TRADE_GROUP.items[0]!,
-    groupId: FINANCE_TRADE_GROUP.id,
+    id: "chicago-cme",
+    label: "시카고",
+    tagline: "곡물 선물",
+    navItem: COMMODITIES_FOOD_GROUP.items[0]!,
+    groupId: COMMODITIES_FOOD_GROUP.id,
   },
 ];
 
 export function getNavMenuGroups(mode: "conflict" | "economy"): NavMenuGroup[] {
-  return mode === "economy" ? ECON_NAV_MENU_GROUPS : NAV_MENU_GROUPS;
+  return mode === "economy" ? ECON_NAV_MENU_GROUPS : [HUB_NAV_GROUP as unknown as NavMenuGroup];
 }
 
 export function econNavSelectionFromId(id: string, parentLabel?: string): NavSelection | null {

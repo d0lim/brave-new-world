@@ -103,6 +103,16 @@ export function liveNewsPollMs(): number {
   return isClientApiStubMode() ? 90_000 : 150_000;
 }
 
+/** 동영상 뉴스(메타) — 본 뉴스보다 훨씬 느리게 */
+export function liveVideoNewsPollMs(): number {
+  return isClientApiStubMode() ? 5 * 60_000 : 10 * 60_000;
+}
+
+/** 동영상 클립 상한 (클릭 재생 · 카드만) */
+export function liveVideoNewsFetchMax(): number {
+  return isClientApiStubMode() ? 24 : 12;
+}
+
 /** 카메라 조작·백그라운드 탭 중 라이브 새로고침 보류 */
 export function shouldDeferLiveNetworkRefresh(cameraMoving: boolean): boolean {
   if (isClientApiStubMode()) return false;

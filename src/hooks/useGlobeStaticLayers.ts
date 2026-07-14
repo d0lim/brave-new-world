@@ -25,6 +25,9 @@ import {
 } from "@/lib/staticLayerLod";
 import { filterStaticPointsForView } from "@/lib/staticGlobe";
 import { LOGISTICS_RISK_POINTS } from "@/data/logisticsRiskPoints";
+import { criticalNodesAsStaticPoints } from "@/data/criticalNodes";
+
+const CRITICAL_NODE_STATIC_POINTS = criticalNodesAsStaticPoints();
 
 type ViewState = { lat: number; lng: number; altitude: number };
 
@@ -136,6 +139,7 @@ export function useGlobeStaticLayers(options: {
   showAirports: boolean;
   showPorts: boolean;
   showLogisticsRisk?: boolean;
+  showCriticalNodes?: boolean;
   showMilitaryBases: boolean;
   showResources: boolean;
   showCableLandings: boolean;
@@ -792,6 +796,7 @@ export function useGlobeStaticLayers(options: {
     if (options.showIntelHotspots) merged.push(...intelHotspots);
     if (options.showLngTerminals) merged.push(...lngTerminals);
     if (options.showLogisticsRisk) merged.push(...LOGISTICS_RISK_POINTS);
+    if (options.showCriticalNodes) merged.push(...CRITICAL_NODE_STATIC_POINTS);
     if (options.showSubmarineTunnels) merged.push(...submarineTunnels);
     return filterStaticPointsForView(
       merged,
@@ -819,6 +824,7 @@ export function useGlobeStaticLayers(options: {
     options.showInternetExchanges,
     options.showLngTerminals,
     options.showLogisticsRisk,
+    options.showCriticalNodes,
     options.showMilitaryBases,
     options.showNuclearSites,
     options.showPorts,
@@ -934,6 +940,7 @@ export function useGlobeStaticLayers(options: {
       spaceLaunches: spaceLaunches.length,
       intelHotspots: intelHotspots.length,
       logisticsRisk: LOGISTICS_RISK_POINTS.length,
+      criticalNodes: CRITICAL_NODE_STATIC_POINTS.length,
       conflictZones: conflictZones.length,
       armsEmbargoZones: armsEmbargoZones.length,
     },

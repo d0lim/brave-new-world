@@ -98,6 +98,7 @@ const CONFLICT_THEATER_LAYERS: Record<ConflictConceptTheater, LayerPatch> = {
   },
 };
 
+/** 지경학 에너지·초크 — 전선/GDELT/군사 제외, 파이프·항로·초크만 */
 const ENERGY_CHOKE_LAYERS: LayerPatch = {
   showOilPipelines: true,
   showGasPipelines: true,
@@ -105,33 +106,53 @@ const ENERGY_CHOKE_LAYERS: LayerPatch = {
   showShippingLanes: true,
   showLogisticsRisk: true,
   showPorts: true,
-  showWarZones: true,
-  showDiplomaticTension: true,
+  showWarZones: false,
+  showDiplomaticTension: false,
+  showGdeltWar: false,
+  showGdeltDiplomatic: false,
+  showTelegramOsint: false,
+  showUsCarriers: false,
+  showMilitaryActivity: false,
+  showUcdpEvents: false,
+  showConflictZones: false,
+  showUkraineControl: false,
 };
 
 const FINANCE_HUB_LAYERS: LayerPatch = {
   showEconomicCenters: true,
-  showSanctionsEntities: true,
   showInternetExchanges: true,
   showPorts: true,
 };
 
 const CHIP_SUPPLY_LAYERS: LayerPatch = {
   showAiDataCenters: true,
-  showSanctionsEntities: true,
   showShippingLanes: true,
   showPorts: true,
   showInternetExchanges: true,
 };
 
+const AI_INFRA_LAYERS: LayerPatch = {
+  showAiDataCenters: true,
+  showInternetExchanges: true,
+  showEconomicCenters: true,
+  showPorts: true,
+};
+
+const COMMODITY_LAYERS: LayerPatch = {
+  showPorts: true,
+  showShippingLanes: true,
+  showEconomicCenters: true,
+  showOilPipelines: true,
+};
+
+const RATES_LAYERS: LayerPatch = {
+  showEconomicCenters: true,
+  showInternetExchanges: true,
+};
+
 const GULF_ENERGY_HUB_LAYERS: LayerPatch = {
   ...ENERGY_CHOKE_LAYERS,
-  ...CARRIER_MIL_WATCH,
-  showUcdpEvents: true,
-  showConflictZones: false,
-  showGdeltWar: true,
-  showGdeltDiplomatic: true,
-  showTelegramOsint: true,
+  showLngTerminals: true,
 };
 
 const ECONOMY_HUB_LAYERS: Record<string, LayerPatch> = {
@@ -148,8 +169,21 @@ const ECONOMY_HUB_LAYERS: Record<string, LayerPatch> = {
   london: FINANCE_HUB_LAYERS,
   "hong-kong": FINANCE_HUB_LAYERS,
   "taiwan-chip": CHIP_SUPPLY_LAYERS,
-  "red-sea-shipping": ENERGY_CHOKE_LAYERS,
-  sanctions: { showSanctionsEntities: true, showEconomicCenters: true },
+  "korea-fab": CHIP_SUPPLY_LAYERS,
+  "arizona-fab": CHIP_SUPPLY_LAYERS,
+  "kumamoto-fab": CHIP_SUPPLY_LAYERS,
+  "nova-ai": AI_INFRA_LAYERS,
+  "vietnam-mfg": { showPorts: true, showShippingLanes: true, showEconomicCenters: true },
+  "battery-nickel": COMMODITY_LAYERS,
+  "fed-dc": RATES_LAYERS,
+  "ecb-frankfurt": RATES_LAYERS,
+  "boj-tokyo": RATES_LAYERS,
+  "pboc-shanghai": RATES_LAYERS,
+  "chicago-cme": COMMODITY_LAYERS,
+  "black-sea-grain": { ...COMMODITY_LAYERS, showLogisticsRisk: true },
+  "pilbara-iron": COMMODITY_LAYERS,
+  "chile-copper": COMMODITY_LAYERS,
+  "lithium-aus": COMMODITY_LAYERS,
 };
 
 /** 이란·페르시아만·호르무즈·레vant nav — 전투 이벤트 + 항모 */
@@ -175,13 +209,36 @@ function isIranGulfFrontNavId(key: string): boolean {
 /** nav id → 지정학 컨셉(전장) */
 export function conflictTheaterFromNavId(navId: string): ViewTheaterChoice {
   const key = navId.toLowerCase();
-  if (key === "ukraine" || key.startsWith("ukraine-")) return "russia-ukraine";
-  if (key === "korea" || key.includes("dmz") || key.includes("west-sea")) return "korea";
+  if (
+    key === "ukraine" ||
+    key.startsWith("ukraine-") ||
+    key === "hub-rus" ||
+    key.startsWith("claim-rus") ||
+    key.startsWith("ally-rus") ||
+    key.includes("hub-rus-")
+  ) {
+    return "russia-ukraine";
+  }
+  if (
+    key === "korea" ||
+    key.includes("dmz") ||
+    key.includes("west-sea") ||
+    key === "hub-prk" ||
+    key.startsWith("claim-prk") ||
+    key.startsWith("ally-prk") ||
+    key.includes("hub-prk-")
+  ) {
+    return "korea";
+  }
   if (
     key === "taiwan" ||
     key.includes("taiwan") ||
     key.includes("spratly") ||
-    key.includes("china-sea")
+    key.includes("china-sea") ||
+    key === "hub-chn" ||
+    key.startsWith("claim-chn") ||
+    key.startsWith("ally-chn") ||
+    key.includes("hub-chn-")
   ) {
     return "china-taiwan";
   }
@@ -193,7 +250,11 @@ export function conflictTheaterFromNavId(navId: string): ViewTheaterChoice {
     key === "hormuz" ||
     key === "persian-gulf" ||
     key.includes("israel") ||
-    key.includes("yemen")
+    key.includes("yemen") ||
+    key === "hub-irn" ||
+    key.startsWith("claim-irn") ||
+    key.startsWith("ally-irn") ||
+    key.includes("hub-irn-")
   ) {
     return "middle-east";
   }
@@ -212,11 +273,36 @@ export function conceptLayersForConflict(theater: ViewTheaterChoice): LayerPatch
 
 export function conceptLayersForConflictNavId(navId: string): LayerPatch {
   const key = navId.toLowerCase();
+  const hubAxis: LayerPatch = {
+    showAxisNetwork: true,
+    showGdeltAlliance: true,
+    showDiplomaticTension: true,
+    showWarZones: true,
+  };
+  if (key.startsWith("hub-") || key.startsWith("claim-") || key.startsWith("ally-")) {
+    if (key.includes("arms")) {
+      return {
+        ...conceptLayersForConflict(conflictTheaterFromNavId(navId)),
+        ...hubAxis,
+        showGdeltWar: true,
+      };
+    }
+    if (key.includes("regime") || key.includes("friction")) {
+      return {
+        ...conceptLayersForConflict(conflictTheaterFromNavId(navId)),
+        showAxisNetwork: false,
+        showDiplomaticTension: true,
+      };
+    }
+    return {
+      ...conceptLayersForConflict(conflictTheaterFromNavId(navId)),
+      ...hubAxis,
+    };
+  }
   if (isIranGulfFrontNavId(key)) {
     return {
       ...conceptLayersForConflict("middle-east"),
       ...MIDDLE_EAST_STACK,
-      // 이스라엘/레반트 nav만 경보 레이어 제안(자동 강제 아님 — 중동 ModePicker는 OFF)
       showTzevaAdom: false,
     };
   }
@@ -237,10 +323,39 @@ export function conceptLayersForEconomyNavId(navId: string): LayerPatch {
   if (key.includes("suez") || key.includes("bab-el") || key.includes("red-sea")) {
     return ENERGY_CHOKE_LAYERS;
   }
-  if (key.includes("taiwan") || key.includes("chip") || key.includes("tsmc")) {
+  if (
+    key.includes("taiwan") ||
+    key.includes("chip") ||
+    key.includes("tsmc") ||
+    key.includes("fab") ||
+    key.includes("korea")
+  ) {
     return CHIP_SUPPLY_LAYERS;
   }
-  if (key.includes("nyc") || key.includes("london") || key.includes("hong-kong") || key.includes("fed")) {
+  if (key.includes("ai") || key.includes("nova") || key.includes("ashburn") || key.includes("data")) {
+    return AI_INFRA_LAYERS;
+  }
+  if (
+    key.includes("fed") ||
+    key.includes("ecb") ||
+    key.includes("boj") ||
+    key.includes("pboc") ||
+    key.includes("rate")
+  ) {
+    return RATES_LAYERS;
+  }
+  if (
+    key.includes("grain") ||
+    key.includes("copper") ||
+    key.includes("lithium") ||
+    key.includes("iron") ||
+    key.includes("cme") ||
+    key.includes("nickel") ||
+    key.includes("battery")
+  ) {
+    return COMMODITY_LAYERS;
+  }
+  if (key.includes("nyc") || key.includes("london") || key.includes("hong-kong")) {
     return FINANCE_HUB_LAYERS;
   }
   return {};

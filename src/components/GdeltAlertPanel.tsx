@@ -3,6 +3,10 @@
 import type { MenuCoreAlert } from "@/lib/regionFilter";
 import { LocationPinIcon } from "@/components/LocationPinIcon";
 import { TIER_LABELS, isFreshEvent } from "@/data/eventTiers";
+import {
+  gdeltImportanceShortLabel,
+  isMarkedGdeltImportance,
+} from "@/lib/gdeltImportance";
 
 type GdeltAlertPanelProps = {
   alerts: MenuCoreAlert[];
@@ -64,22 +68,37 @@ export function GdeltAlertPanel({
               ? `${alert.menuRegion.parentLabel} · ${alert.menuRegion.label}`
               : alert.menuRegion.label;
             const fresh = isFreshEvent(alert);
+            const marked = isMarkedGdeltImportance(alert.importanceGrade);
 
             return (
               <li key={alert.id}>
                 <button
                   type="button"
                   onClick={() => onSelect(alert)}
-                  className="flex w-full gap-3 px-3 py-2.5 text-left transition hover:bg-orange-300/10"
+                  className={`flex w-full gap-3 px-3 py-2.5 text-left transition hover:bg-orange-300/10 ${
+                    marked ? "bg-orange-400/[0.06]" : ""
+                  }`}
                 >
                   <span className="relative mt-0.5 flex shrink-0 items-end">
-                    <LocationPinIcon tier={alert.eventTier} size={16} fresh={fresh} />
+                    <LocationPinIcon tier={alert.eventTier} size={16} fresh={fresh || marked} />
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px]">
-                      <span className="rounded-full border border-orange-300/30 bg-orange-400/10 px-1.5 py-0.5 text-[10px] text-orange-100/90">
-                        뉴스
-                      </span>
+                      {marked ? (
+                        <span
+                          className={`rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${
+                            alert.importanceGrade === "S"
+                              ? "border border-yellow-300/50 bg-yellow-400/20 text-yellow-100"
+                              : "border border-orange-300/40 bg-orange-400/15 text-orange-100"
+                          }`}
+                        >
+                          {gdeltImportanceShortLabel(alert.importanceGrade)}
+                        </span>
+                      ) : (
+                        <span className="rounded-full border border-orange-300/30 bg-orange-400/10 px-1.5 py-0.5 text-[10px] text-orange-100/90">
+                          뉴스
+                        </span>
+                      )}
                       <span className="font-medium text-orange-50">
                         {TIER_LABELS[alert.eventTier]}
                       </span>

@@ -52,18 +52,9 @@ const UI = {
     en: "Pick a focus, or leave Auto and follow the signals",
   },
   domainGateTitle: { ko: "어느 창으로 들어설까요?", en: "Which window will you enter?" },
-  domainGateSubtitle: {
-    ko: "포화의 창, 혹은 이익의 창 — 멋진 신세계의 두 문",
-    en: "The window of shells, or of fortune — two doors into Brave New World",
-  },
-  domainUltraLiteLabel: { ko: "Ultra-Lite 모드", en: "Ultra-Lite mode" },
-  domainUltraLiteHook: {
-    ko: "렉 싫으면 여기서 먼저 켜세요 — 내장 그래픽·8GB도 OK.",
-    en: "Hate lag? Turn this on first — works on integrated GPUs & 8GB RAM.",
-  },
   domainUltraLiteOnHint: {
-    ko: "켜짐 · 동시 레이어 최대 3개 · 저사양 권장",
-    en: "On · max 3 layers at once · recommended for low-spec PCs",
+    ko: "켜짐 · 동시 레이어 최대 3개 · 설정창 없이 가벼운 입장",
+    en: "On · max 3 layers · light entry, no extra setup screens",
   },
   domainUltraLiteOffHint: {
     ko: "꺼짐 · 동시 레이어 최대 5개",
@@ -273,6 +264,7 @@ const UI = {
     en: "Read energy, logistics, sea lanes, and markets",
   },
   welcomeLetterCta: { ko: "편지를 접고 신세계로", en: "Fold the letter — enter the New World" },
+  hubBriefCta: { ko: "편지를 접기", en: "Fold the letter" },
   entryCautionMustRead: { ko: "반드시 읽어주세요", en: "Please read this carefully" },
   entryCautionTitle: { ko: "주의", en: "Caution" },
   entryCautionSubtitle: {
@@ -295,6 +287,20 @@ const UI = {
     en: "• Air-raid siren: only when you fly via the alert chip/button\n• SOS Morse for S-grade breaking only (A = banner silent · Tier3 alone cannot be S)\n• NEPTUN / FIRMS combat: layer ON + event enters the viewport\n• Frontline (Ukraine / Middle East): LOD — far artillery/short blasts · mid artillery + quiet gunfire · close gunfire\n• Taiwan Strait: ticking tension · Korea / high-tension: rumble\n• Carrier deck: when a US carrier is in view\n• Economy ambient: pipeline > datacenter > port > economic hubs\n• Ticker, mode switch, and normal UI clicks stay silent",
   },
   entryCautionCta: { ko: "확인했습니다 — 편지로", en: "Got it — continue to letter" },
+  entryCautionSkip: { ko: "스킵하시겠습니까?", en: "Skip the intro?" },
+  entryCautionSkipHint: {
+    ko: "경고·편지를 건너뛰고 지정학·지경학 선택으로",
+    en: "Skip caution & letter — go to domain choice",
+  },
+  domainGateSubtitle: {
+    ko: "창을 고르면 바로 입장합니다 — 추가 세부 설정창 없음. 빠른 선택을 원하면 아래 초기화 모드를 켜세요.",
+    en: "Pick a window and enter at once — no extra setup screens. For a lighter start, turn on Init mode below.",
+  },
+  domainUltraLiteLabel: { ko: "초기화 모드 (가볍게)", en: "Init mode (lite)" },
+  domainUltraLiteHook: {
+    ko: "설정창 없이 가볍게 즐기기 — 레이어를 줄여 렉을 낮춥니다. 내장 그래픽·8GB도 OK.",
+    en: "Jump in light — fewer layers, less lag. Fine for integrated GPUs & 8GB RAM.",
+  },
   soundOn: { ko: "소리 켜짐", en: "Sound on" },
   soundOff: { ko: "소리 꺼짐", en: "Sound muted" },
   soundToggleLabel: { ko: "소리 on/off", en: "Sound on/off" },
@@ -336,8 +342,15 @@ const UI = {
   intelSheetNews: { ko: "Tier별 뉴스 · 분석", en: "Tier news · analysis" },
   intelSheetTelegram: { ko: "Telegram OSINT · Raw", en: "Telegram OSINT · Raw" },
   intelSheetViina: { ko: "VIINA · 우크라이나 전선", en: "VIINA · Ukraine front" },
+  intelSheetVideo: { ko: "동영상 뉴스 · 클릭 재생", en: "Video news · play on click" },
+  intelSheetVideoTab: { ko: "동영상 뉴스", en: "Video" },
   intelSheetEconomyNews: { ko: "경제 · RSS · 속보", en: "Economy · RSS · breaking" },
   intelSheetMarkets: { ko: "증시 · 매크로 · 지수", en: "Markets · macro · indices" },
+  hoverSheetVideo: { ko: "동영상 뉴스", en: "Video news" },
+  hoverSheetVideoHint: {
+    ko: "유튜브 메타만 표시합니다. 재생은 클릭 시에만 로드됩니다.",
+    en: "YouTube metadata only. Playback loads on click.",
+  },
   aiDigestLabel: { ko: "AI 요약 (참고용)", en: "AI digest (for reference)" },
   aiDigestFail: {
     ko: "캐시된 요약이 없습니다. 원문·규칙 기반 메모만 표시합니다.",

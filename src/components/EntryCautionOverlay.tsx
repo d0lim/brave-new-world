@@ -10,9 +10,15 @@ import { MAX_ON_LAYERS, MAX_ON_LAYERS_ECONOMY } from "@/lib/viewPackages";
 type EntryCautionOverlayProps = {
   lang: LabelLanguage;
   onContinue: () => void;
+  /** 경고·편지 스킵 → 지정학/지경학 선택 */
+  onSkipToDomain: () => void;
 };
 
-export function EntryCautionOverlay({ lang, onContinue }: EntryCautionOverlayProps) {
+export function EntryCautionOverlay({
+  lang,
+  onContinue,
+  onSkipToDomain,
+}: EntryCautionOverlayProps) {
   const soundWhenLines = t("entryCautionSoundWhen", lang).split("\n").filter(Boolean);
 
   return (
@@ -22,8 +28,19 @@ export function EntryCautionOverlay({ lang, onContinue }: EntryCautionOverlayPro
       aria-modal="true"
       aria-labelledby="entry-caution-title"
     >
-      <div className="my-auto w-full max-w-lg rounded-2xl border border-amber-400/30 bg-[#0c1018]/95 p-6 shadow-2xl sm:p-8">
-        <p className="text-center text-sm font-bold tracking-wide text-amber-200 sm:text-base">
+      <div className="relative my-auto w-full max-w-lg rounded-2xl border border-amber-400/30 bg-[#0c1018]/95 p-6 shadow-2xl sm:p-8">
+        <div className="absolute right-3 top-3 sm:right-4 sm:top-4">
+          <button
+            type="button"
+            onClick={onSkipToDomain}
+            title={t("entryCautionSkipHint", lang)}
+            className="rounded-full border border-slate-500/35 bg-slate-900/50 px-2.5 py-1 text-[10px] font-medium tracking-wide text-slate-400 transition hover:border-amber-300/35 hover:bg-amber-500/10 hover:text-amber-100/90"
+          >
+            {t("entryCautionSkip", lang)}
+          </button>
+        </div>
+
+        <p className="pr-24 text-center text-sm font-bold tracking-wide text-amber-200 sm:text-base">
           {t("entryCautionMustRead", lang)}
         </p>
         <p className="mt-3 text-center text-[11px] font-medium tracking-[0.28em] text-amber-200/70 sm:tracking-[0.36em]">

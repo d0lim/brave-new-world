@@ -20,6 +20,8 @@ export type LayerPrefs = {
   showPorts: boolean;
   /** 해상 초크포인트 · 핵심 물류 거점(터널·교량) */
   showLogisticsRisk: boolean;
+  /** Critical Node Atlas — 지정학/지경학 공통 크리티컬 노드 */
+  showCriticalNodes: boolean;
   showMilitaryBases: boolean;
   showResources: boolean;
   showNuclearSites: boolean;
@@ -57,6 +59,8 @@ export type LayerPrefs = {
   showNeptunPreviousTrails: boolean;
   /** 동아시아 ADIZ (KADIZ/JADIZ/TAIDIZ/북한/CADIZ) */
   showEastAsiaAdiz: boolean;
+  /** IRN–CHN–RUS–PRK 축·스포크 외교·군수·하이브리드 관계망 */
+  showAxisNetwork: boolean;
   labelLanguage: LabelLanguage;
 };
 
@@ -79,6 +83,7 @@ export const DEFAULT_LAYER_PREFS: LayerPrefs = {
   showAirports: false,
   showPorts: false,
   showLogisticsRisk: false,
+  showCriticalNodes: false,
   showMilitaryBases: false,
   showResources: false,
   showNuclearSites: false,
@@ -108,6 +113,7 @@ export const DEFAULT_LAYER_PREFS: LayerPrefs = {
   showNeptun: true,
   showNeptunPreviousTrails: true,
   showEastAsiaAdiz: false,
+  showAxisNetwork: false,
   labelLanguage: "ko",
 };
 

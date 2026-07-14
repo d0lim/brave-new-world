@@ -21,6 +21,7 @@ type IngestResult = {
   firmsCount: number;
   gdeltCount: number;
   newsWarm?: WarmResult;
+  videoNewsWarm?: WarmResult;
   aisWarm?: WarmResult;
   adsbWarm?: WarmResult;
   tunnelsWarm?: WarmResult;
@@ -75,6 +76,7 @@ async function runIngest(env: IngestEnv): Promise<IngestResult> {
   let gdeltCount = 0;
   let pruned: IngestResult["pruned"];
   let newsWarm: IngestResult["newsWarm"];
+  let videoNewsWarm: IngestResult["videoNewsWarm"];
   let aisWarm: IngestResult["aisWarm"];
   let adsbWarm: IngestResult["adsbWarm"];
   let tunnelsWarm: IngestResult["tunnelsWarm"];
@@ -87,7 +89,7 @@ async function runIngest(env: IngestEnv): Promise<IngestResult> {
       800,
       Math.max(50, readIntVar(env, "FIRMS_MAX_PER_THEATER", 400)),
     );
-    const gdeltMax = Math.min(800, Math.max(80, readIntVar(env, "GDELT_MAX_POINTS", 250)));
+    const gdeltMax = Math.min(400, Math.max(80, readIntVar(env, "GDELT_MAX_POINTS", 250)));
     const retentionHours = Math.min(
       168,
       Math.max(6, readIntVar(env, "RETENTION_HOURS", 48)),
@@ -112,6 +114,7 @@ async function runIngest(env: IngestEnv): Promise<IngestResult> {
 
     pruned = await pruneOldRows(env.DB, retentionHours);
     newsWarm = await warmEndpoint(env.NEWS_WARM_URL, env, "news");
+    videoNewsWarm = await warmEndpoint(env.VIDEO_NEWS_WARM_URL, env, "video-news");
     aisWarm = await warmEndpoint(env.AIS_WARM_URL, env, "ais");
     adsbWarm = await warmEndpoint(env.ADSB_WARM_URL, env, "adsb");
     tunnelsWarm = await warmEndpoint(env.TUNNELS_WARM_URL, env, "tunnels");
@@ -129,6 +132,7 @@ async function runIngest(env: IngestEnv): Promise<IngestResult> {
       firmsCount,
       gdeltCount,
       newsWarm,
+      videoNewsWarm,
       aisWarm,
       adsbWarm,
       tunnelsWarm,
@@ -152,6 +156,7 @@ async function runIngest(env: IngestEnv): Promise<IngestResult> {
         gdeltErrors,
         pruned,
         newsWarm,
+        videoNewsWarm,
         aisWarm,
         adsbWarm,
         tunnelsWarm,

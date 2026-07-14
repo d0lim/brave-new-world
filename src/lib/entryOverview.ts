@@ -58,18 +58,17 @@ function allBooleanLayersOff(base: LayerPrefs): LayerPrefs {
   return next;
 }
 
-/** 지정학 히어로 — 전쟁/긴장/GDELT + ADS-B(군용) + AIS */
+/** 지정학 히어로 — 전쟁/긴장/GDELT만 (축 관계망은 허브 nav 선택 시) */
 const CONFLICT_HERO_ON: Partial<LayerPrefs> = {
   showWarZones: true,
   showDiplomaticTension: true,
   showGdeltWar: true,
-  showMilitaryActivity: true,
-  showAis: true,
 };
 
 /**
  * 도메인 게이트 직후 첫 화면용 레이어.
- * 지정학: 전쟁·긴장·GDELT·ADS-B·AIS / 지경학: 항로·초크포인트·항구
+ * 지정학: 전쟁·긴장·GDELT / 지경학: 항로·초크포인트·항구
+ * (ADS-B·AIS는 ExplorationTabs·전장 프리셋에서만 ON)
  */
 export function buildDomainOverviewPrefs(
   mode: ViewerMode,
@@ -85,6 +84,7 @@ export function buildDomainOverviewPrefs(
       ...next,
       showShippingLanes: true,
       showLogisticsRisk: true,
+      showCriticalNodes: true,
       showPorts: true,
     };
   }
@@ -92,7 +92,6 @@ export function buildDomainOverviewPrefs(
   if (options?.ultraLite) {
     next = applyUltraLiteToLayerPrefs(next);
     if (mode === "conflict") {
-      // Ultra-Lite 캡 3: 전쟁·긴장·GDELT 우선 (ADS-B/AIS는 캡 밖이면 드롭)
       next = {
         ...next,
         showWarZones: true,
@@ -104,6 +103,7 @@ export function buildDomainOverviewPrefs(
         ...next,
         showShippingLanes: true,
         showLogisticsRisk: true,
+        showCriticalNodes: true,
         showPorts: true,
       };
     }

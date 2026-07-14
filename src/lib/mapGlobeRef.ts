@@ -7,6 +7,10 @@ export type GlobePointOfView = {
   lat: number;
   lng: number;
   altitude: number;
+  /** MapLibre pitch (degrees). Omitted → 0 / keep current on read. */
+  pitch?: number;
+  /** MapLibre bearing (degrees). */
+  bearing?: number;
 };
 
 export type MapGlobeControls = {
@@ -41,6 +45,8 @@ export function createMapGlobeMethods(
       lat: center.lat,
       lng: center.lng,
       altitude: mapLibreZoomToAltitude(map.getZoom()),
+      pitch: map.getPitch(),
+      bearing: map.getBearing(),
     };
   };
 
@@ -52,7 +58,13 @@ export function createMapGlobeMethods(
       if (!pov) return readPov();
 
       const alt = clampGlobeAltitude(pov.altitude);
-      const camera = globeViewToMapLibre({ lat: pov.lat, lng: pov.lng, altitude: alt });
+      const camera = globeViewToMapLibre({
+        lat: pov.lat,
+        lng: pov.lng,
+        altitude: alt,
+        pitch: pov.pitch,
+        bearing: pov.bearing,
+      });
 
       if (durationMs > 0) {
         map.easeTo({
@@ -71,7 +83,13 @@ export function createMapGlobeMethods(
         });
       }
 
-      return { lat: pov.lat, lng: pov.lng, altitude: alt };
+      return {
+        lat: pov.lat,
+        lng: pov.lng,
+        altitude: alt,
+        pitch: camera.pitch,
+        bearing: camera.bearing,
+      };
     },
 
     toGlobeCoords(x, y) {

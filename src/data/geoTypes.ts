@@ -138,11 +138,13 @@ export type TransportPath = {
     | "ukraine-ua-claim-hatch"
     | "neptun-trail"
     | "neptun-projection"
-    | "neptun-trail-archived";
+    | "neptun-trail-archived"
+    /** IRN–CHN–RUS–PRK 축·스포크 관계망 호 */
+    | "axis-link";
   name: string | null;
   scalerank: number;
   lengthKm: number | null;
-  /** NEPTUN 궤적 색상 오버라이드 */
+  /** NEPTUN 궤적 색상 오버라이드 · axis-link 관계색 */
   accentColor?: string;
   bbox: {
     minLat: number;
@@ -177,7 +179,9 @@ export type StaticPointKind =
   | "lng-terminal"
   | "chokepoint"
   | "logistics-hub"
-  | "submarine-tunnel";
+  | "submarine-tunnel"
+  /** Critical Node Atlas (MIT) — maritime/cables/energy/financial/tech */
+  | "critical-node";
 
 export type StaticPoint = {
   id: string;

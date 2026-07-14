@@ -11,12 +11,12 @@ export type EastAsiaAdizStyle = {
   pattern: "slash" | "backslash" | "horizontal" | "cross";
 };
 
-/** 최종 5국 네온 팔레트 (투명도 반영) */
+/** 5국 ADIZ — 한=시안 · 일=회 · 대=아조르 · 중=황토황 · 북=자홍 (외교주황·전투빨강 비겹침) */
 export const EAST_ASIA_ADIZ_STYLES: Record<EastAsiaAdizId, EastAsiaAdizStyle> = {
   kadiz: {
     id: "kadiz",
-    outline: "rgba(0, 240, 255, 0.92)",
-    hatch: "rgba(0, 240, 255, 0.5)",
+    outline: "rgba(0, 224, 240, 0.92)",
+    hatch: "rgba(0, 224, 240, 0.5)",
     pattern: "slash",
   },
   jadiz: {
@@ -27,20 +27,20 @@ export const EAST_ASIA_ADIZ_STYLES: Record<EastAsiaAdizId, EastAsiaAdizStyle> = 
   },
   taidiz: {
     id: "taidiz",
-    outline: "rgba(255, 153, 0, 0.92)",
-    hatch: "rgba(255, 153, 0, 0.5)",
+    outline: "rgba(59, 130, 246, 0.92)",
+    hatch: "rgba(59, 130, 246, 0.5)",
     pattern: "cross",
   },
   "dprk-adiz": {
     id: "dprk-adiz",
-    outline: "rgba(189, 0, 255, 0.95)",
-    hatch: "rgba(189, 0, 255, 0.6)",
+    outline: "rgba(255, 0, 85, 0.92)",
+    hatch: "rgba(255, 0, 85, 0.5)",
     pattern: "slash",
   },
   cadiz: {
     id: "cadiz",
-    outline: "rgba(255, 0, 85, 0.88)",
-    hatch: "rgba(255, 0, 85, 0.4)",
+    outline: "rgba(230, 180, 34, 0.90)",
+    hatch: "rgba(230, 180, 34, 0.45)",
     pattern: "backslash",
   },
 };

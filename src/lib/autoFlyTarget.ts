@@ -14,7 +14,9 @@ export const ECONOMY_HUB_OPTIONS: Array<{ id: EconomyHubChoice; label: string }>
   { id: "auto", label: "자동" },
   { id: "hormuz", label: "호르무즈" },
   { id: "suez", label: "수에즈 · 홍해" },
+  { id: "fed-dc", label: "연준 · 금리" },
   { id: "taiwan-chip", label: "대만 · 반도체" },
+  { id: "chicago-cme", label: "시카고 · 곡물" },
   { id: "nyc", label: "뉴욕 · Fed" },
   { id: "bab-el-mandeb", label: "바브엘만데브" },
 ];
@@ -24,6 +26,8 @@ const ECON_HOT_PRIORITY = [
   "suez",
   "bab-el-mandeb",
   "taiwan-chip",
+  "fed-dc",
+  "chicago-cme",
   "malacca",
   "nyc",
   "london",

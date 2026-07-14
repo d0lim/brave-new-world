@@ -22,6 +22,7 @@ import { TelegramIntelFeed } from "@/components/TelegramIntelFeed";
 import { UserAnalyzeButton } from "@/components/UserAnalyzeButton";
 import { UserAnthropicKeyPanel } from "@/components/UserAnthropicKeyPanel";
 import { ViinaFrontEventsPanel } from "@/components/ViinaFrontEventsPanel";
+import { VideoNewsPanel } from "@/components/VideoNewsPanel";
 import type { ViinaFrontEvent } from "@/lib/viinaFrontEvents";
 import type { TelegramAlert } from "@/lib/telegramAlerts";
 import type { HeroBreakingItem, NewsStreamItem, NewsStreamPayload, NewsTheater } from "@/lib/news/types";
@@ -62,16 +63,17 @@ import {
   type IntelTheaterFilter,
   type MapFlyTarget,
 } from "@/lib/news/theaterMap";
+import { resolveEconomyArticleFlyTarget } from "@/lib/news/economyMapFly";
 
 export type BottomIntelStackHandle = {
   openNewsPanel: (theater?: IntelTheaterFilter, tab?: IntelSheetTab) => void;
   closeNewsPanel: () => void;
 };
 
-export type IntelSheetTab = "news" | "telegram" | "viina";
+export type IntelSheetTab = "news" | "video" | "telegram" | "viina";
 
-/** 경제 Intel 전체화면 — RSS vs 증시 */
-export type EconomyIntelTab = "news" | "markets";
+/** 경제 Intel 전체화면 — RSS vs 동영상 vs 증시 */
+export type EconomyIntelTab = "news" | "video" | "markets";
 
 const POLL_MS_FALLBACK = 90_000;
 
@@ -105,6 +107,8 @@ type NewsStreamContextValue = {
   theaterFilter: IntelTheaterFilter;
   setTheaterFilter: (v: IntelTheaterFilter) => void;
   preferEconomyNews: boolean;
+  viewPackages: ViewPackageId[];
+  labelLanguage: LabelLanguage;
 };
 
 const NewsStreamContext = createContext<NewsStreamContextValue | null>(null);
@@ -257,6 +261,8 @@ export function NewsStreamProvider({
         theaterFilter,
         setTheaterFilter: onTheaterFilterChange,
         preferEconomyNews,
+        viewPackages,
+        labelLanguage,
       }}
     >
       {children}
@@ -488,6 +494,7 @@ export function DynamicIntelStack({
 
   return (
     <div
+      id="bottom-intel-compact"
       className={`intel-stack pointer-events-none absolute bottom-4 left-1/2 z-20 flex w-[min(96vw,720px)] -translate-x-1/2 flex-col items-stretch gap-2 ${
         isAlert ? "intel-stack--alert w-[min(96vw,860px)]" : "intel-stack--calm"
       }`}
@@ -706,7 +713,13 @@ function EconomyGenreChipBar({
   );
 }
 
-function FlyToMapButton({ onClick }: { onClick: () => void }) {
+function FlyToMapButton({
+  onClick,
+  label = "지도보러가기",
+}: {
+  onClick: () => void;
+  label?: string;
+}) {
   const { t } = useLocale();
   return (
     <HoverHint
@@ -723,7 +736,7 @@ function FlyToMapButton({ onClick }: { onClick: () => void }) {
         }}
         className="shrink-0 rounded-lg border border-sky-400/25 bg-sky-950/40 px-2 py-1 text-[10px] font-medium text-sky-100 transition hover:border-sky-300/50 hover:bg-sky-900/50"
       >
-        🎯 지도
+        {label}
       </button>
     </HoverHint>
   );
@@ -775,6 +788,17 @@ function IntelSheetTabBar({
         </button>
         <button
           type="button"
+          onClick={() => onEconomyTabChange?.("video")}
+          className={`shrink-0 rounded-lg px-3 py-2 text-xs font-semibold transition ${
+            economyTab === "video"
+              ? "bg-emerald-400/20 text-emerald-50 ring-1 ring-emerald-300/40"
+              : "text-emerald-100/65 hover:bg-white/5 hover:text-emerald-100"
+          }`}
+        >
+          {t("intelSheetVideoTab")}
+        </button>
+        <button
+          type="button"
           onClick={() => onEconomyTabChange?.("markets")}
           className={`shrink-0 rounded-lg px-3 py-2 text-xs font-semibold transition ${
             economyTab === "markets"
@@ -804,6 +828,19 @@ function IntelSheetTabBar({
           {newsCount > 0 ? (
             <span className="ml-1.5 text-[10px] font-medium opacity-70">{newsCount}</span>
           ) : null}
+        </button>
+      </HoverHint>
+      <HoverHint placement="bottom" title={t("hoverSheetVideo")} detail={t("hoverSheetVideoHint")}>
+        <button
+          type="button"
+          onClick={() => onChange("video")}
+          className={`shrink-0 rounded-lg px-3 py-2 text-xs font-semibold transition ${
+            active === "video"
+              ? "bg-violet-400/20 text-violet-50 ring-1 ring-violet-300/40"
+              : "text-sky-100/65 hover:bg-white/5 hover:text-violet-100"
+          }`}
+        >
+          {t("intelSheetVideoTab")}
         </button>
       </HoverHint>
       {showViina ? (
@@ -903,6 +940,8 @@ export const IntelNewsSheet = forwardRef<BottomIntelStackHandle, IntelNewsSheetP
       theaterFilter,
       setTheaterFilter,
       preferEconomyNews,
+      viewPackages,
+      labelLanguage,
     } = useNewsStreamContext();
     const { lang, t } = useLocale();
     const [sheetTab, setSheetTab] = useState<IntelSheetTab>(initialIntelTab);
@@ -1021,12 +1060,16 @@ export const IntelNewsSheet = forwardRef<BottomIntelStackHandle, IntelNewsSheetP
               {preferEconomyNews
                 ? economyTab === "markets"
                   ? t("intelSheetMarkets")
-                  : t("intelSheetEconomyNews")
+                  : economyTab === "video"
+                    ? t("intelSheetVideo")
+                    : t("intelSheetEconomyNews")
                 : sheetTab === "news"
                   ? t("intelSheetNews")
-                  : sheetTab === "telegram"
-                    ? t("intelSheetTelegram")
-                    : t("intelSheetViina")}
+                  : sheetTab === "video"
+                    ? t("intelSheetVideo")
+                    : sheetTab === "telegram"
+                      ? t("intelSheetTelegram")
+                      : t("intelSheetViina")}
               {sheetTab === "news" || (preferEconomyNews && economyTab === "news") ? (
                 <>
                   <span className="ml-2 text-xs text-sky-200/50">
@@ -1088,7 +1131,7 @@ export const IntelNewsSheet = forwardRef<BottomIntelStackHandle, IntelNewsSheetP
           onEconomyTabChange={setEconomyTab}
         />
 
-        {preferEconomyNews ? (
+        {preferEconomyNews && (economyTab === "news" || economyTab === "markets") ? (
           <div className="shrink-0 border-b border-emerald-400/15 px-4 py-2.5">
             {economyTab === "news" ? (
               <IntelSheetSearchBar
@@ -1129,7 +1172,15 @@ export const IntelNewsSheet = forwardRef<BottomIntelStackHandle, IntelNewsSheetP
             fullPage
             searchQuery={marketsSearchQuery}
           />
-        ) : sheetTab === "news" ? (
+        ) : (preferEconomyNews && economyTab === "video") ||
+          (!preferEconomyNews && sheetTab === "video") ? (
+          <VideoNewsPanel
+            active={open}
+            viewPackages={viewPackages}
+            labelLanguage={labelLanguage}
+            economyMode={preferEconomyNews}
+          />
+        ) : sheetTab === "news" || (preferEconomyNews && economyTab === "news") ? (
           <>
             {showHero ? (
               <div
@@ -1148,9 +1199,28 @@ export const IntelNewsSheet = forwardRef<BottomIntelStackHandle, IntelNewsSheetP
                     </div>
                     <p className="mt-1.5 text-sm font-semibold leading-snug text-slate-50">{hero!.title}</p>
                   </div>
-                  {onFlyToMap ? (
-                    <FlyToMapButton onClick={() => flyToTheater(hero!.theater)} />
-                  ) : null}
+                  {(() => {
+                    if (!onFlyToMap) return null;
+                    if (preferEconomyNews) {
+                      const target = resolveEconomyArticleFlyTarget(
+                        hero!.title,
+                        hero!.summary,
+                      );
+                      if (!target) return null;
+                      return (
+                        <FlyToMapButton
+                          label="지도보러가기"
+                          onClick={() => onFlyToMap(target)}
+                        />
+                      );
+                    }
+                    return (
+                      <FlyToMapButton
+                        label="지도보러가기"
+                        onClick={() => flyToTheater(hero!.theater)}
+                      />
+                    );
+                  })()}
                 </div>
               </div>
             ) : null}
@@ -1168,7 +1238,8 @@ export const IntelNewsSheet = forwardRef<BottomIntelStackHandle, IntelNewsSheetP
                     tier={1}
                     delay={1}
                     economyMode={preferEconomyNews}
-                    onFlyToTheater={onFlyToMap ? flyToTheater : undefined}
+                    onFlyToTheater={preferEconomyNews ? undefined : onFlyToMap ? flyToTheater : undefined}
+                    onFlyToMap={preferEconomyNews ? onFlyToMap : undefined}
                   />
                   <TierSection
                     label={preferEconomyNews ? ECONOMY_TIER_LABELS[2].label : "보완 보도"}
@@ -1178,7 +1249,8 @@ export const IntelNewsSheet = forwardRef<BottomIntelStackHandle, IntelNewsSheetP
                     tier={2}
                     delay={2}
                     economyMode={preferEconomyNews}
-                    onFlyToTheater={onFlyToMap ? flyToTheater : undefined}
+                    onFlyToTheater={preferEconomyNews ? undefined : onFlyToMap ? flyToTheater : undefined}
+                    onFlyToMap={preferEconomyNews ? onFlyToMap : undefined}
                   />
                   {showTier3 && (preferEconomyNews ? displayTier3 : tier3Items).length > 0 ? (
                     <TierSection
@@ -1190,7 +1262,8 @@ export const IntelNewsSheet = forwardRef<BottomIntelStackHandle, IntelNewsSheetP
                       delay={3}
                       tier3
                       economyMode={preferEconomyNews}
-                      onFlyToTheater={onFlyToMap ? flyToTheater : undefined}
+                      onFlyToTheater={preferEconomyNews ? undefined : onFlyToMap ? flyToTheater : undefined}
+                      onFlyToMap={preferEconomyNews ? onFlyToMap : undefined}
                     />
                   ) : null}
                   {(preferEconomyNews ? displayTier1 : tier1Items).length === 0 &&
@@ -1272,6 +1345,7 @@ function TierSection({
   tier3,
   economyMode,
   onFlyToTheater,
+  onFlyToMap,
 }: {
   tier: 1 | 2 | 3;
   label: string;
@@ -1282,6 +1356,7 @@ function TierSection({
   tier3?: boolean;
   economyMode?: boolean;
   onFlyToTheater?: (theater: NewsTheater) => void;
+  onFlyToMap?: (target: MapFlyTarget) => void;
 }) {
   if (items.length === 0) return null;
 
@@ -1319,6 +1394,7 @@ function TierSection({
             tier3={tier3}
             economyMode={economyMode}
             onFlyToTheater={onFlyToTheater}
+            onFlyToMap={onFlyToMap}
           />
         ))}
       </ul>
@@ -1491,12 +1567,14 @@ function NewsRow({
   tier3,
   economyMode,
   onFlyToTheater,
+  onFlyToMap,
 }: {
   item: NewsStreamItem;
   marker?: string;
   tier3?: boolean;
   economyMode?: boolean;
   onFlyToTheater?: (theater: NewsTheater) => void;
+  onFlyToMap?: (target: MapFlyTarget) => void;
 }) {
   const { lang } = useLocale();
   const tierLabel =
@@ -1506,11 +1584,27 @@ function NewsRow({
       ? economyGenreLabel(item.econGenre, lang)
       : null;
 
+  const economyFly = economyMode
+    ? resolveEconomyArticleFlyTarget(item.title, item.summary)
+    : null;
+  const showEconomyFly = Boolean(economyFly && onFlyToMap);
+  const showConflictFly = Boolean(!economyMode && onFlyToTheater);
+
   return (
     <li className="relative">
-      {onFlyToTheater ? (
+      {showEconomyFly && economyFly ? (
         <div className="absolute right-3 top-3 z-10">
-          <FlyToMapButton onClick={() => onFlyToTheater(item.theater)} />
+          <FlyToMapButton
+            label="지도보러가기"
+            onClick={() => onFlyToMap?.(economyFly)}
+          />
+        </div>
+      ) : showConflictFly ? (
+        <div className="absolute right-3 top-3 z-10">
+          <FlyToMapButton
+            label="지도보러가기"
+            onClick={() => onFlyToTheater?.(item.theater)}
+          />
         </div>
       ) : null}
       <a
@@ -1532,7 +1626,7 @@ function NewsRow({
             {marker}
           </span>
         )}
-        <span className="min-w-0 flex-1">
+        <span className="min-h-0 min-w-0 flex-1">
           <span className="mb-1 inline-flex flex-wrap items-center gap-2">
             <span
               className={`rounded px-1.5 py-0.5 text-[9px] font-bold ${
@@ -1548,6 +1642,11 @@ function NewsRow({
             {genre ? (
               <span className="rounded px-1.5 py-0.5 text-[9px] font-semibold bg-teal-500/15 text-teal-100">
                 {genre}
+              </span>
+            ) : null}
+            {economyFly ? (
+              <span className="rounded px-1.5 py-0.5 text-[9px] text-emerald-200/70">
+                {economyFly.label}
               </span>
             ) : null}
             <span className="text-[11px] text-slate-500">{item.source}</span>

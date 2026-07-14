@@ -10,7 +10,7 @@ Next.js `src/workers/`(브라우저 Web Worker)와 분리해 **`workers/cron-ing
 | `../../drizzle/*.sql` | D1 마이그레이션 (`migrations_dir`) |
 | `src/index.ts` | Cron + `GET /health` · `GET /latest` · `POST /run` |
 | `src/firms.ts` | NASA FIRMS area CSV (전장 bbox) |
-| `src/gdelt.ts` | GDELT Geo API GeoJSON (ZIP 불필요) |
+| `src/gdelt.ts` | GDELT Geo API — 핫스팟+도메인 키워드(범위↑). 총량≤280·쿼리당≤24·150ms 간격으로 렉/API 제어 |
 
 ## 최초 세팅
 
@@ -27,6 +27,9 @@ npx wrangler secret put INGEST_CRON_SECRET -c wrangler.ingest.toml
 # 4) Next 앱 워밍 URL (앱 배포 URL 기준)
 npx wrangler secret put NEWS_WARM_URL -c wrangler.ingest.toml
 # 예: https://your-app.example/api/news-stream/warm
+
+npx wrangler secret put VIDEO_NEWS_WARM_URL -c wrangler.ingest.toml
+# 예: https://your-app.example/api/video-news/warm
 
 npx wrangler secret put AIS_WARM_URL -c wrangler.ingest.toml
 # 예: https://your-app.example/api/ais/warm
@@ -72,6 +75,7 @@ npm run cf:ingest:dev
 | FIRMS | `/api/firms-fires` | `firms_fires` |
 | GDELT | `/api/gdelt` | `gdelt_points` |
 | News | `/api/news-stream` | `news_stream_*` |
+| Video news | `/api/video-news` | `video_news_snapshots` |
 | AIS | `/api/ais` | `ais_vessels` |
 | ADS-B mil | `/api/adsb-mil` | `adsb_aircraft` (mode=mil) |
 | ADS-B civ | `/api/adsb-traffic` | `adsb_aircraft` (mode=civ) |

@@ -504,6 +504,45 @@ export const AUDIO_MANIFEST = {
     category: "ui",
     note: "FS#524205 · 무전 끊김 스퀠치",
   },
+
+  /**
+   * 양피지 펼침 — 봉투/종이 바스락
+   * https://freesound.org/s/360646/ · Mafon2 · CC0
+   */
+  "parchment-unfold": {
+    eventId: "parchment-unfold",
+    freesoundQuery: "paper envelope unfold rustle",
+    freesoundId: 360646,
+    volume: 0.38,
+    category: "ui",
+    note: "FS#360646 Mafon2 Paper drawn with rustle · CC0 · 양피지 펼침",
+  },
+
+  /**
+   * 양피지 접힘 — 종이 접고 구기는 소리 (짧은 컷)
+   * https://freesound.org/s/234886/ · Runey · CC0
+   */
+  "parchment-fold": {
+    eventId: "parchment-fold",
+    freesoundQuery: "paper fold crumple rustle",
+    freesoundId: 234886,
+    volume: 0.32,
+    category: "ui",
+    note: "FS#234886 Runey Unfolding and crumbling paper · CC0 · 접기(초반 컷)",
+  },
+
+  /**
+   * 양피지 날아감 — 짧은 whoosh (접기 직후 체인)
+   * https://freesound.org/s/833599/ · subquire · (flyto와 동일 계열)
+   */
+  "parchment-flyaway": {
+    eventId: "parchment-flyaway",
+    freesoundQuery: "soft whoosh paper flutter short",
+    freesoundId: 833599,
+    volume: 0.22,
+    category: "ui",
+    note: "FS#833599 · 양피지 날아가는 whoosh",
+  },
 } as const satisfies Record<string, AudioEventDef>;
 
 export type AudioEventId = keyof typeof AUDIO_MANIFEST;

@@ -249,8 +249,23 @@ body {
   opacity: 0.85;
 }
 
+.welcome-letter-card--unfold-enter {
+  animation: welcome-letter-unfold 0.72s cubic-bezier(0.22, 0.82, 0.28, 1) both;
+}
+
 .welcome-letter-card--fold-exit {
   animation: welcome-letter-fold-fly 1.1s cubic-bezier(0.42, 0.05, 0.22, 1) forwards;
+}
+
+@keyframes welcome-letter-unfold {
+  0% {
+    transform: translate3d(0, 10vh, -40px) rotateX(-28deg) scale(0.92);
+    opacity: 0;
+  }
+  100% {
+    transform: translate3d(0, 0, 0) rotateX(0deg) scale(1);
+    opacity: 1;
+  }
 }
 
 @keyframes welcome-letter-fold-fly {
@@ -275,6 +290,7 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .welcome-letter-card--unfold-enter,
   .welcome-letter-card--fold-exit {
     animation-duration: 0.01ms;
     animation-iteration-count: 1;

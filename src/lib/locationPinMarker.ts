@@ -7,7 +7,7 @@ import { getZoomOutScale } from "@/lib/zoomScale";
 export const TIER_PIN_HEX: Record<EventTier, string> = {
   war: "#ef4444",
   diplomatic: "#fb923c",
-  alliance: "#d946ef",
+  alliance: "#14b8a6",
   protest: "#e2e8f0",
 };
 
@@ -120,7 +120,9 @@ export function createEventPinElement(
     glowColor,
   });
 
-  const mount = newsAlert ? wrapNewsAlertMarker(el, point.eventTier).root : el;
+  const mount = newsAlert
+    ? wrapNewsAlertMarker(el, point.eventTier, point.importanceGrade).root
+    : el;
   const hoverTarget = el;
 
   const setHoverTransform = (scale: number) => {

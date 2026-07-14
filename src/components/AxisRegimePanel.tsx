@@ -1,0 +1,115 @@
+"use client";
+
+import { useMemo, useState } from "react";
+import type { AxisHubId } from "@/data/axisNetwork";
+import { hubById } from "@/data/hubNav";
+import {
+  episodesForHub,
+  type FrictionEpisode,
+} from "@/data/frictionEpisodes";
+
+type AxisRegimePanelProps = {
+  hubId: AxisHubId;
+  selectedEpisodeId: string | null;
+  onSelectEpisode: (episode: FrictionEpisode) => void;
+  onClose: () => void;
+};
+
+const LENS_LABEL: Record<string, string> = {
+  china: "중국 렌즈",
+  russia: "러시아 렌즈",
+  iran: "이란 렌즈",
+  north_korea: "북한 렌즈",
+  global: "공통·블록",
+};
+
+/** 11대 큐레이션 분쟁 외교사 — 에피소드 클릭 → soft fly + 양피지 */
+export function AxisRegimePanel({
+  hubId,
+  selectedEpisodeId,
+  onSelectEpisode,
+  onClose,
+}: AxisRegimePanelProps) {
+  const hub = hubById(hubId);
+  const [showGlobal, setShowGlobal] = useState(true);
+
+  const episodes = useMemo(
+    () => episodesForHub(hubId, showGlobal),
+    [hubId, showGlobal],
+  );
+
+  return (
+    <aside className="pointer-events-auto absolute right-3 top-20 z-40 flex max-h-[min(78vh,560px)] w-[min(94vw,340px)] flex-col overflow-hidden rounded-2xl border border-violet-300/20 bg-[#120e18]/92 shadow-2xl backdrop-blur-xl">
+      <div className="flex items-start justify-between gap-2 border-b border-violet-200/10 px-3 py-2.5">
+        <div>
+          <p className="text-[10px] uppercase tracking-[0.2em] text-violet-200/55">
+            11대 · 분쟁 외교사
+          </p>
+          <h2 className="mt-0.5 text-sm font-medium text-violet-50">
+            {hub?.label ?? hubId}
+          </h2>
+          <p className="mt-1 text-[10px] leading-4 text-violet-100/45">
+            권위주의·진영 내부 마찰 큐레이션. 카드 → 현장 좌표 soft fly · 양피지 브리프.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          className="rounded-full px-2 py-0.5 text-xs text-violet-100/50 transition hover:bg-white/5 hover:text-violet-50"
+        >
+          ✕
+        </button>
+      </div>
+
+      <div className="flex items-center gap-2 border-b border-violet-200/10 px-3 py-1.5">
+        <label className="flex cursor-pointer items-center gap-1.5 text-[10px] text-violet-100/70">
+          <input
+            type="checkbox"
+            checked={showGlobal}
+            onChange={(e) => setShowGlobal(e.target.checked)}
+            className="rounded border-violet-400/40"
+          />
+          공통(인도차이나·아프리카) 포함
+        </label>
+      </div>
+
+      <div className="min-h-0 flex-1 space-y-1.5 overflow-y-auto px-2 py-2">
+        {episodes.length === 0 ? (
+          <p className="px-2 py-4 text-xs text-violet-100/45">표시할 에피소드가 없습니다.</p>
+        ) : (
+          episodes.map((ep) => {
+            const active = selectedEpisodeId === ep.id;
+            return (
+              <button
+                key={ep.id}
+                type="button"
+                onClick={() => onSelectEpisode(ep)}
+                className={`block w-full rounded-lg border px-2.5 py-2 text-left transition ${
+                  active
+                    ? "border-violet-300/45 bg-violet-500/20"
+                    : "border-violet-200/10 bg-violet-500/5 hover:bg-violet-500/10"
+                }`}
+              >
+                <div className="flex items-baseline justify-between gap-2">
+                  <p className="text-[11px] font-medium text-violet-50">{ep.title}</p>
+                  <span className="shrink-0 text-[9px] text-violet-200/45">
+                    {ep.historicalYear}
+                    {ep.yearEnd ? `–${ep.yearEnd}` : ""}
+                  </span>
+                </div>
+                <p className="mt-0.5 text-[10px] text-violet-100/55">{ep.locationName}</p>
+                <p className="mt-0.5 text-[9px] uppercase tracking-wider text-violet-200/35">
+                  {LENS_LABEL[ep.lens] ?? ep.lens}
+                </p>
+              </button>
+            );
+          })
+        )}
+      </div>
+
+      <p className="border-t border-violet-200/10 px-3 py-2 text-[9px] leading-4 text-violet-100/40">
+        좌표는 교전·현장 대표점(경도·위도). 공개 기록 기반 · 왜곡 없이 서술. V-Dem 전수 연표는 사용하지 않음.
+      </p>
+    </aside>
+  );
+}

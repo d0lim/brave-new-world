@@ -6,7 +6,7 @@
 # Migrate: npm run cf:d1:migrate:remote
 # Secret:  npx wrangler secret put NASA_FIRMS_API_KEY -c wrangler.ingest.toml
 # Optional warm URLs (Next app):
-#   NEWS_WARM_URL / AIS_WARM_URL / ADSB_WARM_URL / TUNNELS_WARM_URL
+#   NEWS_WARM_URL / VIDEO_NEWS_WARM_URL / AIS_WARM_URL / ADSB_WARM_URL / TUNNELS_WARM_URL
 #   INGEST_CRON_SECRET
 
 name = "conflict-view-ingest"
@@ -22,7 +22,7 @@ compatibility_flags = []
 FIRMS_DAY_RANGE = "1"
 # Cap per FIRMS theater bbox insert
 FIRMS_MAX_PER_THEATER = "400"
-# GDELT Geo API maxpoints (shared across queries)
+# GDELT Geo API — 키워드 범위는 넓히되 총량 캡 (쿼리당·전체 하드캡은 gdelt.ts)
 GDELT_MAX_POINTS = "250"
 # Retain window for prune (hours)
 RETENTION_HOURS = "48"

@@ -18,7 +18,7 @@ import {
 import { isZoomScaledSound, scaledSoundVolume } from "@/lib/soundDistanceScale";
 
 /** 로컬/스트림 URL — 캐시 버스팅으로 예전 개짖음 MP3 무효화 */
-const AUDIO_URL_BUST = "v15-r2-audio";
+const AUDIO_URL_BUST = "v16-parchment";
 
 function audioUrlForEvent(eventId: AudioEventId, def: AudioEventDef): string {
   if (def.localSrc) {

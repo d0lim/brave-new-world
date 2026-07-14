@@ -31,6 +31,7 @@ export const LAYER_ITEM_PREF_KEYS: Partial<Record<string, keyof LayerPrefs>> = {
   ports: "showPorts",
   ixp: "showInternetExchanges",
   "logistics-risk": "showLogisticsRisk",
+  "critical-nodes": "showCriticalNodes",
   ais: "showAis",
   "military-bases": "showMilitaryBases",
   "military-air": "showMilitaryActivity",
@@ -45,6 +46,7 @@ export const LAYER_ITEM_PREF_KEYS: Partial<Record<string, keyof LayerPrefs>> = {
   "ai-dc": "showAiDataCenters",
   sanctions: "showSanctionsEntities",
   "east-asia-adiz": "showEastAsiaAdiz",
+  "axis-network": "showAxisNetwork",
 };
 
 export function patchFromCategoryItems(

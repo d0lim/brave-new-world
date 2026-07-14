@@ -16,8 +16,10 @@ export const LAYER_ITEM_DESCRIPTIONS: Partial<Record<string, string>> = {
   ucdp: "켜면 무력 충돌 사건(UCDP) 위치를 점으로 표시합니다.",
   "gdelt-war": "켜면 전투·군사 충돌 관련 뉴스 위치를 표시합니다.",
   "gdelt-diplomatic": "켜면 외교·회담 관련 뉴스 위치를 표시합니다.",
-  "gdelt-alliance": "켜면 동맹·협력 관련 뉴스 위치를 표시합니다.",
+  "gdelt-alliance": "켜면 서방 동맹 마찰·IRN·중·러·북 축 관계 뉴스 위치를 표시합니다.",
   "gdelt-protest": "켜면 시위·사회 불안 관련 뉴스 위치를 표시합니다.",
+  "axis-network":
+    "켜면 이란·중국·러시아·북한 중심 외교·군수·하이브리드 관계망(스포크 포함)을 호로 표시합니다.",
   "telegram-osint": "켜면 공개 텔레그램 채널의 실시간 OSINT 알림을 표시합니다.",
   "tzeva-adom": "켜면 이스라엘 공습 경보(체바 아돔) 발생 지역을 표시합니다.",
   "oil-pipelines": "켜면 주요 원유 파이프라인 노선을 표시합니다.",
@@ -33,6 +35,8 @@ export const LAYER_ITEM_DESCRIPTIONS: Partial<Record<string, string>> = {
   ports: "켜면 주요 항만 위치를 표시합니다.",
   ixp: "켜면 인터넷 교환점(IXP) 위치를 표시합니다.",
   "logistics-risk": "켜면 물류·공급망 리스크가 큰 거점을 표시합니다.",
+  "critical-nodes":
+    "켜면 Critical Node Atlas(MIT) 기반 해상·케이블·에너지·금융·기술 병목을 표시합니다.",
   ais: "켜면 AIS 선박을 표시합니다. 지정학=군용 함정, 지경학=민간 화물·탱커·여객선.",
   "military-bases": "켜면 주요 군사기지 위치를 표시합니다.",
   "air-traffic":

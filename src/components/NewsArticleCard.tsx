@@ -1,7 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import type { NewsStreamItem } from "@/lib/news/types";
+import { resolveEconomyArticleFlyTarget } from "@/lib/news/economyMapFly";
+import type { MapFlyTarget } from "@/lib/news/theaterMap";
 
 const THEATER_LABELS: Record<NewsStreamItem["theater"], string> = {
   "middle-east": "중동",
@@ -46,6 +48,7 @@ type NewsArticleCardProps = {
   economyMode?: boolean;
   titleOverride?: string;
   summaryOverride?: string;
+  onFlyToMap?: (target: MapFlyTarget) => void;
 };
 
 export function NewsArticleCard({
@@ -54,17 +57,22 @@ export function NewsArticleCard({
   economyMode,
   titleOverride,
   summaryOverride,
+  onFlyToMap,
 }: NewsArticleCardProps) {
   const [imageFailed, setImageFailed] = useState(false);
   const isEconomy = economyMode || item.feedTopic === "economy";
   const showImage = item.imageUrl && !imageFailed;
   const tierLabel = item.trustTier === 1 ? "T1" : item.trustTier === 2 ? "T2" : "T3";
+  const displayTitle = titleOverride ?? item.title;
+  const displaySummary = summaryOverride ?? item.summary;
+
+  const flyTarget = useMemo(() => {
+    if (!isEconomy || !onFlyToMap) return null;
+    return resolveEconomyArticleFlyTarget(displayTitle, displaySummary);
+  }, [displaySummary, displayTitle, isEconomy, onFlyToMap]);
 
   return (
-    <a
-      href={item.link}
-      target="_blank"
-      rel="noopener noreferrer"
+    <article
       className={`news-article-card group flex w-[min(72vw,220px)] shrink-0 flex-col overflow-hidden rounded-xl border bg-[#0a1428]/90 shadow-lg backdrop-blur-md transition hover:-translate-y-0.5 hover:shadow-xl ${
         tier3
           ? "border-amber-400/25 hover:border-amber-300/45"
@@ -73,61 +81,83 @@ export function NewsArticleCard({
             : "border-sky-300/15 hover:border-sky-200/35"
       }`}
     >
-      <div className="relative h-[104px] w-full overflow-hidden bg-slate-900/80">
-        {showImage ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={item.imageUrl}
-            alt=""
-            loading="lazy"
-            decoding="async"
-            className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.03]"
-            onError={() => setImageFailed(true)}
-          />
-        ) : (
-          <div
-            className={`flex h-full w-full flex-col justify-end bg-gradient-to-br p-3 ${THEATER_GRADIENT[item.theater]}`}
-          >
-            <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/55">
-              {THEATER_LABELS[item.theater]}
+      <a
+        href={item.link}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="flex min-h-0 flex-1 flex-col"
+      >
+        <div className="relative h-[104px] w-full overflow-hidden bg-slate-900/80">
+          {showImage ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={item.imageUrl}
+              alt=""
+              loading="lazy"
+              decoding="async"
+              className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.03]"
+              onError={() => setImageFailed(true)}
+            />
+          ) : (
+            <div
+              className={`flex h-full w-full flex-col justify-end bg-gradient-to-br p-3 ${THEATER_GRADIENT[item.theater]}`}
+            >
+              <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/55">
+                {THEATER_LABELS[item.theater]}
+              </span>
+              <span className="mt-1 line-clamp-2 text-xs font-medium leading-4 text-white/85">
+                {item.source}
+              </span>
+            </div>
+          )}
+          <div className="absolute left-2 top-2 flex items-center gap-1.5">
+            <span
+              className={`rounded-full border px-1.5 py-0.5 text-[9px] font-bold backdrop-blur-sm ${tierBadgeClass(item.trustTier, tier3)}`}
+            >
+              {tierLabel}
             </span>
-            <span className="mt-1 line-clamp-2 text-xs font-medium leading-4 text-white/85">
-              {item.source}
-            </span>
+            {tier3 ? (
+              <span className="rounded-full border border-amber-400/35 bg-black/45 px-1.5 py-0.5 text-[9px] text-amber-100 backdrop-blur-sm">
+                미확인
+              </span>
+            ) : null}
           </div>
-        )}
-        <div className="absolute left-2 top-2 flex items-center gap-1.5">
-          <span
-            className={`rounded-full border px-1.5 py-0.5 text-[9px] font-bold backdrop-blur-sm ${tierBadgeClass(item.trustTier, tier3)}`}
-          >
-            {tierLabel}
-          </span>
-          {tier3 ? (
-            <span className="rounded-full border border-amber-400/35 bg-black/45 px-1.5 py-0.5 text-[9px] text-amber-100 backdrop-blur-sm">
-              미확인
-            </span>
-          ) : null}
         </div>
-      </div>
 
-      <div className="flex min-h-0 flex-1 flex-col gap-1.5 p-3">
-        <h3 className="line-clamp-2 text-[12px] font-semibold leading-4 text-slate-50 group-hover:text-white">
-          {titleOverride ?? item.title}
-        </h3>
-        {item.summary || summaryOverride ? (
-          <p className="line-clamp-2 text-[10px] leading-4 text-slate-400">
-            {summaryOverride ?? item.summary}
-          </p>
-        ) : (
-          <p className="line-clamp-2 text-[10px] leading-4 text-slate-500">
-            {item.source} · {isEconomy ? "경제·시장" : `${THEATER_LABELS[item.theater]} 분쟁·안보`} 관련 보도
-          </p>
-        )}
-        <div className="mt-auto flex items-center justify-between gap-2 pt-1 text-[10px] text-slate-500">
-          <span className="truncate">{item.source}</span>
-          <span className="shrink-0">{formatAge(item.pubDate)}</span>
+        <div className="flex min-h-0 flex-1 flex-col gap-1.5 p-3">
+          <h3 className="line-clamp-2 text-[12px] font-semibold leading-4 text-slate-50 group-hover:text-white">
+            {displayTitle}
+          </h3>
+          {displaySummary ? (
+            <p className="line-clamp-2 text-[10px] leading-4 text-slate-400">{displaySummary}</p>
+          ) : (
+            <p className="line-clamp-2 text-[10px] leading-4 text-slate-500">
+              {item.source} · {isEconomy ? "경제·시장" : `${THEATER_LABELS[item.theater]} 분쟁·안보`}{" "}
+              관련 보도
+            </p>
+          )}
+          <div className="mt-auto flex items-center justify-between gap-2 pt-1 text-[10px] text-slate-500">
+            <span className="truncate">{item.source}</span>
+            <span className="shrink-0">{formatAge(item.pubDate)}</span>
+          </div>
         </div>
-      </div>
-    </a>
+      </a>
+      {flyTarget && onFlyToMap ? (
+        <div className="border-t border-emerald-400/15 px-3 py-2">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onFlyToMap(flyTarget);
+            }}
+            className="w-full rounded-lg border border-emerald-400/30 bg-emerald-500/10 px-2 py-1.5 text-[11px] font-semibold text-emerald-100 transition hover:border-emerald-300/50 hover:bg-emerald-500/20"
+          >
+            지도보러가기
+            <span className="ml-1 font-normal text-emerald-200/55">· {flyTarget.label}</span>
+          </button>
+        </div>
+      ) : null}
+    </article>
   );
 }

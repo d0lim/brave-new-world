@@ -35,6 +35,24 @@ import { TheaterDetailCta } from "@/components/TheaterDetailCta";
 import { ExplorationTabs } from "@/components/ExplorationTabs";
 import { ModePickerOverlay } from "@/components/ModePickerOverlay";
 import { WelcomeParchmentLetter } from "@/components/WelcomeParchmentLetter";
+import { ParchmentLetter } from "@/components/ParchmentLetter";
+import {
+  CriticalNodeInsightParchment,
+  EconInsightParchment,
+} from "@/components/EconInsightParchment";
+import { emitBreakingDispatchSound } from "@/components/SoundEffectsBridge";
+import { resolveHubBrief } from "@/data/hubBriefs";
+import { resolveCriticalNodeBrief } from "@/data/resolveCriticalNodeBrief";
+import {
+  ECON_NAV_TO_CRITICAL_NODE,
+  focusCriticalNodeIds,
+} from "@/data/criticalNodes";
+import type { EconInsightBrief } from "@/data/econInsightBriefs";
+import {
+  ChromeOnboardingCoach,
+  shouldOfferChromeCoach,
+  type ChromeCoachStep,
+} from "@/components/ChromeOnboardingCoach";
 import { EntryCautionOverlay } from "@/components/EntryCautionOverlay";
 import { SoundMuteControl } from "@/components/SoundMuteControl";
 import { DomainGateOverlay } from "@/components/DomainGateOverlay";
@@ -215,10 +233,24 @@ import {
   eastAsiaAdizToPaths,
   isEastAsiaAdizVisibleAtAltitude,
 } from "@/lib/eastAsiaAdiz";
+import { axisNetworkToPaths } from "@/lib/axisNetworkPaths";
 import {
-  TheaterDropdownCoachmark,
-  shouldOfferTheaterCoachmark,
-} from "@/components/TheaterDropdownCoachmark";
+  armsPairsToPaths,
+  filterArmsForHub,
+  type AxisArmsPayload,
+} from "@/lib/axisArmsPaths";
+import { AXIS_HUB_META, type AxisHubId } from "@/data/axisNetwork";
+import { hubById, type HubClaim } from "@/data/hubNav";
+import { AxisArmsPanel } from "@/components/AxisArmsPanel";
+import { AxisRegimePanel } from "@/components/AxisRegimePanel";
+import {
+  altitudeFromEpisodeZoom,
+  episodeLat,
+  episodeLng,
+  frictionEpisodeById,
+  hubColorForLens,
+  type FrictionEpisode,
+} from "@/data/frictionEpisodes";
 import { useLazyJsonObject } from "@/hooks/useLazyJson";
 import type { FeatureCollection } from "geojson";
 import { lookupOceanName } from "@/lib/oceanNames";
@@ -462,7 +494,7 @@ type ConflictClusterPoint = ConflictZoneFeature & {
   lng: number;
 };
 
-/** 지도 펄스 링 — AI 클러스터 또는 폭격 추정 FIRMS */
+/** 지도 펄스 링 — AI 클러스터 · FIRMS · 축 주장 지역 */
 type PulseRingPoint =
   | (ConflictClusterPoint & { pulseKind: "ai-zone" })
   | {
@@ -472,6 +504,26 @@ type PulseRingPoint =
       lng: number;
       frp: number | null;
       markerId: string;
+    }
+  | {
+      pulseKind: "claim";
+      id: string;
+      lat: number;
+      lng: number;
+      radiusScale: number;
+      color: string;
+      markerId: string;
+      label: string;
+    }
+  | {
+      pulseKind: "friction";
+      id: string;
+      lat: number;
+      lng: number;
+      radiusScale: number;
+      color: string;
+      markerId: string;
+      label: string;
     };
 
 type TzevaAdomGlobePoint = TzevaAdomAlert & {
@@ -699,6 +751,7 @@ const STATIC_KIND_LABELS: Record<StaticPoint["kind"], string> = {
   chokepoint: "해상 초크포인트",
   "logistics-hub": "핵심 물류 거점",
   "submarine-tunnel": "해저터널",
+  "critical-node": "크리티컬 노드",
 };
 
 function staticKindLabelLocal(kind: StaticPoint["kind"], lang: "ko" | "en" = "ko") {
@@ -1003,6 +1056,7 @@ const FLOW_PATH_KINDS = new Set([
   "gas-pipeline",
   "msr",
   "neptun-projection",
+  "axis-link",
 ]);
 const HEATMAP_MEANINGFUL_DELTA = 28;
 const LABEL_MEANINGFUL_DELTA = 56;
@@ -1323,7 +1377,7 @@ export function GlobeDashboard({
   const [modePickerInitialMode, setModePickerInitialMode] = useState<ViewerMode | null>(null);
   const [entryGate, setEntryGate] = useState<EntryGate>(null);
   const domainThenDetailTimerRef = useRef<number | null>(null);
-  const [showTheaterCoachmark, setShowTheaterCoachmark] = useState(false);
+  const [chromeCoachStep, setChromeCoachStep] = useState<ChromeCoachStep | null>(null);
   const battlefieldSoftZoneRef = useRef<BattlefieldZone | null>(null);
   const battlefieldManualUntilRef = useRef(0);
   const [showViewerIntro, setShowViewerIntro] = useState(false);
@@ -1571,6 +1625,7 @@ export function GlobeDashboard({
     showAirports,
     showPorts,
     showLogisticsRisk,
+    showCriticalNodes,
     showMilitaryBases,
     showResources,
     showNuclearSites,
@@ -1600,6 +1655,7 @@ export function GlobeDashboard({
     showNeptun,
     showNeptunPreviousTrails,
     showEastAsiaAdiz,
+    showAxisNetwork,
     labelLanguage,
   } = layerPrefs;
 
@@ -1686,6 +1742,7 @@ export function GlobeDashboard({
   const setShowAirports = (v: boolean) => togglePref("showAirports", v);
   const setShowPorts = (v: boolean) => togglePref("showPorts", v);
   const setShowLogisticsRisk = (v: boolean) => togglePref("showLogisticsRisk", v);
+  const setShowCriticalNodes = (v: boolean) => togglePref("showCriticalNodes", v);
   const setShowMilitaryBases = (v: boolean) => togglePref("showMilitaryBases", v);
   const setShowResources = (v: boolean) => togglePref("showResources", v);
   const setShowNuclearSites = (v: boolean) => togglePref("showNuclearSites", v);
@@ -1731,6 +1788,7 @@ export function GlobeDashboard({
     togglePref("showNeptunPreviousTrails", v);
   };
   const setShowEastAsiaAdiz = (v: boolean) => togglePref("showEastAsiaAdiz", v);
+  const setShowAxisNetwork = (v: boolean) => togglePref("showAxisNetwork", v);
 
   const showGdeltLayers =
     viewerChromePreset.fetchGdelt &&
@@ -1738,9 +1796,131 @@ export function GlobeDashboard({
   const setLabelLanguage = (v: LabelLanguage) => togglePref("labelLanguage", v);
 
   const [regionNavSelection, setRegionNavSelection] = useState<NavSelection | null>(null);
+  const [hubBriefOpen, setHubBriefOpen] = useState(false);
+  const hubBriefTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [ukraineFrontLegendEngaged, setUkraineFrontLegendEngaged] = useState(false);
   const [econNavSelection, setEconNavSelection] = useState<NavSelection | null>(null);
+  const [econInsightOpen, setEconInsightOpen] = useState(false);
+  const [econInsightBrief, setEconInsightBrief] = useState<EconInsightBrief | null>(null);
+  const [econInsightCompact, setEconInsightCompact] = useState(false);
+  const [econNewsPanelReveal, setEconNewsPanelReveal] = useState(false);
+  const econInsightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [theaterSidebarTab, setTheaterSidebarTab] = useState<TheaterSidebarTab>("news");
+  const [regimeSelectedEpisodeId, setRegimeSelectedEpisodeId] = useState<string | null>(null);
+  const [frictionEpisodeBrief, setFrictionEpisodeBrief] = useState<FrictionEpisode | null>(null);
+  const frictionEpisodeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const activeHubId = regionNavSelection?.hubId ?? null;
+  const hubFocusMode = regionNavSelection?.focusMode ?? null;
+  const hubBriefDoc = useMemo(() => {
+    if (!regionNavSelection || !hubBriefOpen) return null;
+    return resolveHubBrief(regionNavSelection, labelLanguage);
+  }, [regionNavSelection, hubBriefOpen, labelLanguage]);
+
+  const clearHubBriefTimer = useCallback(() => {
+    if (hubBriefTimerRef.current != null) {
+      clearTimeout(hubBriefTimerRef.current);
+      hubBriefTimerRef.current = null;
+    }
+  }, []);
+
+  const clearFrictionEpisodeTimer = useCallback(() => {
+    if (frictionEpisodeTimerRef.current != null) {
+      clearTimeout(frictionEpisodeTimerRef.current);
+      frictionEpisodeTimerRef.current = null;
+    }
+  }, []);
+
+  const closeHubBrief = useCallback(() => {
+    setHubBriefOpen(false);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (hubBriefTimerRef.current != null) {
+        clearTimeout(hubBriefTimerRef.current);
+      }
+      if (frictionEpisodeTimerRef.current != null) {
+        clearTimeout(frictionEpisodeTimerRef.current);
+      }
+    };
+  }, []);
+
+  const scheduleHubBrief = useCallback(
+    (selection: NavSelection) => {
+      clearHubBriefTimer();
+      setHubBriefOpen(false);
+      if (!selection.hubId || !selection.focusMode) return;
+      const brief = resolveHubBrief(selection, labelLanguage);
+      if (!brief) return;
+      hubBriefTimerRef.current = setTimeout(() => {
+        hubBriefTimerRef.current = null;
+        setHubBriefOpen(true);
+        if (brief.playBreakingDispatch) {
+          emitBreakingDispatchSound();
+        }
+      }, 780);
+    },
+    [clearHubBriefTimer, labelLanguage],
+  );
+
+  const clearEconInsightTimer = useCallback(() => {
+    if (econInsightTimerRef.current != null) {
+      clearTimeout(econInsightTimerRef.current);
+      econInsightTimerRef.current = null;
+    }
+  }, []);
+
+  const closeEconInsight = useCallback(() => {
+    setEconInsightOpen(false);
+    setEconInsightBrief(null);
+    setEconInsightCompact(false);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (econInsightTimerRef.current != null) {
+        clearTimeout(econInsightTimerRef.current);
+      }
+    };
+  }, []);
+
+  const scheduleEconInsight = useCallback(
+    (opts: { navId?: string | null; criticalNodeId?: string | null; compact?: boolean }) => {
+      clearEconInsightTimer();
+      setEconInsightOpen(false);
+      setEconNewsPanelReveal(false);
+      const brief = resolveCriticalNodeBrief(opts);
+      if (!brief) return;
+      econInsightTimerRef.current = setTimeout(() => {
+        econInsightTimerRef.current = null;
+        setEconInsightBrief(brief);
+        setEconInsightCompact(Boolean(opts.compact));
+        setEconInsightOpen(true);
+      }, 780);
+    },
+    [clearEconInsightTimer],
+  );
+
+  const openCriticalNodeInsight = useCallback(
+    (criticalNodeId: string, compact: boolean) => {
+      clearEconInsightTimer();
+      const brief = resolveCriticalNodeBrief({ criticalNodeId });
+      if (!brief) return;
+      setEconInsightBrief(brief);
+      setEconInsightCompact(compact);
+      setEconInsightOpen(true);
+      setEconNewsPanelReveal(false);
+    },
+    [clearEconInsightTimer],
+  );
+
+  const parseAxisArms = useCallback((raw: unknown) => raw as AxisArmsPayload, []);
+  const { data: axisArmsPayload } = useLazyJsonObject<AxisArmsPayload>(
+    "axis-arms.json",
+    Boolean(activeHubId && hubFocusMode === "arms"),
+    parseAxisArms,
+  );
   const [viewState, setViewState] = useState<ViewState>({
     lat: ENTRY_GATE.bootLookAt.lat,
     lng: ENTRY_GATE.bootLookAt.lng,
@@ -2167,6 +2347,7 @@ export function GlobeDashboard({
     showAirports,
     showPorts,
     showLogisticsRisk,
+    showCriticalNodes,
     showMilitaryBases,
     showResources,
     showCableLandings: showSubmarineCables,
@@ -2443,11 +2624,82 @@ export function GlobeDashboard({
     return eastAsiaAdizToPaths(eastAsiaAdizFc);
   }, [eastAsiaAdizFc, layerViewState.altitude, showEastAsiaAdiz]);
 
+  const axisNetworkPaths = useMemo<TransportPath[]>(() => {
+    if (!showAxisNetwork) return [];
+    const hub = (activeHubId ?? "all") as AxisHubId | "all";
+    if (hubFocusMode === "arms" && activeHubId && axisArmsPayload) {
+      const { pairs } = filterArmsForHub(axisArmsPayload, activeHubId);
+      return armsPairsToPaths(pairs);
+    }
+    if (hubFocusMode === "regime") return [];
+    if (hub === "all") return [];
+    return axisNetworkToPaths(hub, labelLanguage);
+  }, [
+    showAxisNetwork,
+    activeHubId,
+    hubFocusMode,
+    axisArmsPayload,
+    labelLanguage,
+  ]);
+
+  const hubHighlightIsos = useMemo(() => {
+    if (!activeHubId) return null;
+    const hub = hubById(activeHubId);
+    if (!hub) return null;
+    const set = new Set<string>([hub.iso]);
+    if (hubFocusMode === "ally" && regionNavSelection?.allyCode) {
+      set.add(regionNavSelection.allyCode);
+    } else {
+      for (const a of hub.allies) set.add(a.code);
+    }
+    return set;
+  }, [activeHubId, hubFocusMode, regionNavSelection?.allyCode]);
+
+  const claimRingPoints = useMemo<PulseRingPoint[]>(() => {
+    if (!activeHubId || hubFocusMode !== "claim") return [];
+    const hub = hubById(activeHubId);
+    if (!hub) return [];
+    const claims: HubClaim[] = regionNavSelection?.claimId
+      ? hub.claims.filter((c) => c.id === regionNavSelection.claimId)
+      : hub.claims;
+    return claims.map((c) => ({
+      pulseKind: "claim" as const,
+      id: c.id,
+      lat: c.lat,
+      lng: c.lng,
+      radiusScale: c.radiusScale,
+      color: hub.color,
+      markerId: `claim-ring-${c.id}`,
+      label: c.label,
+    }));
+  }, [activeHubId, hubFocusMode, regionNavSelection?.claimId]);
+
+  const frictionRingPoints = useMemo<PulseRingPoint[]>(() => {
+    if (hubFocusMode !== "regime") return [];
+    const ep =
+      frictionEpisodeBrief ??
+      (regimeSelectedEpisodeId ? frictionEpisodeById(regimeSelectedEpisodeId) : null);
+    if (!ep) return [];
+    return [
+      {
+        pulseKind: "friction" as const,
+        id: ep.id,
+        lat: episodeLat(ep),
+        lng: episodeLng(ep),
+        radiusScale: ep.radiusScale,
+        color: hubColorForLens(ep.lens),
+        markerId: `friction-ring-${ep.id}`,
+        label: ep.title,
+      },
+    ];
+  }, [frictionEpisodeBrief, hubFocusMode, regimeSelectedEpisodeId]);
+
   const rawGlobePaths = useMemo<TransportPath[]>(
     () => [
       ...visibleDisputeBoundaries,
       ...disputeZonePaths,
       ...eastAsiaAdizPaths,
+      ...axisNetworkPaths,
       ...visibleShipping,
       ...visibleCables,
       ...visibleOilPipelines,
@@ -2457,6 +2709,7 @@ export function GlobeDashboard({
     ],
     [
       armsEmbargoFramePaths,
+      axisNetworkPaths,
       disputeZonePaths,
       eastAsiaAdizPaths,
       railPaths,
@@ -2589,15 +2842,40 @@ export function GlobeDashboard({
     showElectionEvents,
   ]);
 
-  const staticGlobePoints = useMemo<StaticGlobePoint[]>(
-    () =>
-      visibleStaticPoints.map((point) => ({
-        ...point,
-        markerId: `static-${point.id}`,
-        displayKind: "static" as const,
-      })),
-    [visibleStaticPoints],
-  );
+  const staticGlobePoints = useMemo<StaticGlobePoint[]>(() => {
+    const focusNodeId = econNavSelection
+      ? ECON_NAV_TO_CRITICAL_NODE[econNavSelection.id]
+      : undefined;
+    const focusIds = focusCriticalNodeIds(focusNodeId);
+    const focusing = focusIds.size > 0;
+
+    return visibleStaticPoints
+      .filter((point) => {
+        if (point.kind !== "critical-node" || !focusing) return true;
+        const id = String(point.meta?.criticalNodeId ?? "");
+        return focusIds.has(id);
+      })
+      .map((point) => {
+        if (point.kind !== "critical-node" || !focusing) {
+          return {
+            ...point,
+            markerId: `static-${point.id}`,
+            displayKind: "static" as const,
+          };
+        }
+        const id = String(point.meta?.criticalNodeId ?? "");
+        const isPrimary = id === focusNodeId;
+        return {
+          ...point,
+          markerId: `static-${point.id}`,
+          displayKind: "static" as const,
+          meta: {
+            ...point.meta,
+            focusRole: isPrimary ? "primary" : "cascade",
+          },
+        };
+      });
+  }, [econNavSelection, visibleStaticPoints]);
 
   /** 공항/항구/미군기지 HTML 마커 */
   const airportPortHtmlMarkers = useMemo(
@@ -3049,8 +3327,10 @@ export function GlobeDashboard({
     () => [
       ...conflictClusterPoints.map((point) => ({ ...point, pulseKind: "ai-zone" as const })),
       ...firmsBombRingPoints,
+      ...claimRingPoints,
+      ...frictionRingPoints,
     ],
-    [conflictClusterPoints, firmsBombRingPoints],
+    [claimRingPoints, conflictClusterPoints, firmsBombRingPoints, frictionRingPoints],
   );
 
   const handleHtmlMarkerHover = useCallback((point: GlobeDisplayPoint | null) => {
@@ -4353,6 +4633,16 @@ export function GlobeDashboard({
             accent: "blue",
           },
           {
+            id: "axis-network",
+            label: "축 관계망 (이란·중·러·북)",
+            detail: showAxisNetwork
+              ? `호 ${axisNetworkPaths.length.toLocaleString()} · 외교·군수·하이브리드`
+              : "꺼짐 · 외교·군수·하이브리드",
+            checked: layerPrefs.showAxisNetwork,
+            onChange: setShowAxisNetwork,
+            accent: "emerald",
+          },
+          {
             id: "conflict-zones",
             label: "AI 전쟁지역 (데모)",
             detail: showConflictZones
@@ -4414,7 +4704,7 @@ export function GlobeDashboard({
               : "꺼짐",
             checked: layerPrefs.showGdeltAlliance,
             onChange: setShowGdeltAlliance,
-            accent: "fuchsia",
+            accent: "emerald",
           },
           {
             id: "gdelt-protest",
@@ -4513,6 +4803,8 @@ export function GlobeDashboard({
             showNeptunPreviousTrails: enabled,
             showWarZones: enabled,
             showDiplomaticTension: enabled,
+            showEastAsiaAdiz: enabled,
+            showAxisNetwork: enabled,
             showConflictZones: enabled,
             showArmsEmbargo: enabled,
             showUcdpEvents: enabled,
@@ -4656,6 +4948,16 @@ export function GlobeDashboard({
             accent: "orange",
           },
           {
+            id: "critical-nodes",
+            label: "크리티컬 노드",
+            detail: showCriticalNodes
+              ? `${visibleStaticPoints.filter((p) => p.kind === "critical-node").length.toLocaleString()}곳 · MIT`
+              : off(staticCounts.criticalNodes ?? 31),
+            checked: layerPrefs.showCriticalNodes,
+            onChange: setShowCriticalNodes,
+            accent: "orange",
+          },
+          {
             id: "ais",
             label: isEconomyViewer ? "민간 선박 (AIS)" : "군용 함정 (AIS)",
             detail: showAis
@@ -4675,6 +4977,7 @@ export function GlobeDashboard({
             showPorts: enabled,
             showInternetExchanges: enabled,
             showLogisticsRisk: enabled,
+            showCriticalNodes: enabled,
             showAis: enabled,
           }),
       },
@@ -4908,6 +5211,7 @@ export function GlobeDashboard({
     lpg(showCyberIncidents, false),
     lpg(showDiplomaticTension, false),
     lpg(showEastAsiaAdiz, false),
+    lpg(showAxisNetwork, false),
     lpg(showWarZones, false),
     lpg(showEconomicCenters, false),
     lpg(showElectionEvents, false),
@@ -4922,6 +5226,7 @@ export function GlobeDashboard({
     lpg(showOilPipelines, false),
     lpg(showPorts, false),
     lpg(showLogisticsRisk, false),
+    lpg(showCriticalNodes, false),
     lpg(showRailGlow, false),
     lpg(showRefugeeCamps, false),
     lpg(showResources, false),
@@ -5149,7 +5454,14 @@ export function GlobeDashboard({
     syncViewState();
   }
 
-  const flyTo = useCallback((lat: number, lng: number, altitude = 1.18, durationMs = 850) => {
+  const flyTo = useCallback(
+    (
+      lat: number,
+      lng: number,
+      altitude = 1.18,
+      durationMs = 850,
+      camera?: { pitch?: number; bearing?: number },
+    ) => {
     const clampedAlt = clampGlobeAltitude(altitude);
     const controls = globeRef.current?.controls();
     if (controls) controls.autoRotate = false;
@@ -5167,7 +5479,16 @@ export function GlobeDashboard({
       renderStabilizeIdleRef.current = null;
     }
 
-    globeRef.current?.pointOfView({ lat, lng, altitude: clampedAlt }, durationMs);
+    globeRef.current?.pointOfView(
+      {
+        lat,
+        lng,
+        altitude: clampedAlt,
+        pitch: camera?.pitch,
+        bearing: camera?.bearing,
+      },
+      durationMs,
+    );
 
     flyBusyTimerRef.current = window.setTimeout(() => {
       flyBusyTimerRef.current = null;
@@ -5196,7 +5517,8 @@ export function GlobeDashboard({
         setIsCameraMoving(false);
       }, CAMERA_IDLE_DEBOUNCE_MS);
     }, busyMs);
-  }, []);
+  },
+  []);
 
   function openIntelSheet(options?: {
     theater?: IntelTheaterFilter;
@@ -5266,6 +5588,7 @@ export function GlobeDashboard({
       selection: NavSelection,
       durationMs = 850,
       mode: "overview" | "detail" = "overview",
+      camera?: { pitch?: number; bearing?: number },
     ) => {
       const targetLat = (selection.bbox.minLat + selection.bbox.maxLat) / 2;
       const targetLng = (selection.bbox.minLng + selection.bbox.maxLng) / 2;
@@ -5294,7 +5617,7 @@ export function GlobeDashboard({
           ORBITAL_OVERVIEW_ALTITUDE * 0.92,
         );
       }
-      flyTo(targetLat, targetLng, targetAltitude, durationMs);
+      flyTo(targetLat, targetLng, targetAltitude, durationMs, camera);
     },
     [computeRegionFitAltitude, flyTo],
   );
@@ -5307,7 +5630,9 @@ export function GlobeDashboard({
     setShowLocalAlertPanel(false);
     setRegionNavSelection(null);
     setEconNavSelection(selection);
-    flyToBounds(selection, 1100, "overview");
+    setEconNewsPanelReveal(false);
+    flyToBounds(selection, 1100, "overview", { pitch: 55, bearing: -20 });
+    scheduleEconInsight({ navId: selection.id, compact: false });
 
     const conceptLayers = conceptLayersForEconomyNavId(selection.id);
     if (Object.keys(conceptLayers).length > 0) {
@@ -5330,13 +5655,20 @@ export function GlobeDashboard({
     setShowDisputeLegendPanel(false);
     setShowLocalAlertPanel(false);
     setEconNavSelection(null);
+    closeEconInsight();
+    clearEconInsightTimer();
+    setEconNewsPanelReveal(false);
     setRegionNavSelection(selection);
+    setRegimeSelectedEpisodeId(null);
+    setFrictionEpisodeBrief(null);
+    clearFrictionEpisodeTimer();
     setTheaterSidebarTab(tab);
     setIntelTheaterFilter(config.newsTheater);
     immediateUntilRef.current = Date.now() + 1800;
     ukraineZoomPendingRef.current = false;
     neptunZoomPendingRef.current = false;
     flyToBounds(selection, 1100, "overview");
+    scheduleHubBrief(selection);
 
     const conceptLayers = conceptLayersForConflictNavId(selection.id);
     requestAnimationFrame(() => {
@@ -5354,10 +5686,16 @@ export function GlobeDashboard({
   enterEconomyRegionFocusRef.current = enterEconomyRegionFocus;
 
   useEffect(() => {
+    if (entryGate !== null || showModePicker) return;
     if (packageTheaterFocusPlayedRef.current || !globeReady || isLoading || loadError) return;
     const navId =
       viewUi.autoEnterTheaterNavId ?? initialViewConfig?.ui.autoEnterTheaterNavId ?? null;
     if (!navId) return;
+    // 허브 렌즈·양피지 경로는 유저가 nav를 직접 열 때만 — 패키지 autoEnter는 구 전장 id만
+    if (navId.startsWith("hub-") || navId.startsWith("claim-") || navId.startsWith("ally-")) {
+      packageTheaterFocusPlayedRef.current = true;
+      return;
+    }
     const sel = navSelectionFromId(navId);
     if (!sel) return;
     packageTheaterFocusPlayedRef.current = true;
@@ -5367,14 +5705,17 @@ export function GlobeDashboard({
     }
     enterTheaterFocusRef.current(sel);
   }, [
+    entryGate,
     globeReady,
     initialViewConfig?.ui.autoEnterTheaterNavId,
     isLoading,
     loadError,
+    showModePicker,
     viewUi.autoEnterTheaterNavId,
   ]);
 
   useEffect(() => {
+    if (entryGate !== null || showModePicker) return;
     if (packageEconFocusPlayedRef.current || !globeReady || isLoading || loadError) return;
     const navId = viewUi.autoEnterEconNavId ?? initialViewConfig?.ui.autoEnterEconNavId ?? null;
     if (!navId) return;
@@ -5387,10 +5728,12 @@ export function GlobeDashboard({
     }
     enterEconomyRegionFocusRef.current(sel);
   }, [
+    entryGate,
     globeReady,
     initialViewConfig?.ui.autoEnterEconNavId,
     isLoading,
     loadError,
+    showModePicker,
     viewUi.autoEnterEconNavId,
   ]);
 
@@ -5500,6 +5843,9 @@ export function GlobeDashboard({
     setIntelSheetOpen(false);
     setRegionNavSelection(null);
     setEconNavSelection(null);
+    closeEconInsight();
+    clearEconInsightTimer();
+    setEconNewsPanelReveal(false);
     setSelected(null);
     packageTheaterFocusPlayedRef.current = false;
     packageEconFocusPlayedRef.current = false;
@@ -5516,6 +5862,8 @@ export function GlobeDashboard({
     const { merged, packages } = applyViewerMode(mode, effectiveTheater, effectiveHub);
     applyMergedViewConfig(merged, packages, effectiveTheater, effectiveHub);
     if (mode === "economy") {
+      setUkraineFrontLegendEngaged(false);
+      setShowDisputeLegendPanel(false);
       setGdeltEvents([]);
       setGdeltFetchedAt(null);
       setGdeltError(null);
@@ -5694,6 +6042,26 @@ export function GlobeDashboard({
       ENTRY_GATE.zoomOutFlyMs,
     );
 
+    // 도메인 직후는 광역 히어로만 — 전장/허브 자동 fly·양피지 금지
+    packageTheaterFocusPlayedRef.current = true;
+    packageEconFocusPlayedRef.current = true;
+    setViewUi((prev) => ({
+      ...prev,
+      autoEnterTheaterNavId: null,
+      autoEnterEconNavId: null,
+      autoOpenIntelSheet: false,
+    }));
+    setHubBriefOpen(false);
+    clearHubBriefTimer();
+    setRegionNavSelection(null);
+    setEconNavSelection(null);
+    setFrictionEpisodeBrief(null);
+    setRegimeSelectedEpisodeId(null);
+    clearFrictionEpisodeTimer();
+    closeEconInsight();
+    clearEconInsightTimer();
+    setEconNewsPanelReveal(false);
+
     setShowModePicker(false);
     setModePickerLockMode(false);
     setModePickerInitialMode(null);
@@ -5703,8 +6071,8 @@ export function GlobeDashboard({
       domainThenDetailTimerRef.current = null;
     }
 
-    if (mode === "conflict" && shouldOfferTheaterCoachmark()) {
-      window.setTimeout(() => setShowTheaterCoachmark(true), 900);
+    if (shouldOfferChromeCoach()) {
+      window.setTimeout(() => setChromeCoachStep("nav"), 1100);
     }
   }
 
@@ -5726,10 +6094,12 @@ export function GlobeDashboard({
   useEffect(() => {
     if (isLoading || loadError || !globeReady) return;
     if (entryGate !== null || showModePicker) return;
+    if (chromeCoachStep) return;
+    if (shouldOfferChromeCoach()) return;
     if (!shouldShowQuickStart(viewerMode)) return;
     const timer = window.setTimeout(() => setShowQuickStart(true), 1200);
     return () => window.clearTimeout(timer);
-  }, [entryGate, globeReady, isLoading, loadError, showModePicker, viewerMode]);
+  }, [chromeCoachStep, entryGate, globeReady, isLoading, loadError, showModePicker, viewerMode]);
 
   const layerDebugPrevRef = useRef<{
     labels: number;
@@ -5815,7 +6185,7 @@ export function GlobeDashboard({
       battlefieldManualUntilRef.current = Date.now() + 12_000;
       battlefieldSoftZoneRef.current = zone;
       applyLayerPrefs(applyBattlefieldPreset(zone, layerPrefsLiveRef.current));
-      setShowTheaterCoachmark(false);
+      setChromeCoachStep(null);
     }
     handleNavNavigate(toNavSelection(preset.navItem, preset.groupId));
   }
@@ -5828,7 +6198,19 @@ export function GlobeDashboard({
       layerViewState.lng,
       layerViewState.altitude,
     );
-    if (!zone || battlefieldSoftZoneRef.current === zone) return;
+    // 전역으로 다시 빠지면 ADS-B·AIS 등 상세 레이어를 끄고 히어로 3종만 유지
+    if (!zone) {
+      if (battlefieldSoftZoneRef.current == null) return;
+      battlefieldSoftZoneRef.current = null;
+      applyLayerPrefs(
+        buildDomainOverviewPrefs("conflict", {
+          labelLanguage: layerPrefsLiveRef.current.labelLanguage,
+          ultraLite: ultraLiteRef.current,
+        }),
+      );
+      return;
+    }
+    if (battlefieldSoftZoneRef.current === zone) return;
     battlefieldSoftZoneRef.current = zone;
     applyLayerPrefs(applyBattlefieldPreset(zone, layerPrefsLiveRef.current));
   }, [
@@ -6037,6 +6419,18 @@ export function GlobeDashboard({
       }
       if (
         point.displayKind === "static" &&
+        point.kind === "critical-node"
+      ) {
+        skipNextGlobeClickRef.current = true;
+        const nodeId = String(point.meta?.criticalNodeId ?? "");
+        if (nodeId) {
+          flyTo(point.lat, point.lng, 0.72, 900, { pitch: 55, bearing: -20 });
+          openCriticalNodeInsight(nodeId, !isEconomyViewer);
+        }
+        return;
+      }
+      if (
+        point.displayKind === "static" &&
         (point.kind === "chokepoint" ||
           point.kind === "logistics-hub" ||
           point.kind === "submarine-tunnel")
@@ -6153,6 +6547,50 @@ export function GlobeDashboard({
         onSearchSelect={handleSearchSelect}
       />
 
+      {activeHubId && hubFocusMode === "arms" && axisArmsPayload && !hubBriefOpen ? (
+        <AxisArmsPanel
+          hubId={activeHubId}
+          deals={filterArmsForHub(axisArmsPayload, activeHubId).deals}
+          citation={axisArmsPayload.citation}
+          onClose={() => {
+            clearHubBriefTimer();
+            setHubBriefOpen(false);
+            setRegionNavSelection(null);
+          }}
+        />
+      ) : null}
+
+      {activeHubId && hubFocusMode === "regime" && !hubBriefOpen && !frictionEpisodeBrief ? (
+        <AxisRegimePanel
+          hubId={activeHubId}
+          selectedEpisodeId={regimeSelectedEpisodeId}
+          onSelectEpisode={(episode) => {
+            clearFrictionEpisodeTimer();
+            setRegimeSelectedEpisodeId(episode.id);
+            setFrictionEpisodeBrief(null);
+            flyTo(
+              episodeLat(episode),
+              episodeLng(episode),
+              altitudeFromEpisodeZoom(episode.zoom),
+              1100,
+              { pitch: episode.pitch, bearing: episode.bearing },
+            );
+            frictionEpisodeTimerRef.current = setTimeout(() => {
+              frictionEpisodeTimerRef.current = null;
+              setFrictionEpisodeBrief(episode);
+            }, 750);
+          }}
+          onClose={() => {
+            clearHubBriefTimer();
+            clearFrictionEpisodeTimer();
+            setHubBriefOpen(false);
+            setFrictionEpisodeBrief(null);
+            setRegimeSelectedEpisodeId(null);
+            setRegionNavSelection(null);
+          }}
+        />
+      ) : null}
+
       <ViewModeSwitcher mode={viewerMode} onChange={handleViewerModeChange} />
 
       <NewsStreamProvider
@@ -6212,7 +6650,18 @@ export function GlobeDashboard({
               pointLat={(point: GlobeDisplayPoint) => point.lat}
               pointLng={(point: GlobeDisplayPoint) => point.lng}
               pointColor={(point: GlobeDisplayPoint) => {
-                if (point.displayKind === "static") return STATIC_POINT_COLORS[point.kind];
+                if (point.displayKind === "static") {
+                  if (point.kind === "critical-node") {
+                    const risk = String(point.meta?.risk ?? "");
+                    const role = String(point.meta?.focusRole ?? "");
+                    if (role === "primary") return "rgba(250, 204, 21, 0.98)";
+                    if (role === "cascade") return "rgba(52, 211, 153, 0.95)";
+                    if (risk === "critical") return "rgba(251, 113, 133, 0.95)";
+                    if (risk === "high") return "rgba(251, 191, 36, 0.92)";
+                    return "rgba(110, 231, 183, 0.88)";
+                  }
+                  return STATIC_POINT_COLORS[point.kind];
+                }
                 if (point.displayKind === "mil") return "rgba(248, 113, 113, 0.92)";
                 if (point.displayKind === "ais") {
                   return point.category === "military"
@@ -6367,6 +6816,9 @@ export function GlobeDashboard({
               ringLng={(point: PulseRingPoint) => point.lng}
               ringAltitude={() => 0.005}
               ringColor={(point: PulseRingPoint) => {
+                if (point.pulseKind === "claim" || point.pulseKind === "friction") {
+                  return point.color;
+                }
                 if (point.pulseKind === "firms-bomb") {
                   const frp = point.frp ?? 0;
                   if (frp >= 50) return "rgba(255, 69, 0, 0.7)";
@@ -6379,6 +6831,9 @@ export function GlobeDashboard({
               }}
               ringMaxRadius={(point: PulseRingPoint) => {
                 const scale = getZoomOutScale(viewState.altitude);
+                if (point.pulseKind === "claim" || point.pulseKind === "friction") {
+                  return point.radiusScale * scale;
+                }
                 if (point.pulseKind === "firms-bomb") {
                   const frp = point.frp ?? 0;
                   const base = frp >= 50 ? 2.4 : frp >= 20 ? 1.9 : 1.45;
@@ -6388,7 +6843,9 @@ export function GlobeDashboard({
                   point.tension === "high" ? 1.8 : point.tension === "medium" ? 1.35 : 1.0;
                 return base * scale;
               }}
-              ringPropagationSpeed={2.2}
+              ringPropagationSpeed={(point: PulseRingPoint) =>
+                point.pulseKind === "claim" || point.pulseKind === "friction" ? 0.85 : 2.2
+              }
               htmlElementsData={htmlOverlayMarkers}
               htmlLat={(point: HtmlOverlayMarker) => point.lat}
               htmlLng={(point: HtmlOverlayMarker) => point.lng}
@@ -6443,6 +6900,17 @@ export function GlobeDashboard({
               polygonGeoJsonGeometry={(feature: PolygonLayerFeature) => feature.geometry}
               polygonCapColor={(feature: PolygonLayerFeature) => {
                 if (feature.polygonLayer === "country") {
+                  if (
+                    hubHighlightIsos &&
+                    feature.isoA3 &&
+                    hubHighlightIsos.has(feature.isoA3) &&
+                    activeHubId
+                  ) {
+                    const isHub = feature.isoA3 === hubById(activeHubId)?.iso;
+                    return isHub
+                      ? AXIS_HUB_META[activeHubId].color.replace(/,\s*[\d.]+\)$/, ", 0.28)")
+                      : AXIS_HUB_META[activeHubId].color.replace(/,\s*[\d.]+\)$/, ", 0.14)");
+                  }
                   return COUNTRY_TEXTURE_MODE_FILL;
                 }
                 if (feature.polygonLayer === "military-base") return US_BASE_FILL;
@@ -6460,7 +6928,17 @@ export function GlobeDashboard({
               }}
               // sideColor 미설정 — falsy(undefined)는 polished 파서에서 런타임 오류 유발
               polygonStrokeColor={(feature: PolygonLayerFeature) => {
-                if (feature.polygonLayer === "country") return POLYGON_NO_STROKE;
+                if (feature.polygonLayer === "country") {
+                  if (
+                    hubHighlightIsos &&
+                    feature.isoA3 &&
+                    hubHighlightIsos.has(feature.isoA3) &&
+                    activeHubId
+                  ) {
+                    return AXIS_HUB_META[activeHubId].color;
+                  }
+                  return POLYGON_NO_STROKE;
+                }
                 if (feature.polygonLayer === "military-base") return US_BASE_STROKE;
                 if (feature.polygonLayer === "conflict-zone") return "rgba(248,113,113,0.7)";
                 if (feature.polygonLayer === "ukraine-ru") return UKRAINE_RU_STROKE;
@@ -6641,6 +7119,7 @@ export function GlobeDashboard({
                 if (path.kind === "neptun-trail") return 1.55;
                 if (path.kind === "neptun-trail-archived") return 1.2;
                 if (path.kind === "neptun-projection") return 1.05;
+                if (path.kind === "axis-link") return 1.35;
                 if (path.kind === "coastline") return 0.38;
                 if (path.kind === "country-border") {
                   return globeTextures.vectorBase
@@ -6782,7 +7261,11 @@ export function GlobeDashboard({
               <LoadErrorBanner message={loadError} compact />
             </div>
           )}
-          {regionNavSelection && !selected && !intelSheetOpen && theaterFocusConfig ? (
+          {regionNavSelection &&
+          !isEconomyViewer &&
+          !selected &&
+          !intelSheetOpen &&
+          theaterFocusConfig ? (
             <TheaterDetailCta
               label={theaterFocusConfig.ctaLabel}
               onClick={flyToTheaterDetail}
@@ -6793,6 +7276,7 @@ export function GlobeDashboard({
 
         <UkraineFrontLegend
           visible={
+            !isEconomyViewer &&
             ukraineFrontLegendEngaged &&
             showUkraineControl &&
             !intelSheetOpen &&
@@ -6809,6 +7293,7 @@ export function GlobeDashboard({
                 : "상세"
           }
         />
+        {!isEconomyViewer ? (
         <div className="pointer-events-none absolute left-[4.5rem] top-3 z-[55]">
           <UsCarrierFixedToggle
             checked={showUsCarriers}
@@ -6817,8 +7302,10 @@ export function GlobeDashboard({
             deployedCount={deployedCarrierCount}
           />
         </div>
+        ) : null}
         <DisputeZoneLegend
           open={
+            !isEconomyViewer &&
             showAnyDisputeOverlay &&
             showDisputeLegendPanel &&
             !isUkraineTheaterFocus &&
@@ -6828,7 +7315,12 @@ export function GlobeDashboard({
           }
           onClose={() => setShowDisputeLegendPanel(false)}
         />
-        {!intelSheetOpen && !showLeftPanel && !selected && !regionNavSelection && !isUkraineTheaterFocus && (
+        {!isEconomyViewer &&
+          !intelSheetOpen &&
+          !showLeftPanel &&
+          !selected &&
+          !regionNavSelection &&
+          !isUkraineTheaterFocus && (
           <div className="pointer-events-none absolute bottom-[var(--bottom-intel-stack-clearance)] left-1/2 z-20 flex -translate-x-1/2 flex-wrap items-center justify-center gap-2">
             {showAnyDisputeOverlay && !showDisputeLegendPanel && (
               <LegendReopenButton
@@ -6946,6 +7438,7 @@ export function GlobeDashboard({
       <QuickStartCoach
         visible={
           showQuickStart &&
+          !chromeCoachStep &&
           !showViewerIntro &&
           !showLeftPanel &&
           !selected &&
@@ -7043,22 +7536,14 @@ export function GlobeDashboard({
             />
           </div>
         ) : null}
-        {!showLeftPanel && !selected && !regionNavSelection && !econNavSelection && (
+        {!showLeftPanel && !selected && !regionNavSelection && !econNavSelection && isEconomyViewer && (
           <ExplorationTabs
-            presets={isEconomyViewer ? ECON_EXPLORATION_PRESETS : EXPLORATION_PRESETS}
+            presets={ECON_EXPLORATION_PRESETS}
             activeId={null}
             onSelect={handleExplorationSelect}
-            variant={isEconomyViewer ? "hubs" : "fronts"}
-            label={
-              isEconomyViewer
-                ? t("hoverExplorationHubs", labelLanguage)
-                : t("hoverExplorationFronts", labelLanguage)
-            }
-            hint={
-              isEconomyViewer
-                ? t("hoverExplorationHubsHint", labelLanguage)
-                : t("hoverExplorationFrontsHint", labelLanguage)
-            }
+            variant="hubs"
+            label={t("hoverExplorationHubs", labelLanguage)}
+            hint={t("hoverExplorationHubsHint", labelLanguage)}
           />
         )}
         <div className="pointer-events-auto flex shrink-0 items-center gap-2">
@@ -7279,7 +7764,11 @@ export function GlobeDashboard({
       </aside>
       ) : null}
 
-      {regionNavSelection && !selected && !showLeftPanel && (
+      {regionNavSelection &&
+        !regionNavSelection.hubId &&
+        !isEconomyViewer &&
+        !selected &&
+        !showLeftPanel && (
         <>
           <button
             type="button"
@@ -7351,29 +7840,77 @@ export function GlobeDashboard({
           </aside>
         </>
       )}
-      {econNavSelection && !selected && (
+      {econNavSelection &&
+        !selected &&
+        !econInsightOpen &&
+        (econNewsPanelReveal ||
+          !resolveCriticalNodeBrief({ navId: econNavSelection.id })) && (
         <>
           <button
             type="button"
             aria-label={t("ariaCloseEconomyRegion", labelLanguage)}
             className="absolute inset-0 z-20 bg-black/30 backdrop-blur-[1px] lg:bg-transparent lg:backdrop-blur-none"
-            onClick={() => setEconNavSelection(null)}
+            onClick={() => {
+              setEconNavSelection(null);
+              setEconNewsPanelReveal(false);
+            }}
           />
           <EconomyRegionPanel
             selection={econNavSelection}
-            onClose={() => setEconNavSelection(null)}
+            onClose={() => {
+              setEconNavSelection(null);
+              setEconNewsPanelReveal(false);
+            }}
             onOpenIntel={() => {
               setEconNavSelection(null);
+              setEconNewsPanelReveal(false);
               openIntelSheet({ theater: "all", tab: "news" });
+            }}
+            onFlyToMap={(target) => {
+              setEconNavSelection(null);
+              setEconNewsPanelReveal(false);
+              handleIntelFlyTo(target);
             }}
           />
         </>
       )}
 
+      {econInsightOpen && econInsightBrief ? (
+        econInsightCompact ? (
+          <CriticalNodeInsightParchment
+            lang={labelLanguage}
+            brief={econInsightBrief}
+            onMapOnly={closeEconInsight}
+            onOpenNews={() => {
+              closeEconInsight();
+              if (isEconomyViewer) {
+                setEconNewsPanelReveal(true);
+              } else {
+                openIntelSheet({ theater: "all", tab: "news" });
+              }
+            }}
+          />
+        ) : (
+          <EconInsightParchment
+            lang={labelLanguage}
+            brief={econInsightBrief}
+            onMapOnly={closeEconInsight}
+            onOpenNews={() => {
+              closeEconInsight();
+              setEconNewsPanelReveal(true);
+            }}
+          />
+        )
+      ) : null}
+
       {entryGate === "caution" ? (
         <EntryCautionOverlay
           lang={labelLanguage}
           onContinue={() => setEntryGate("welcome")}
+          onSkipToDomain={() => {
+            markWelcomeGateDone();
+            setEntryGate("domain");
+          }}
         />
       ) : null}
 
@@ -7381,6 +7918,44 @@ export function GlobeDashboard({
         <WelcomeParchmentLetter
           lang={labelLanguage}
           onContinue={() => setEntryGate("domain")}
+        />
+      ) : null}
+
+      {hubBriefDoc ? (
+        <ParchmentLetter
+          lang={labelLanguage}
+          title={hubBriefDoc.title}
+          paragraphs={hubBriefDoc.paragraphs}
+          signOff={hubBriefDoc.signOff}
+          ctaLabel={t("hubBriefCta", labelLanguage)}
+          onContinue={closeHubBrief}
+          titleId="hub-brief-letter-title"
+          zIndexClass="z-[9990]"
+        />
+      ) : null}
+
+      {frictionEpisodeBrief ? (
+        <ParchmentLetter
+          lang={labelLanguage}
+          title={frictionEpisodeBrief.title}
+          paragraphs={[
+            frictionEpisodeBrief.locationName,
+            frictionEpisodeBrief.briefing,
+            ...(frictionEpisodeBrief.note ? [frictionEpisodeBrief.note] : []),
+          ]}
+          signOff={
+            labelLanguage === "en"
+              ? `${frictionEpisodeBrief.historicalYear}${
+                  frictionEpisodeBrief.yearEnd ? `–${frictionEpisodeBrief.yearEnd}` : ""
+                }\nGlobe Observatory · friction brief`
+              : `${frictionEpisodeBrief.historicalYear}${
+                  frictionEpisodeBrief.yearEnd ? `–${frictionEpisodeBrief.yearEnd}` : ""
+                }\n지구본 관측대 · 분쟁 외교사`
+          }
+          ctaLabel={t("hubBriefCta", labelLanguage)}
+          onContinue={() => setFrictionEpisodeBrief(null)}
+          titleId="friction-episode-letter-title"
+          zIndexClass="z-[9990]"
         />
       ) : null}
 
@@ -7406,11 +7981,16 @@ export function GlobeDashboard({
         />
       ) : null}
 
-      {showTheaterCoachmark && entryGate === null && !showModePicker ? (
-        <TheaterDropdownCoachmark
-          open
+      {chromeCoachStep &&
+      entryGate === null &&
+      !showModePicker &&
+      !hubBriefOpen &&
+      !frictionEpisodeBrief ? (
+        <ChromeOnboardingCoach
+          step={chromeCoachStep}
+          viewerMode={viewerMode}
           lang={labelLanguage}
-          onDismiss={() => setShowTheaterCoachmark(false)}
+          onStepChange={setChromeCoachStep}
         />
       ) : null}
       </NewsStreamProvider>

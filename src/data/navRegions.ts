@@ -16,6 +16,11 @@ export type NavSelection = {
   actorCountries?: string[];
   groupId: string;
   parentLabel?: string;
+  /** 반서방 축 허브 렌즈 */
+  hubId?: "IRN" | "CHN" | "RUS" | "PRK";
+  focusMode?: "network" | "ally" | "claim" | "arms" | "regime";
+  claimId?: string;
+  allyCode?: string;
 };
 
 export type NavSubItem = {

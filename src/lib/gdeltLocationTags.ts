@@ -3,6 +3,7 @@ import type { EventTier } from "@/data/geoTypes";
 import { getGlobeLod, type GlobeLodTier } from "@/lib/globeLod";
 import { getZoomOutScale } from "@/lib/zoomScale";
 import { isCenterInView, VIEWPORT_RADIUS_BY_TIER } from "@/lib/viewportCull";
+import { gdeltImportanceRankWeight } from "@/lib/gdeltImportance";
 
 type ViewState = { lat: number; lng: number; altitude: number };
 
@@ -29,7 +30,7 @@ const MAX_PINS_BY_TIER: Record<GlobeLodTier, Record<PinTier, number>> = {
 const TAG_LABELS: Partial<Record<EventTier, { ko: string; en: string }>> = {
   war: { ko: "전투·충돌", en: "Combat / clash" },
   diplomatic: { ko: "외교 긴장", en: "Diplomatic tension" },
-  alliance: { ko: "동맹 갈등", en: "Alliance friction" },
+  alliance: { ko: "동맹·축 관계", en: "Alliance / axis ties" },
   protest: { ko: "시위", en: "Protest" },
 };
 
@@ -61,7 +62,11 @@ function cellKey(lat: number, lng: number, lod: GlobeLodTier) {
 }
 
 function tagRank(event: ScoredEvent) {
-  return event.tensionScore * 1_000_000 + eventRecencyMs(event);
+  return (
+    gdeltImportanceRankWeight(event.importanceGrade) +
+    event.tensionScore * 1_000_000 +
+    eventRecencyMs(event)
+  );
 }
 
 function pickTierEvents(

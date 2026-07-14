@@ -12,11 +12,21 @@ export type MapLibreCamera = {
   bearing: number;
 };
 
+/** Globe projection에서 과도한 틸트 방지 (전망대 ~45–55°) */
+export const MAPLIBRE_PITCH_MAX = 55;
+
+export function clampMapLibrePitch(pitch: number | undefined): number {
+  if (pitch == null || !Number.isFinite(pitch)) return 0;
+  return Math.max(0, Math.min(MAPLIBRE_PITCH_MAX, pitch));
+}
+
 /** globe.gl altitude → MapLibre zoom (globe projection, 경험적 보정) */
 export function globeViewToMapLibre(view: {
   lat: number;
   lng: number;
   altitude: number;
+  pitch?: number;
+  bearing?: number;
 }): MapLibreCamera {
   const alt = clampGlobeAltitude(view.altitude);
   const zoom = altitudeToMapLibreZoom(alt);
@@ -25,8 +35,8 @@ export function globeViewToMapLibre(view: {
     longitude: view.lng,
     latitude: view.lat,
     zoom,
-    pitch: 0,
-    bearing: 0,
+    pitch: clampMapLibrePitch(view.pitch),
+    bearing: view.bearing != null && Number.isFinite(view.bearing) ? view.bearing : 0,
   };
 }
 

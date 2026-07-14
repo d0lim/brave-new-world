@@ -51,21 +51,41 @@ export function newsTheaterFromCoords(lat: number, lng: number): NewsTheater {
 
 export function newsTheaterFromNavId(id: string): IntelTheaterFilter {
   const key = id.toLowerCase();
-  if (key.includes("ukraine") || key.includes("west-russia")) return "russia-ukraine";
+  if (key.includes("ukraine") || key.includes("west-russia") || key === "hub-rus" || key.startsWith("claim-rus") || key.startsWith("ally-rus")) {
+    return "russia-ukraine";
+  }
   if (
     key.includes("middle-east") ||
     key.includes("gulf") ||
     key.includes("israel") ||
     key.includes("iran") ||
     key.includes("yemen") ||
-    key.includes("red-sea")
+    key.includes("red-sea") ||
+    key === "hub-irn" ||
+    key.startsWith("claim-irn") ||
+    key.startsWith("ally-irn")
   ) {
     return "middle-east";
   }
-  if (key.includes("taiwan") || key.includes("china") || key.includes("south-china")) {
+  if (
+    key.includes("taiwan") ||
+    key.includes("china") ||
+    key.includes("south-china") ||
+    key === "hub-chn" ||
+    key.startsWith("claim-chn") ||
+    key.startsWith("ally-chn")
+  ) {
     return "china-taiwan";
   }
-  if (key.includes("korea") || key.includes("dmz")) return "korea";
+  if (
+    key.includes("korea") ||
+    key.includes("dmz") ||
+    key === "hub-prk" ||
+    key.startsWith("claim-prk") ||
+    key.startsWith("ally-prk")
+  ) {
+    return "korea";
+  }
   if (key.includes("japan")) return "japan";
   if (key.includes("india") || key.includes("pakistan") || key.includes("south-asia")) {
     return "south-asia";

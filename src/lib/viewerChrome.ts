@@ -77,7 +77,7 @@ const ECONOMY_FORCE_ON: Partial<LayerPrefs> = {
   showLngTerminals: true,
   showShippingLanes: true,
   showLogisticsRisk: true,
-  showSanctionsEntities: true,
+  showCriticalNodes: true,
   showAiDataCenters: true,
   showInternetExchanges: true,
   showPorts: true,
@@ -89,6 +89,9 @@ const ECONOMY_FORCE_ON: Partial<LayerPrefs> = {
 };
 
 const ECONOMY_FORCE_OFF: Partial<LayerPrefs> = {
+  /** 지정학 전선 UI/레이어 — 지경학에서는 기본 비활성 (초크·파이프만 유지) */
+  showWarZones: false,
+  showDiplomaticTension: false,
   showGdeltWar: false,
   showGdeltDiplomatic: false,
   showGdeltAlliance: false,
@@ -103,6 +106,8 @@ const ECONOMY_FORCE_OFF: Partial<LayerPrefs> = {
   showMilitaryBases: false,
   showMilitaryActivity: false,
   showUsCarriers: false,
+  showFirmsFires: false,
+  showSanctionsEntities: false,
 };
 
 export const VIEWER_CHROME: Record<ViewerMode, ViewerChromePreset> = {
@@ -122,7 +127,7 @@ export const VIEWER_CHROME: Record<ViewerMode, ViewerChromePreset> = {
     },
     navProfile: NAV_MENU_GROUPS,
     searchPlaceholder: "지명 · 국가 · 분쟁 검색",
-    navHeaderLabel: "멋진 신세계",
+    navHeaderLabel: "반서방 축",
     modePickerTitle: "지정학",
     modePickerTagline: "전선 · GDELT · Telegram OSINT",
     modePickerBullets: [
@@ -154,9 +159,9 @@ export const VIEWER_CHROME: Record<ViewerMode, ViewerChromePreset> = {
     modePickerTagline: "유가 · VIX · 제재 · 물류",
     modePickerBullets: [
       "주요 증시·VIX·유가 티커",
-      "경제 RSS · 빅테크·반도체·전기차·에너지 기업 속보",
-      "제재·파이프라인·해운·초크포인트 레이어",
-      "하단: 티커 + 시장 속보 (GDELT/TG 없음)",
+      "경제 RSS · 에너지·해운·제재 속보",
+      "초크포인트·오일/가스 파이프·항로 (전선·제재 UI 없음)",
+      "하단: 티커 + 시장 속보",
     ],
     layerPanelTitle: "인프라 · 시장",
   },

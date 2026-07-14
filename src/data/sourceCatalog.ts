@@ -210,6 +210,17 @@ export const NEWS_LAYER_SOURCE_CATALOG: NewsLayerSourceNote[] = [
     ingest: "static-build",
   },
   {
+    layerId: "critical-nodes",
+    source: "Critical Node Atlas (EkoA/chokepoints-project)",
+    url: "src/data/vendor/chokepoints-nodes.json",
+    cadence: "Project versioned (upstream MIT)",
+    attribution: "Critical Node Atlas · MIT License",
+    notes:
+      "31 strategic chokepoints across maritime, cables, energy, financial, and tech layers. Shared by conflict and economy modes.",
+    status: "shipped",
+    ingest: "static-build",
+  },
+  {
     layerId: "oil-pipelines",
     source: "Global Energy Monitor (GEM)",
     url: "/data/{profile}/oil-pipelines.json",

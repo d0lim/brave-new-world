@@ -1,5 +1,11 @@
 import type { NavSelection } from "@/data/navRegions";
 import { CONFLICT_ZONE_GROUP, INTERCONTINENTAL_GROUP, toNavSelection } from "@/data/navRegions";
+import {
+  HUB_DEFINITIONS,
+  hubByNavId,
+  parseHubNavId,
+  selectionForHubNetwork,
+} from "@/data/hubNav";
 import type { NewsTheater } from "@/lib/news/types";
 import { newsTheaterFromNavId } from "@/lib/news/theaterMap";
 import type { TelegramAlertRegion } from "@/lib/telegramAlerts";
@@ -21,8 +27,36 @@ const CTA_BY_THEATER: Partial<Record<NewsTheater, string>> = {
   korea: "DMZ·한반도 전선을 자세히 보려면 이 버튼을 누르세요",
 };
 
-/** nav id → NavSelection (최상위·하위 전장 모두) */
+/** nav id → NavSelection (허브·주장·기존 전장 모두) */
 export function navSelectionFromId(id: string, parentLabel?: string): NavSelection | null {
+  const hubParsed = parseHubNavId(id);
+  if (hubParsed.hubId) {
+    const hub = HUB_DEFINITIONS.find((h) => h.hubId === hubParsed.hubId);
+    if (hub) {
+      if (hubParsed.focusMode === "claim" && hubParsed.claimId) {
+        const claim = hub.claims.find((c) => c.id === hubParsed.claimId);
+        if (claim) {
+          return {
+            ...selectionForHubNetwork(hub),
+            id: claim.id,
+            label: claim.label,
+            lat: claim.lat,
+            lng: claim.lng,
+            altitude: claim.altitude,
+            description: claim.description,
+            bbox: claim.bbox,
+            focusMode: "claim",
+            claimId: claim.id,
+            parentLabel: hub.label,
+          };
+        }
+      }
+      return selectionForHubNetwork(hub);
+    }
+  }
+  const hubDirect = hubByNavId(id);
+  if (hubDirect) return selectionForHubNetwork(hubDirect);
+
   for (const group of [CONFLICT_ZONE_GROUP, INTERCONTINENTAL_GROUP]) {
     for (const item of group.items) {
       if (item.id === id) return toNavSelection(item, group.id);

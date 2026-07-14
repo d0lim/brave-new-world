@@ -20,6 +20,7 @@ const PINNED_STATIC_KINDS = new Set<StaticPoint["kind"]>([
   "chokepoint",
   "logistics-hub",
   "submarine-tunnel",
+  "critical-node",
 ]);
 
 export function filterStaticPointsForView(
@@ -80,6 +81,7 @@ export const STATIC_POINT_COLORS: Record<StaticPoint["kind"], string> = {
   chokepoint: "rgba(251, 113, 133, 0.95)",
   "logistics-hub": "rgba(244, 63, 94, 0.92)",
   "submarine-tunnel": "rgba(125, 211, 252, 0.95)",
+  "critical-node": "rgba(250, 204, 21, 0.95)",
 };
 
 /** 공항/항구/미군기지는 HTML 마커로 표시 (일반 points와 이중 렌더 금지) */
@@ -145,6 +147,7 @@ export function staticPointRadius(kind: StaticPoint["kind"], altitude = 1): numb
     chokepoint: 0.28,
     "logistics-hub": 0.26,
     "submarine-tunnel": 0.27,
+    "critical-node": 0.3,
   };
   return map[kind] * getZoomOutScale(altitude);
 }

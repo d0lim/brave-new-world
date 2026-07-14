@@ -167,7 +167,6 @@ import { useLayerPrefsController } from "@/hooks/useLayerPrefsController";
 import {
   applyViewPackages,
   DEFAULT_PACKAGE_SELECTION,
-  packagesForViewerMode,
   resolveIntroFlyTarget,
   viewerModeFromPackages,
   type MergedViewConfig,
@@ -204,9 +203,24 @@ import {
 } from "@/lib/ultraLiteMode";
 import {
   buildDomainOverviewPrefs,
-  DOMAIN_OVERVIEW_THEN_DETAIL_MS,
   ENTRY_GATE,
 } from "@/lib/entryOverview";
+import {
+  applyBattlefieldPreset,
+  battlefieldZoneFromExplorationId,
+  detectBattlefieldZone,
+  type BattlefieldZone,
+} from "@/lib/battlefieldPresets";
+import {
+  eastAsiaAdizToPaths,
+  isEastAsiaAdizVisibleAtAltitude,
+} from "@/lib/eastAsiaAdiz";
+import {
+  TheaterDropdownCoachmark,
+  shouldOfferTheaterCoachmark,
+} from "@/components/TheaterDropdownCoachmark";
+import { useLazyJsonObject } from "@/hooks/useLazyJson";
+import type { FeatureCollection } from "geojson";
 import { lookupOceanName } from "@/lib/oceanNames";
 import { getGlobeTextures } from "@/lib/mapStyles";
 import {
@@ -1309,6 +1323,9 @@ export function GlobeDashboard({
   const [modePickerInitialMode, setModePickerInitialMode] = useState<ViewerMode | null>(null);
   const [entryGate, setEntryGate] = useState<EntryGate>(null);
   const domainThenDetailTimerRef = useRef<number | null>(null);
+  const [showTheaterCoachmark, setShowTheaterCoachmark] = useState(false);
+  const battlefieldSoftZoneRef = useRef<BattlefieldZone | null>(null);
+  const battlefieldManualUntilRef = useRef(0);
   const [showViewerIntro, setShowViewerIntro] = useState(false);
   const [showFeatureGuide, setShowFeatureGuide] = useState(false);
   const [showQuickStart, setShowQuickStart] = useState(false);
@@ -1351,6 +1368,16 @@ export function GlobeDashboard({
   /** 공습사이렌 포커스 — 사각 틀 없이 해당 지역 빗금만 */
   const [airRaidFocusPaths, setAirRaidFocusPaths] = useState<TransportPath[]>([]);
   const airRaidFocusClearRef = useRef<number | null>(null);
+
+  const parseEastAsiaAdiz = useCallback(
+    (raw: unknown) => raw as FeatureCollection,
+    [],
+  );
+  const { data: eastAsiaAdizFc } = useLazyJsonObject<FeatureCollection>(
+    "east-asia-adiz.geojson",
+    !isEconomyViewer,
+    parseEastAsiaAdiz,
+  );
 
   useEffect(() => {
     if (!isEconomyViewer) return;
@@ -1572,6 +1599,7 @@ export function GlobeDashboard({
     showTzevaAdom,
     showNeptun,
     showNeptunPreviousTrails,
+    showEastAsiaAdiz,
     labelLanguage,
   } = layerPrefs;
 
@@ -1702,6 +1730,7 @@ export function GlobeDashboard({
     if (v && !showNeptun) return;
     togglePref("showNeptunPreviousTrails", v);
   };
+  const setShowEastAsiaAdiz = (v: boolean) => togglePref("showEastAsiaAdiz", v);
 
   const showGdeltLayers =
     viewerChromePreset.fetchGdelt &&
@@ -2408,10 +2437,17 @@ export function GlobeDashboard({
 
   const polygonDataWithUkraine = polygonData;
 
+  const eastAsiaAdizPaths = useMemo<TransportPath[]>(() => {
+    if (!showEastAsiaAdiz) return [];
+    if (!isEastAsiaAdizVisibleAtAltitude(layerViewState.altitude)) return [];
+    return eastAsiaAdizToPaths(eastAsiaAdizFc);
+  }, [eastAsiaAdizFc, layerViewState.altitude, showEastAsiaAdiz]);
+
   const rawGlobePaths = useMemo<TransportPath[]>(
     () => [
       ...visibleDisputeBoundaries,
       ...disputeZonePaths,
+      ...eastAsiaAdizPaths,
       ...visibleShipping,
       ...visibleCables,
       ...visibleOilPipelines,
@@ -2422,6 +2458,7 @@ export function GlobeDashboard({
     [
       armsEmbargoFramePaths,
       disputeZonePaths,
+      eastAsiaAdizPaths,
       railPaths,
       visibleCables,
       visibleDisputeBoundaries,
@@ -4306,6 +4343,16 @@ export function GlobeDashboard({
             accent: "orange",
           },
           {
+            id: "east-asia-adiz",
+            label: "동아시아 ADIZ",
+            detail: showEastAsiaAdiz
+              ? "KADIZ · JADIZ · TAIDIZ · 북한 · CADIZ"
+              : "꺼짐 · 줌인 시 빗금망",
+            checked: layerPrefs.showEastAsiaAdiz,
+            onChange: setShowEastAsiaAdiz,
+            accent: "blue",
+          },
+          {
             id: "conflict-zones",
             label: "AI 전쟁지역 (데모)",
             detail: showConflictZones
@@ -4860,6 +4907,7 @@ export function GlobeDashboard({
     lpg(showConflictZones, false),
     lpg(showCyberIncidents, false),
     lpg(showDiplomaticTension, false),
+    lpg(showEastAsiaAdiz, false),
     lpg(showWarZones, false),
     lpg(showEconomicCenters, false),
     lpg(showElectionEvents, false),
@@ -5152,7 +5200,7 @@ export function GlobeDashboard({
 
   function openIntelSheet(options?: {
     theater?: IntelTheaterFilter;
-    tab?: "news" | "telegram" | "viina";
+    tab?: "news" | "video" | "telegram" | "viina";
     lat?: number;
     lng?: number;
     altitude?: number;
@@ -5611,7 +5659,6 @@ export function GlobeDashboard({
     setUltraLite(ultraLiteOn);
     savePerfPrefs({ ultraLite: ultraLiteOn });
 
-    // 세부 선택 전: 전체 지구본 + 모드별 오버뷰 레이어만 (우크라 바로 진입 금지)
     suppressAutoRegionZoomRef.current = true;
     ukraineZoomPendingRef.current = false;
     neptunZoomPendingRef.current = false;
@@ -5624,40 +5671,41 @@ export function GlobeDashboard({
       labelLanguage: layerPrefsLiveRef.current.labelLanguage,
       ultraLite: ultraLiteOn,
     });
+
+    // 모드 크롬·패키지 적용 후 히어로 레이어로 덮어씀 (세부 ModePicker 없음)
+    handleModeApply(mode, "auto", "auto");
     applyLayerPrefs(overviewPrefs);
-    setViewPackages(packagesForViewerMode(mode));
 
     layerCenterRef.current = {
       lat: ENTRY_GATE.bootLookAt.lat,
       lng: ENTRY_GATE.bootLookAt.lng,
     };
-    layerAltitudeRef.current = ENTRY_GATE.zoomOutAltitude;
-    layerLodTierRef.current = getGlobeLod(ENTRY_GATE.zoomOutAltitude).tier;
+    layerAltitudeRef.current = ENTRY_GATE.bootAltitude;
+    layerLodTierRef.current = getGlobeLod(ENTRY_GATE.bootAltitude).tier;
     setFilterCenter({
       lat: ENTRY_GATE.bootLookAt.lat,
       lng: ENTRY_GATE.bootLookAt.lng,
     });
-    setLayerAltitude(ENTRY_GATE.zoomOutAltitude);
-    // 도메인 선택 후 — 전체 지구본 확 줌아웃, 그다음 세부설정
+    setLayerAltitude(ENTRY_GATE.bootAltitude);
     flyTo(
       ENTRY_GATE.bootLookAt.lat,
       ENTRY_GATE.bootLookAt.lng,
-      ENTRY_GATE.zoomOutAltitude,
+      ENTRY_GATE.bootAltitude,
       ENTRY_GATE.zoomOutFlyMs,
     );
 
-    setModePickerInitialMode(mode);
-    setModePickerLockMode(true);
     setShowModePicker(false);
-    setEntryGate("overview");
+    setModePickerLockMode(false);
+    setModePickerInitialMode(null);
+    setEntryGate(null);
     if (domainThenDetailTimerRef.current != null) {
       window.clearTimeout(domainThenDetailTimerRef.current);
-    }
-    domainThenDetailTimerRef.current = window.setTimeout(() => {
       domainThenDetailTimerRef.current = null;
-      setEntryGate("mode");
-      setShowModePicker(true);
-    }, DOMAIN_OVERVIEW_THEN_DETAIL_MS);
+    }
+
+    if (mode === "conflict" && shouldOfferTheaterCoachmark()) {
+      window.setTimeout(() => setShowTheaterCoachmark(true), 900);
+    }
   }
 
   function handleModePickerCancel() {
@@ -5762,8 +5810,36 @@ export function GlobeDashboard({
   }
 
   function handleExplorationSelect(preset: (typeof EXPLORATION_PRESETS)[number]) {
+    const zone = battlefieldZoneFromExplorationId(preset.id);
+    if (zone) {
+      battlefieldManualUntilRef.current = Date.now() + 12_000;
+      battlefieldSoftZoneRef.current = zone;
+      applyLayerPrefs(applyBattlefieldPreset(zone, layerPrefsLiveRef.current));
+      setShowTheaterCoachmark(false);
+    }
     handleNavNavigate(toNavSelection(preset.navItem, preset.groupId));
   }
+
+  useEffect(() => {
+    if (isEconomyViewer || entryGate !== null || showModePicker) return;
+    if (Date.now() < battlefieldManualUntilRef.current) return;
+    const zone = detectBattlefieldZone(
+      layerViewState.lat,
+      layerViewState.lng,
+      layerViewState.altitude,
+    );
+    if (!zone || battlefieldSoftZoneRef.current === zone) return;
+    battlefieldSoftZoneRef.current = zone;
+    applyLayerPrefs(applyBattlefieldPreset(zone, layerPrefsLiveRef.current));
+  }, [
+    applyLayerPrefs,
+    entryGate,
+    isEconomyViewer,
+    layerViewState.altitude,
+    layerViewState.lat,
+    layerViewState.lng,
+    showModePicker,
+  ]);
 
   function handleRegionEventSelect(event: ScoredEvent) {
     flyTo(event.lat, event.lng, 0.72);
@@ -7327,6 +7403,14 @@ export function GlobeDashboard({
           onConfirm={handleModeApply}
           onCustom={handleCustomLayerApply}
           onCancel={handleModePickerCancel}
+        />
+      ) : null}
+
+      {showTheaterCoachmark && entryGate === null && !showModePicker ? (
+        <TheaterDropdownCoachmark
+          open
+          lang={labelLanguage}
+          onDismiss={() => setShowTheaterCoachmark(false)}
         />
       ) : null}
       </NewsStreamProvider>

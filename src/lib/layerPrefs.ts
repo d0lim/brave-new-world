@@ -55,6 +55,8 @@ export type LayerPrefs = {
   showNeptun: boolean;
   /** 사라진 드론·미사일의 지나간 이동 경로 */
   showNeptunPreviousTrails: boolean;
+  /** 동아시아 ADIZ (KADIZ/JADIZ/TAIDIZ/북한/CADIZ) */
+  showEastAsiaAdiz: boolean;
   labelLanguage: LabelLanguage;
 };
 
@@ -105,6 +107,7 @@ export const DEFAULT_LAYER_PREFS: LayerPrefs = {
   showTzevaAdom: false,
   showNeptun: true,
   showNeptunPreviousTrails: true,
+  showEastAsiaAdiz: false,
   labelLanguage: "ko",
 };
 

@@ -50,6 +50,7 @@ export function ExplorationTabs({
       <div className="relative flex flex-col items-end">
         <HoverHint placement="bottom" title={label} detail={hint}>
           <button
+            id="exploration-theater-dropdown"
             type="button"
             aria-expanded={open}
             aria-haspopup="listbox"

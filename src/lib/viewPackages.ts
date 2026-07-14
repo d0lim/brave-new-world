@@ -11,7 +11,7 @@ import {
 } from "@/lib/layerPrefs";
 export const VIEW_CONFIG_KEY = "geowatch-view-config-v1";
 
-export type ViewIntelTab = "news" | "telegram" | "viina";
+export type ViewIntelTab = "news" | "video" | "telegram" | "viina";
 
 export type ViewPackageId = "conflict-watch" | "geo-trader" | "frontline-live" | "custom";
 
@@ -228,6 +228,7 @@ export const LAYER_PREF_LABELS: Partial<Record<BooleanLayerKey, string>> = {
   showNeptun: "드론·미사일 궤적",
   showNeptunPreviousTrails: "지나간 미사일 궤적",
   showTzevaAdom: "이스라엘 공습 경보",
+  showEastAsiaAdiz: "동아시아 ADIZ",
   showSanctionsEntities: "제재",
   showOilPipelines: "유가 파이프라인",
   showLngTerminals: "LNG 터미널",

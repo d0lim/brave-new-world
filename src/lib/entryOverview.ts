@@ -11,11 +11,10 @@ import type { ViewerMode } from "@/lib/viewPackages";
  * 첫 진입 게이트 — 로테이션이 아니라 입·출구(한 번 통과하면 끝).
  *
  * 순서(하드코딩):
- * 1. 로딩 — 이때부터 뒷배경은 이미 줌아웃
+ * 1. 로딩 — 뒷배경 고도 = 로딩 셰이더(z≈3.85)와 동일 visual (altitude 2.85)
  * 2. 환영 편지지
  * 3. 지정학 / 지경학 선택
- * 4. 전체 지구본 확 줌아웃
- * 5. 세부설정(ModePicker)
+ * 4. 전역 지구본 히어로 (ModePicker 세부창 없음) → 상단 주요전장 드롭다운
  */
 /** 고도는 런타임에 LOD 앵커로 바뀌므로 literal이 되면 안 됨 (`as const` 금지). */
 export const ENTRY_GATE: {
@@ -25,14 +24,16 @@ export const ENTRY_GATE: {
   zoomOutFlyMs: number;
   afterZoomOutHoldMs: number;
 } = {
-  /** 로딩·환영·도메인 동안 뒷배경 카메라 (이미 줌아웃된 궤도) */
+  /**
+   * 로딩 셰이더 카메라 거리 z=3.85 ≈ globe altitude 2.85 (1+altitude).
+   * LOD tier: global (> 1.65).
+   */
   bootAltitude: 2.85,
   bootLookAt: { lat: 18, lng: 35 },
-  /** 도메인 선택 직후 — 전체 지구본이 확 빠지는 고도 */
-  zoomOutAltitude: 3.4,
-  zoomOutFlyMs: 1600,
-  /** 줌아웃 연출 후 세부설정 창까지 여유 */
-  afterZoomOutHoldMs: 450,
+  /** 입구 종료 후 첫 화면도 로딩과 동일 크기 — 추가 줌아웃 없음 */
+  zoomOutAltitude: 2.85,
+  zoomOutFlyMs: 1200,
+  afterZoomOutHoldMs: 0,
 };
 
 /** @deprecated ENTRY_GATE.bootAltitude / zoomOutAltitude 사용 */
@@ -44,9 +45,8 @@ export const DOMAIN_OVERVIEW_LOOK_AT = ENTRY_GATE.bootLookAt;
 /** @deprecated ENTRY_GATE.zoomOutFlyMs */
 export const DOMAIN_OVERVIEW_FLY_MS = ENTRY_GATE.zoomOutFlyMs;
 
-/** 줌아웃 fly 시작 → 세부설정 오픈까지 */
-export const DOMAIN_OVERVIEW_THEN_DETAIL_MS =
-  ENTRY_GATE.zoomOutFlyMs + ENTRY_GATE.afterZoomOutHoldMs;
+/** @deprecated 세부 ModePicker 제거 — 더 이상 사용하지 않음 */
+export const DOMAIN_OVERVIEW_THEN_DETAIL_MS = 0;
 
 function allBooleanLayersOff(base: LayerPrefs): LayerPrefs {
   const next = { ...base };
@@ -58,9 +58,18 @@ function allBooleanLayersOff(base: LayerPrefs): LayerPrefs {
   return next;
 }
 
+/** 지정학 히어로 — 전쟁/긴장/GDELT + ADS-B(군용) + AIS */
+const CONFLICT_HERO_ON: Partial<LayerPrefs> = {
+  showWarZones: true,
+  showDiplomaticTension: true,
+  showGdeltWar: true,
+  showMilitaryActivity: true,
+  showAis: true,
+};
+
 /**
- * 도메인 게이트 직후 · 세부 선택 전 — 전체 지구본용 레이어.
- * 지정학: 전쟁 빗금만 / 지경학: 항로·초크포인트·항구
+ * 도메인 게이트 직후 첫 화면용 레이어.
+ * 지정학: 전쟁·긴장·GDELT·ADS-B·AIS / 지경학: 항로·초크포인트·항구
  */
 export function buildDomainOverviewPrefs(
   mode: ViewerMode,
@@ -70,10 +79,7 @@ export function buildDomainOverviewPrefs(
   let next = allBooleanLayersOff({ ...DEFAULT_LAYER_PREFS, labelLanguage });
 
   if (mode === "conflict") {
-    next = {
-      ...next,
-      showWarZones: true,
-    };
+    next = { ...next, ...CONFLICT_HERO_ON };
   } else {
     next = {
       ...next,
@@ -86,7 +92,13 @@ export function buildDomainOverviewPrefs(
   if (options?.ultraLite) {
     next = applyUltraLiteToLayerPrefs(next);
     if (mode === "conflict") {
-      next = { ...next, showWarZones: true };
+      // Ultra-Lite 캡 3: 전쟁·긴장·GDELT 우선 (ADS-B/AIS는 캡 밖이면 드롭)
+      next = {
+        ...next,
+        showWarZones: true,
+        showDiplomaticTension: true,
+        showGdeltWar: true,
+      };
     } else {
       next = {
         ...next,
@@ -96,6 +108,19 @@ export function buildDomainOverviewPrefs(
       };
     }
     next = clampPrefsToActiveCap(next, true);
+    if (mode === "conflict") {
+      next = {
+        ...next,
+        showWarZones: true,
+        showDiplomaticTension: true,
+        showGdeltWar: true,
+      };
+      next = clampPrefsToActiveCap(next, true);
+    }
+  } else if (mode === "conflict") {
+    next = clampPrefsToActiveCap(next, false);
+    next = { ...next, ...CONFLICT_HERO_ON };
+    next = clampPrefsToActiveCap(next, false);
   }
 
   return next;

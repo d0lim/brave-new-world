@@ -21,6 +21,7 @@ export const LAYER_CAP_KEEP_PRIORITY: Array<keyof LayerPrefs> = [
   "showNeptun",
   "showWarZones",
   "showDiplomaticTension",
+  "showEastAsiaAdiz",
   "showGdeltWar",
   "showFirmsFires",
   "showMilitaryActivity",

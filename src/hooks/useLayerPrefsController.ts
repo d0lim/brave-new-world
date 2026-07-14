@@ -53,14 +53,20 @@ export function useLayerPrefsController(
       const ultra = ultraLiteRef?.current ?? false;
       const clamped = clampPrefsToActiveCap(next, ultra);
       draftRef.current = clamped;
-      saveLayerPrefs(clamped);
       if (intent === "immediate") {
+        saveLayerPrefs(clamped);
         immediateUntilRef.current = Date.now() + LAYER_IMMEDIATE_RENDER_MS;
+      } else {
+        // localStorage 동기 write가 체크 입력과 겹치지 않게
+        window.setTimeout(() => saveLayerPrefs(draftRef.current), 0);
       }
       startTransition(() => {
         setLayerPrefs(clamped);
         setDraftPrefs(clamped);
-        setApplyGeneration((n) => n + 1);
+        // deferred(패널 체크)에서는 generation 강제 재계산을 건너뛰어 순간 정지를 줄임
+        if (intent === "immediate") {
+          setApplyGeneration((n) => n + 1);
+        }
       });
     },
     [ultraLiteRef],
@@ -149,9 +155,10 @@ export function useLayerPrefsController(
   }, []);
 
   const flushPendingPrefs = useCallback(() => {
+    if (debounceTimerRef.current == null) return;
     clearDebounce();
     setBatchPending(false);
-    flushPrefs(draftRef.current, "immediate");
+    flushPrefs(draftRef.current, "deferred");
   }, [clearDebounce, flushPrefs]);
 
   const applyLayerPrefs = useCallback(
@@ -163,12 +170,40 @@ export function useLayerPrefsController(
     [clearDebounce, flushPrefs],
   );
 
+  /**
+   * 레이어 패널 체크용 — 지도에는 곧 반영하되 immediate 우회·동기 재계산을 피함.
+   * 연속 토글은 BATCH_DEBOUNCE_MS로 합쳐서 한 번만 flush.
+   */
+  const patchLayerPrefsSoft = useCallback(
+    (patch: Partial<LayerPrefs>) => {
+      const ultra = ultraLiteRef?.current ?? false;
+      let next = { ...draftRef.current, ...patch };
+      next = clampPrefsToActiveCap(next, ultra);
+      draftRef.current = next;
+      lastToggleAtRef.current = Date.now();
+      setDraftPrefs(next);
+
+      const onlyInstant =
+        Object.keys(patch).length > 0 &&
+        Object.keys(patch).every((k) => INSTANT_KEYS.has(k as keyof LayerPrefs));
+      if (onlyInstant) {
+        clearDebounce();
+        setBatchPending(false);
+        flushPrefs(next, "immediate");
+        return;
+      }
+      scheduleBatchFlush();
+    },
+    [clearDebounce, flushPrefs, scheduleBatchFlush, ultraLiteRef],
+  );
+
   return {
     layerPrefs,
     draftPrefs,
     togglePref,
     toggleCategoryPrefs,
     applyLayerPrefs,
+    patchLayerPrefsSoft,
     flushPendingPrefs,
     batchPending,
     applyGeneration,

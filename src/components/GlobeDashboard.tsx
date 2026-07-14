@@ -1088,6 +1088,8 @@ const FLOW_PATH_KINDS = new Set([
 const HEATMAP_MEANINGFUL_DELTA = 28;
 const LABEL_MEANINGFUL_DELTA = 56;
 const PATH_MEANINGFUL_DELTA = 120;
+/** HTML 실루엣 마커는 DOM 비용이 커서 뷰포트 포인트보다 더 세게 캡 */
+const INFRA_HTML_MARKER_CAP = 72;
 const LOD_HYSTERESIS_MARGIN = 0.06;
 const LOD_TIER_ANCHOR_ALTITUDE: Record<GlobeLodTier, number> = {
   global: 1.9,
@@ -1363,7 +1365,8 @@ export function GlobeDashboard({
       layerPanelSessionRef.current += 1;
     }
     prevShowLeftPanelRef.current = showLeftPanel;
-    deferLayerMapApplyRef.current = showLeftPanel;
+    // 패널이 열려 있어도 체크는 지도에 반영 — draft-only defer 끄기
+    deferLayerMapApplyRef.current = false;
   }, [showLeftPanel]);
 
   useEffect(() => {
@@ -1534,6 +1537,8 @@ export function GlobeDashboard({
     togglePref,
     toggleCategoryPrefs,
     applyLayerPrefs,
+    patchLayerPrefsSoft,
+    flushPendingPrefs,
     batchPending,
     applyGeneration,
     immediateUntilRef,
@@ -1632,13 +1637,10 @@ export function GlobeDashboard({
   const handlePanelDraftPatch = useCallback(
     (patch: Partial<LayerPrefs>) => {
       panelDraftPatchRef.current = { ...panelDraftPatchRef.current, ...patch };
-      // 패널이 열려 있어도 체크 즉시 지도·데이터 페치에 반영 (지정학/지경학 공통)
-      applyLayerPrefs({
-        ...layerPrefsLiveRef.current,
-        ...panelDraftPatchRef.current,
-      });
+      // 체크는 켜지되, soft batch로 지구본 멈춤(immediate 전체 재계산)을 피함
+      patchLayerPrefsSoft(patch);
     },
-    [applyLayerPrefs],
+    [patchLayerPrefsSoft],
   );
 
   const handlePanelLangDraft = useCallback(
@@ -1647,12 +1649,9 @@ export function GlobeDashboard({
         ...panelDraftPatchRef.current,
         labelLanguage: lang,
       };
-      applyLayerPrefs({
-        ...layerPrefsLiveRef.current,
-        ...panelDraftPatchRef.current,
-      });
+      patchLayerPrefsSoft({ labelLanguage: lang });
     },
-    [applyLayerPrefs],
+    [patchLayerPrefsSoft],
   );
 
   const {
@@ -2965,11 +2964,12 @@ export function GlobeDashboard({
       });
   }, [econNavSelection, visibleStaticPoints]);
 
-  /** 인프라 HTML 실루엣 마커 (공항·항구·DC·핵·초크 등) */
-  const airportPortHtmlMarkers = useMemo(
-    () => staticGlobePoints.filter((point) => isHtmlStaticKind(point.kind)),
-    [staticGlobePoints],
-  );
+  /** 인프라 HTML 실루엣 마커 (공항·항구·DC·핵·초크 등) — DOM 비용 때문에 강하게 캡 */
+  const airportPortHtmlMarkers = useMemo(() => {
+    const html = staticGlobePoints.filter((point) => isHtmlStaticKind(point.kind));
+    if (html.length <= INFRA_HTML_MARKER_CAP) return html;
+    return html.slice(0, INFRA_HTML_MARKER_CAP);
+  }, [staticGlobePoints]);
 
   const chokeGlowRings = useMemo<PulseRingPoint[]>(() => {
     if (!showLogisticsRisk) return [];
@@ -3738,8 +3738,16 @@ export function GlobeDashboard({
       signature !== prev.signature &&
       (bypass || meaningfulChange || cadenceHit || prev.updatedAt === 0)
     ) {
-      setGlobePaths([...dynamicGlobePaths]);
+      const nextPaths = dynamicGlobePaths;
       pathStabilityRef.current = { signature, count, updatedAt: now };
+      // 대량 경로 주입은 다음 프레임으로 미뤄 체크 UI 정지를 피함
+      if (count - prev.count >= 40 || count >= 120) {
+        const raf = window.requestAnimationFrame(() => {
+          startTransition(() => setGlobePaths([...nextPaths]));
+        });
+        return () => window.cancelAnimationFrame(raf);
+      }
+      setGlobePaths([...nextPaths]);
     }
   }, [
     applyGeneration,
@@ -5397,15 +5405,12 @@ export function GlobeDashboard({
   /* eslint-enable react-hooks/exhaustive-deps */
 
   const applyPanelDraft = useCallback(() => {
-    const patch = panelDraftPatchRef.current;
-    if (Object.keys(patch).length === 0) return;
-    startTransition(() => {
-      applyLayerPrefs({ ...layerPrefs, ...patch });
-    });
+    // soft batch가 대기 중이면 한 번만 flush (immediate 전체 재적용 금지)
+    flushPendingPrefs();
     panelDraftPatchRef.current = {};
     categorySnapshotRef.current = null;
     setFrozenPanelCategories(null);
-  }, [applyLayerPrefs, layerPrefs]);
+  }, [flushPendingPrefs]);
 
   useEffect(() => {
     if (!showLeftPanel) {

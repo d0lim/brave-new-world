@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, startTransition } from "react";
 import type {
   ArmsEmbargoZone,
   ConflictZoneFeature,
@@ -225,7 +225,9 @@ export function useGlobeStaticLayers(options: {
         });
         if (!response.ok) return;
         const payload = (await response.json()) as { paths?: TransportPath[] };
-        setter(Array.isArray(payload.paths) ? payload.paths : []);
+        const paths = Array.isArray(payload.paths) ? payload.paths : [];
+        // 체크 직후 대용량 경로 주입이 메인 스레드를 막지 않도록 transition
+        startTransition(() => setter(paths));
       } catch {
         // optional
       }
@@ -248,7 +250,8 @@ export function useGlobeStaticLayers(options: {
         });
         if (!response.ok) return;
         const payload = (await response.json()) as { points?: StaticPoint[] };
-        setter(Array.isArray(payload.points) ? payload.points : []);
+        const points = Array.isArray(payload.points) ? payload.points : [];
+        startTransition(() => setter(points));
       } catch {
         // optional
       }

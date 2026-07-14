@@ -2,6 +2,7 @@
 
 import {
   forwardRef,
+  startTransition,
   useCallback,
   useEffect,
   useImperativeHandle,
@@ -92,6 +93,26 @@ export const MapGlobeView = forwardRef<MapGlobeMethods, MapGlobeViewProps>(funct
 
   const pointsData = useMemo(() => (props.pointsData as unknown[]) ?? [], [props.pointsData]);
   const pathsData = useMemo(() => (props.pathsData as unknown[]) ?? [], [props.pathsData]);
+  const [deferredPathsData, setDeferredPathsData] = useState(pathsData);
+
+  useEffect(() => {
+    if (pathsData.length < 64) {
+      setDeferredPathsData(pathsData);
+      return;
+    }
+    let cancelled = false;
+    const raf = window.requestAnimationFrame(() => {
+      if (cancelled) return;
+      startTransition(() => {
+        if (!cancelled) setDeferredPathsData(pathsData);
+      });
+    });
+    return () => {
+      cancelled = true;
+      window.cancelAnimationFrame(raf);
+    };
+  }, [pathsData]);
+
   const polygonsData = useMemo(
     () => (props.polygonsData as { geometry: unknown }[]) ?? [],
     [props.polygonsData],
@@ -246,7 +267,7 @@ export const MapGlobeView = forwardRef<MapGlobeMethods, MapGlobeViewProps>(funct
   const pathsGeoJson = useMemo(() => {
     const a = accessorsRef.current;
     return buildPathsGeoJson(
-      pathsData,
+      deferredPathsData,
       {
         points: a.pathPoints,
         color: a.pathColor,
@@ -256,7 +277,7 @@ export const MapGlobeView = forwardRef<MapGlobeMethods, MapGlobeViewProps>(funct
       },
       mapZoom,
     );
-  }, [mapZoom, pathsData]);
+  }, [mapZoom, deferredPathsData]);
 
   const polygonsGeoJson = useMemo(() => {
     const a = accessorsRef.current;
@@ -374,12 +395,12 @@ export const MapGlobeView = forwardRef<MapGlobeMethods, MapGlobeViewProps>(funct
   const resolveFeature = useCallback(
     (layerId: string, index: number) => {
       if (layerId === "map-points") return pointsData[index] ?? null;
-      if (layerId === "map-paths") return pathsData[index] ?? null;
+      if (layerId === "map-paths") return deferredPathsData[index] ?? null;
       if (layerId === "map-polygons-fill") return polygonsData[index] ?? null;
       if (layerId === "map-rings") return ringsData[index] ?? null;
       return null;
     },
-    [pathsData, pointsData, polygonsData, ringsData],
+    [deferredPathsData, pointsData, polygonsData, ringsData],
   );
 
   const handleMapClick = useCallback(
@@ -764,9 +785,14 @@ export const MapGlobeView = forwardRef<MapGlobeMethods, MapGlobeViewProps>(funct
         )}
 
         {htmlElement
-          ? htmlElementsData.map((item, index) => (
+          ? htmlElementsData.map((item, index) => {
+              const id =
+                (item as { markerId?: string; id?: string }).markerId ??
+                (item as { id?: string }).id ??
+                index;
+              return (
               <Marker
-                key={`html-marker-${index}`}
+                key={`html-marker-${id}`}
                 longitude={htmlLng(item)}
                 latitude={htmlLat(item)}
                 anchor="center"
@@ -779,7 +805,8 @@ export const MapGlobeView = forwardRef<MapGlobeMethods, MapGlobeViewProps>(funct
                   }}
                 />
               </Marker>
-            ))
+              );
+            })
           : null}
       </Map>
     </div>

@@ -32,7 +32,7 @@ export function applyBattlefieldPreset(
       return patch(current, {
         showUkraineControl: true,
         showNeptun: true,
-        showNeptunPreviousTrails: true,
+        showNeptunPreviousTrails: false,
         showWarZones: true,
         showGdeltWar: true,
         showGdeltDiplomatic: true,

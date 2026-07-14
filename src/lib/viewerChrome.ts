@@ -55,7 +55,7 @@ export type ViewerChromePreset = {
 const CONFLICT_FORCE_ON: Partial<LayerPrefs> = {
   // 우크라 전선은 전장/내비 세부 선택(UKRAINE_STACK) 시에만 ON
   showNeptun: true,
-  showNeptunPreviousTrails: true,
+  showNeptunPreviousTrails: false,
   showGdeltWar: true,
   showGdeltDiplomatic: true,
   showTelegramOsint: true,

@@ -18,7 +18,7 @@ type ConflictConceptTheater =
 const UKRAINE_STACK: LayerPatch = {
   showUkraineControl: true,
   showNeptun: true,
-  showNeptunPreviousTrails: true,
+  showNeptunPreviousTrails: false,
   showWarZones: true,
   showDiplomaticTension: true,
   showGdeltWar: true,

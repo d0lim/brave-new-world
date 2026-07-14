@@ -4669,19 +4669,6 @@ export function GlobeDashboard({
             accent: "orange",
           },
           {
-            id: "neptun-previous-trails",
-            label: "지나간 미사일·드론 궤적",
-            detail: !showNeptun
-              ? "드론·미사일을 먼저 켜세요"
-              : showNeptunPreviousTrails
-                ? `공중 항로 ${visibleNeptunArchived.length.toLocaleString()}건 · ${globeLod.label}`
-                : "꺼짐",
-            checked: layerPrefs.showNeptunPreviousTrails,
-            onChange: setShowNeptunPreviousTrails,
-            accent: "orange",
-            disabled: !showNeptun,
-          },
-          {
             id: "war-zones",
             label: "전쟁구역",
             detail: showWarZones
@@ -4879,7 +4866,6 @@ export function GlobeDashboard({
           toggleCategoryPrefs({
             showUkraineControl: enabled,
             showNeptun: enabled,
-            showNeptunPreviousTrails: enabled,
             showWarZones: enabled,
             showDiplomaticTension: enabled,
             showEastAsiaAdiz: enabled,
@@ -4891,6 +4877,7 @@ export function GlobeDashboard({
             showGdeltDiplomatic: enabled,
             showGdeltAlliance: enabled,
             showGdeltProtests: enabled,
+            showNeptunPreviousTrails: false,
           });
         },
       },

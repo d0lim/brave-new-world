@@ -111,7 +111,7 @@ export const DEFAULT_LAYER_PREFS: LayerPrefs = {
   showTelegramOsint: false,
   showTzevaAdom: false,
   showNeptun: true,
-  showNeptunPreviousTrails: true,
+  showNeptunPreviousTrails: false,
   showEastAsiaAdiz: false,
   showAxisNetwork: false,
   labelLanguage: "ko",
@@ -183,6 +183,8 @@ function mergeSavedPrefs(parsed: SavedLayerPrefs): LayerPrefs {
           ? showRoadCityGlow
           : DEFAULT_LAYER_PREFS.showCityLabels,
     labelLanguage: parseLabelLanguage(rest.labelLanguage),
+    /** UI 체크박스 제거 — 지나간 드론·미사일 궤적 강제 OFF */
+    showNeptunPreviousTrails: false,
   };
 }
 
@@ -192,7 +194,7 @@ function migrateV19ToV20(parsed: SavedLayerPrefs): LayerPrefs {
     return {
       ...merged,
       showNeptun: true,
-      showNeptunPreviousTrails: true,
+      showNeptunPreviousTrails: false,
     };
   }
   return merged;

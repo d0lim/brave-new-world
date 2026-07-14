@@ -26,7 +26,11 @@ export function ViewModeSwitcher({ mode, onChange }: ViewModeSwitcherProps) {
   ];
 
   return (
-    <div className="pointer-events-none fixed inset-x-0 top-[3.35rem] z-[51] flex justify-center px-3">
+    <div
+      className={`pointer-events-none fixed inset-x-0 z-[51] flex justify-center px-3 ${
+        mode === "conflict" ? "top-[7.35rem]" : "top-[4.35rem]"
+      }`}
+    >
       <div
         className="pointer-events-auto flex rounded-full border border-sky-200/15 bg-[#0f1d35]/88 p-0.5 shadow-lg backdrop-blur-xl"
         role="tablist"

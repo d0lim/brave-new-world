@@ -139,7 +139,7 @@ export const VIEW_PACKAGES: ViewPackageDef[] = [
       // 우크라 전선은 ModePicker/내비「우크라」세부 선택 시에만
       showUkraineControl: false,
       showNeptun: true,
-      showNeptunPreviousTrails: true,
+      showNeptunPreviousTrails: false,
       showTzevaAdom: true,
       showTelegramOsint: true,
       showGdeltWar: true,

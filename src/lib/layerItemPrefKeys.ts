@@ -6,7 +6,6 @@ export const LAYER_ITEM_PREF_KEYS: Partial<Record<string, keyof LayerPrefs>> = {
   rail: "showRailGlow",
   ukraine: "showUkraineControl",
   neptun: "showNeptun",
-  "neptun-previous-trails": "showNeptunPreviousTrails",
   disputes: "showWarZones",
   "war-zones": "showWarZones",
   "diplomatic-tension": "showDiplomaticTension",

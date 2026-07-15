@@ -346,7 +346,7 @@ const UI = {
   viewerModeLabel: { ko: "뷰어 모드", en: "Viewer mode" },
   modeConflict: { ko: "지정학", en: "Geopolitics" },
   modeConflictHint: { ko: "전선 · 분쟁 · OSINT · 군사 뉴스", en: "Frontline · conflict · OSINT · military news" },
-  modeEconomy: { ko: "경제·시장", en: "Markets" },
+  modeEconomy: { ko: "지경학", en: "Markets" },
   modeEconomyHint: {
     ko: "증시 · 유가 · 빅테크·반도체·전기차 RSS",
     en: "Stocks · oil · Big Tech · semis · EV RSS",

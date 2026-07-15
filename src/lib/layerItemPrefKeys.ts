@@ -24,6 +24,7 @@ export const LAYER_ITEM_PREF_KEYS: Partial<Record<string, keyof LayerPrefs>> = {
   resources: "showResources",
   nuclear: "showNuclearSites",
   shipping: "showShippingLanes",
+  "bri-trade": "showBriTradeConnectivity",
   cables: "showSubmarineCables",
   tunnels: "showSubmarineTunnels",
   airports: "showAirports",

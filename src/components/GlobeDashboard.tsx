@@ -16,7 +16,7 @@ import { UkraineAirRaidPanel } from "@/components/UkraineAirRaidPanel";
 import { NeptunLayerPanel } from "@/components/NeptunLayerPanel";
 import { NeptunThreatDetailPanel } from "@/components/NeptunThreatDetailPanel";
 import { LocalAlertPanel } from "@/components/LocalAlertPanel";
-import { type LayerCategory } from "@/components/LayerCategoryPanel";
+import { type LayerCategory, type LayerToggleItem } from "@/components/LayerCategoryPanel";
 import { LayerCategoryDraftHost } from "@/components/LayerCategoryDraftHost";
 import { LayerPanelLanguagePicker } from "@/components/LayerPanelLanguagePicker";
 import { CompactPresetChips } from "@/components/CompactPresetChips";
@@ -5111,7 +5111,7 @@ export function GlobeDashboard({
             accent: "blue",
           },
           ...(isEconomyViewer
-            ? [
+            ? ([
                 {
                   id: "bri-trade",
                   label: "일대일로 무역 연결",
@@ -5122,7 +5122,7 @@ export function GlobeDashboard({
                   onChange: setShowBriTradeConnectivity,
                   accent: "amber",
                 },
-              ]
+              ] satisfies LayerToggleItem[])
             : []),
           {
             id: "cables",

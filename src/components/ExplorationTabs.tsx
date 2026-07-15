@@ -18,8 +18,8 @@ export function ExplorationTabs({
   presets,
   activeId,
   onSelect,
-  label = "주요전선",
-  hint = "대만·한반도·우크라이나·중동으로 이동하며 Intel 뉴스 시트가 해당 전장으로 열립니다.",
+  label = "주요전장",
+  hint = "대만·한반도·우크라이나·중동 등 지정학적 충돌지로 바로 이동합니다.",
   variant = "fronts",
 }: ExplorationTabsProps) {
   const [open, setOpen] = useState(false);

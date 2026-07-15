@@ -155,10 +155,10 @@ const UI = {
     ko: "관영매체·미검증 속보를 함께 봅니다. 사실 단정 전 참고용 신호입니다.",
     en: "State media and unverified briefs — treat as signals, not facts.",
   },
-  hoverExplorationFronts: { ko: "주요전선", en: "Key fronts" },
+  hoverExplorationFronts: { ko: "주요전장", en: "Key theaters" },
   hoverExplorationFrontsHint: {
-    ko: "대만·한반도·우크라이나·중동으로 이동하며 Intel 뉴스 시트가 해당 전장으로 열립니다.",
-    en: "Fly to Taiwan, Korea, Ukraine, or the Middle East and open Intel for that theater.",
+    ko: "대만·한반도·우크라이나·중동 등 지정학적 충돌지로 바로 이동합니다.",
+    en: "Jump straight to geopolitical flashpoints: Taiwan, Korea, Ukraine, Middle East.",
   },
   hoverExplorationHubs: { ko: "주요 허브", en: "Key hubs" },
   hoverExplorationHubsHint: {

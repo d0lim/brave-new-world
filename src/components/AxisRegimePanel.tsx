@@ -43,13 +43,13 @@ export function AxisRegimePanel({
       <div className="flex items-start justify-between gap-2 border-b border-violet-200/10 px-3 py-2.5">
         <div>
           <p className="text-[10px] uppercase tracking-[0.2em] text-violet-200/55">
-            11대 · 분쟁 외교사
+            11대 · 반서방국 충돌사
           </p>
           <h2 className="mt-0.5 text-sm font-medium text-violet-50">
             {hub?.label ?? hubId}
           </h2>
           <p className="mt-1 text-[10px] leading-4 text-violet-100/45">
-            권위주의·진영 내부 마찰 큐레이션. 카드 → 현장 좌표 soft fly · 양피지 브리프.
+            현장 상황 설명 큐레이션. 카드 → 좌표 이동 · 그 순간의 양피지 브리프.
           </p>
         </div>
         <button

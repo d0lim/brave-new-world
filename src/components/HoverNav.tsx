@@ -375,7 +375,7 @@ function HubDropdown({
               onClick={() => onNavigate(selectionForRegime(hub))}
               className="rounded-md px-2.5 py-2 text-left text-[11px] text-violet-100/90 transition hover:bg-violet-400/10"
             >
-              반서방국간 분쟁 외교사
+              반서방국 충돌사
             </button>
           </div>
         </div>

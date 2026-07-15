@@ -390,11 +390,11 @@ export function selectionForArms(hub: HubDefinition): NavSelection {
 export function selectionForRegime(hub: HubDefinition): NavSelection {
   return {
     id: `hub-${hub.hubId.toLowerCase()}-regime`,
-    label: `${hub.label} · 반서방국간 분쟁 외교사`,
+    label: `${hub.label} · 반서방국 충돌사`,
     lat: hub.lat,
     lng: hub.lng,
     altitude: hub.altitude,
-    description: "권위주의·진영 내부 마찰 큐레이션 (V-Dem 프레임 참고)",
+    description: "진영 내부 충돌 현장 · 상황 설명 큐레이션",
     bbox: hub.bbox,
     actorCountries: [hub.iso],
     groupId: "axis-hubs",

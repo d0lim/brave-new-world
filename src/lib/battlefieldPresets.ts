@@ -51,7 +51,8 @@ export function applyBattlefieldPreset(
         showSubmarineCables: true,
         showGdeltWar: true,
         showGdeltDiplomatic: true,
-        showWarZones: false,
+        // 주요전장 이동 뒤에도 전쟁구역 빨간 빗금은 기본 유지
+        showWarZones: true,
         showUkraineControl: false,
         showNeptun: false,
       });

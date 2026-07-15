@@ -38,9 +38,9 @@ type ChromeOnboardingCoachProps = {
 
 const COPY = {
   ko: {
-    navTitle: "주요 전장 · 허브 메뉴",
+    navTitle: "상단 허브 · 우측 주요전장",
     navConflict:
-      "여기 상단의 중국 · 러시아 · 북한 · 이란 드롭다운이 ‘주요 전장’ 데이터 입구입니다. 항목을 직접 누르면 그 허브 지도·네트워크·분쟁 외교사로 넘어갑니다. 로딩만으로 자동 진입하지는 않습니다.",
+      "상단 중국 · 러시아 · 북한 · 이란은 축 허브 메뉴입니다. 우측 위 「주요전장」드롭다운을 누르면 대만·한반도·우크라이나·중동 등 충돌지로 바로 이동합니다. 로딩만으로 자동 진입하지는 않습니다.",
     navEconomy:
       "검색창을 눌러 에너지·초크포인트·금융 허브를 직접 찾아 보세요. 관심 있는 항목을 고를 때만 지도가 이동합니다.",
     newsTitle: "하단 뉴스 · 속보",
@@ -53,9 +53,9 @@ const COPY = {
     skip: "스킵",
   },
   en: {
-    navTitle: "Major theaters · hub menu",
+    navTitle: "Hub menu · Key theaters",
     navConflict:
-      "The China · Russia · North Korea · Iran dropdowns are the entry to major-theater data. Click a hub to open its map, network, and friction briefs—nothing auto-enters from loading alone.",
+      "Top China · Russia · DPRK · Iran are axis hub menus. Use the top-right “Key theaters” dropdown to fly straight to Taiwan, Korea, Ukraine, or the Middle East. Nothing auto-enters from loading alone.",
     navEconomy:
       "Focus the search bar to browse energy, chokepoints, and finance hubs. The map moves only when you pick something.",
     newsTitle: "Bottom news strip",

@@ -490,35 +490,35 @@ const ARMS: Record<AxisHubId, { ko: HubBriefDoc; en: HubBriefDoc }> = {
 };
 
 const REGIME_SHARED_KO = [
-  "이 렌즈는 V-Dem 전수 연표가 아니라, 권위주의·진영 내부 마찰을 대표하는 11개 현장 에피소드입니다. 카드마다 교전·분쟁 현장 좌표로 soft fly하고 양피지 브리프를 엽니다.",
-  "중국·러시아·이란·북한 렌즈와 인도차이나·아프리카 공통 항목이 있습니다. 중인 갈완처럼 상대가 민주주의인 사례는 주석으로 구분합니다.",
-  "북한 항목의 일부는 공개 1차 자료가 얇아, 교전 규모를 단정하지 않고 관계 악화·주권 마찰의 사실 골격만 적습니다.",
-  "속보음은 UI 신호이며 실시간 속보 도착을 뜻하지 않습니다.",
+  "반서방·권위주의 진영은 항상 ‘한 편’만은 아니었습니다. 국경·주권·영향권을 둘러싸고 서로 충돌한 현장이 지도 곳곳에 남아 있습니다.",
+  "여기선 전바오(1969), 랑선(1979), 갈완(2020), 츠힌발리(2008), 슈샤(2020), 샤트알아랍(1980–88), 톰브(1971), 프놈펜(1978), 바드메(1998–2000), 백두산·두만강 긴장처럼, 공개 기록으로 남은 대표 충돌을 짧게 읽습니다.",
+  "각 카드는 당시 현장에서 무엇이 터졌는지—누가 맞섰고, 무엇이 쟁점이었고, 이후 관계를 어떻게 바꿔 놨는지—상황 설명으로 이어집니다. V-Dem 전수 연표가 아니라, 현장 중심의 큐레이션입니다.",
+  "편지를 접으면 우측 목록이 열립니다. 카드를 누르면 해당 좌표로 이동하고, 그 순간의 상황을 다시 양피지로 풀어 줍니다.",
 ];
 
 const REGIME_SHARED_EN = [
-  "This lens is not a V-Dem census—it is eleven curated flashpoints of authoritarian / intra-bloc friction. Each card soft-flies to a scene coordinate and opens a parchment brief.",
-  "Lenses cover China, Russia, Iran, and North Korea, plus Indochina and Horn of Africa commons. Cases like Galwan (vs. a democracy) are flagged in notes.",
-  "Some DPRK items have thin primary sources; briefs state tension and sovereignty friction without inventing battle sizes.",
-  "The dispatch sting is a UI cue, not a live breaking alert.",
+  "Anti-Western and authoritarian camps have not always stood as one bloc. Borders, sovereignty, and spheres of influence left flashpoints across the map.",
+  "This lens walks through open-record cases such as Zhenbao (1969), Lạng Sơn (1979), Galwan (2020), Tskhinvali (2008), Shusha (2020), Shatt al-Arab (1980–88), Tunb (1971), Phnom Penh (1978), Badme (1998–2000), and Paektu / Tumen friction.",
+  "Each card explains the situation on the ground—who clashed, what was at stake, and how relations shifted afterward. This is curated scene briefing, not a full V-Dem timeline.",
+  "Fold the letter to open the side list. Pick a card to fly to the coordinates and read that moment’s situation brief.",
 ];
 
 const REGIME: Record<AxisHubId, { ko: HubBriefDoc; en: HubBriefDoc }> = {
   CHN: {
-    ko: doc("반서방국간 분쟁 외교사", REGIME_SHARED_KO, true, "ko"),
-    en: doc("Authoritarian conflict diplomacy", REGIME_SHARED_EN, true, "en"),
+    ko: doc("반서방국 충돌사 · 상황 설명", REGIME_SHARED_KO, true, "ko"),
+    en: doc("Intra-bloc clashes · situation brief", REGIME_SHARED_EN, true, "en"),
   },
   RUS: {
-    ko: doc("반서방국간 분쟁 외교사", REGIME_SHARED_KO, true, "ko"),
-    en: doc("Authoritarian conflict diplomacy", REGIME_SHARED_EN, true, "en"),
+    ko: doc("반서방국 충돌사 · 상황 설명", REGIME_SHARED_KO, true, "ko"),
+    en: doc("Intra-bloc clashes · situation brief", REGIME_SHARED_EN, true, "en"),
   },
   PRK: {
-    ko: doc("반서방국간 분쟁 외교사", REGIME_SHARED_KO, true, "ko"),
-    en: doc("Authoritarian conflict diplomacy", REGIME_SHARED_EN, true, "en"),
+    ko: doc("반서방국 충돌사 · 상황 설명", REGIME_SHARED_KO, true, "ko"),
+    en: doc("Intra-bloc clashes · situation brief", REGIME_SHARED_EN, true, "en"),
   },
   IRN: {
-    ko: doc("반서방국간 분쟁 외교사", REGIME_SHARED_KO, true, "ko"),
-    en: doc("Authoritarian conflict diplomacy", REGIME_SHARED_EN, true, "en"),
+    ko: doc("반서방국 충돌사 · 상황 설명", REGIME_SHARED_KO, true, "ko"),
+    en: doc("Intra-bloc clashes · situation brief", REGIME_SHARED_EN, true, "en"),
   },
 };
 

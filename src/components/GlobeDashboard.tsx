@@ -7696,16 +7696,22 @@ export function GlobeDashboard({
             />
           </div>
         ) : null}
-        {!showLeftPanel && !selected && !regionNavSelection && !econNavSelection && isEconomyViewer && (
+        {!showLeftPanel && !econNavSelection ? (
           <ExplorationTabs
-            presets={ECON_EXPLORATION_PRESETS}
-            activeId={null}
+            presets={isEconomyViewer ? ECON_EXPLORATION_PRESETS : EXPLORATION_PRESETS}
+            activeId={regionNavSelection?.id ?? null}
             onSelect={handleExplorationSelect}
-            variant="hubs"
-            label={t("hoverExplorationHubs", labelLanguage)}
-            hint={t("hoverExplorationHubsHint", labelLanguage)}
+            variant={isEconomyViewer ? "hubs" : "fronts"}
+            label={t(
+              isEconomyViewer ? "hoverExplorationHubs" : "hoverExplorationFronts",
+              labelLanguage,
+            )}
+            hint={t(
+              isEconomyViewer ? "hoverExplorationHubsHint" : "hoverExplorationFrontsHint",
+              labelLanguage,
+            )}
           />
-        )}
+        ) : null}
         <div className="pointer-events-auto flex shrink-0 items-center gap-2">
           {!isEconomyViewer ? (
             <SourcesLinkButton onClick={() => setShowSourcesPanel(true)} />

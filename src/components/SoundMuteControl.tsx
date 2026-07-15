@@ -57,11 +57,11 @@ export function SoundMuteControl({
         aria-pressed={!soundEnabled}
         title={label}
         onClick={() => setSoundEnabled(!soundEnabled)}
-        className={`pointer-events-auto flex h-11 w-11 items-center justify-center rounded-full border border-sky-300/25 bg-[#0a1428]/90 text-sky-100 shadow-lg backdrop-blur-md transition hover:border-sky-200/40 hover:bg-[#0f1c38]/95 ${
-          soundEnabled ? "" : "text-slate-400"
+        className={`pointer-events-auto flex h-14 w-14 items-center justify-center rounded-full border border-sky-300/30 bg-[#0a1428]/95 text-sky-50 shadow-xl backdrop-blur-md transition hover:border-sky-200/50 hover:bg-[#0f1c38] ${
+          soundEnabled ? "ring-2 ring-amber-300/35" : "text-slate-400"
         } ${className}`}
       >
-        <BellIcon muted={!soundEnabled} />
+        <BellIcon muted={!soundEnabled} className="h-7 w-7" />
       </button>
     );
   }
@@ -73,21 +73,21 @@ export function SoundMuteControl({
         aria-label={aria}
         aria-pressed={!soundEnabled}
         onClick={() => setSoundEnabled(!soundEnabled)}
-        className={`flex w-full items-center justify-between gap-3 rounded-xl border px-4 py-3 text-left transition ${
+        className={`flex w-full items-center justify-between gap-3 rounded-xl border px-4 py-3.5 text-left transition ${
           soundEnabled
-            ? "border-amber-300/35 bg-amber-400/10 hover:border-amber-200/50"
+            ? "border-amber-300/40 bg-amber-400/12 hover:border-amber-200/55"
             : "border-slate-500/40 bg-slate-800/50 hover:border-slate-400/50"
         } ${className}`}
       >
         <span className="flex items-center gap-3 text-slate-100">
-          <BellIcon muted={!soundEnabled} className="h-6 w-6 shrink-0" />
-          <span className="text-sm font-medium">{label}</span>
+          <BellIcon muted={!soundEnabled} className="h-7 w-7 shrink-0" />
+          <span className="text-base font-semibold">{label}</span>
         </span>
         <span
-          className={`rounded-full px-2.5 py-1 text-[11px] uppercase tracking-wider ${
+          className={`rounded-full px-3 py-1.5 text-xs font-bold uppercase tracking-wider ${
             soundEnabled
-              ? "bg-amber-300/20 text-amber-100"
-              : "bg-slate-600/50 text-slate-300"
+              ? "bg-amber-300/25 text-amber-50"
+              : "bg-slate-600/55 text-slate-200"
           }`}
         >
           {soundEnabled ? "ON" : "OFF"}
@@ -102,13 +102,17 @@ export function SoundMuteControl({
       aria-label={aria}
       aria-pressed={!soundEnabled}
       onClick={() => setSoundEnabled(!soundEnabled)}
-      className={`mt-2 flex w-full items-center justify-between rounded-lg border border-slate-600/50 bg-slate-900/40 px-3 py-2 text-xs text-slate-300 transition hover:border-slate-500 hover:text-slate-100 ${className}`}
+      className={`mt-2 flex w-full items-center justify-between rounded-xl border border-slate-600/50 bg-slate-900/50 px-3.5 py-3 text-sm text-slate-200 transition hover:border-slate-500 hover:text-slate-50 ${className}`}
     >
-      <span className="flex items-center gap-2">
-        <BellIcon muted={!soundEnabled} className="h-4 w-4" />
-        {label}
+      <span className="flex items-center gap-2.5">
+        <BellIcon muted={!soundEnabled} className="h-5 w-5" />
+        <span className="font-medium">{label}</span>
       </span>
-      <span className="text-[10px] uppercase tracking-wider text-slate-500">
+      <span
+        className={`rounded-full px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider ${
+          soundEnabled ? "bg-amber-300/20 text-amber-100" : "bg-slate-700 text-slate-400"
+        }`}
+      >
         {soundEnabled ? "ON" : "OFF"}
       </span>
     </button>

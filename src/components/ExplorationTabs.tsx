@@ -43,7 +43,7 @@ export function ExplorationTabs({
   return (
     <div
       ref={rootRef}
-      className="pointer-events-auto relative z-[62]"
+      className="pointer-events-auto relative z-[55]"
       onMouseEnter={() => setOpen(true)}
       onMouseLeave={() => setOpen(false)}
     >

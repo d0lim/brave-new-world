@@ -7669,8 +7669,13 @@ export function GlobeDashboard({
         )}
       </div>
 
-      <div className="pointer-events-none absolute right-3 top-3 z-[60] flex items-start justify-end gap-2">
-        {!isEconomyViewer && (showNeptun || neptunAlertCount > 0) ? (
+      {/* 데스크톱: 우상단 공습·주요전장·도움말 / 모바일: 주요전장만 우상단 */}
+      <div
+        className={`pointer-events-none absolute right-3 top-3 z-[55] flex items-start justify-end gap-2 ${
+          isCompactUi ? "max-w-[calc(100vw-5.5rem)] flex-wrap" : ""
+        }`}
+      >
+        {!isCompactUi && !isEconomyViewer && (showNeptun || neptunAlertCount > 0) ? (
           <div className="pointer-events-auto">
             <UkraineAirRaidPanel
               alerts={neptunAlerts}
@@ -7682,7 +7687,7 @@ export function GlobeDashboard({
             />
           </div>
         ) : null}
-        {!isEconomyViewer && showTzevaAdom ? (
+        {!isCompactUi && !isEconomyViewer && showTzevaAdom ? (
           <div className="pointer-events-auto">
             <TzevaAdomPanel
               active={tzevaAdomActive}
@@ -7712,13 +7717,49 @@ export function GlobeDashboard({
             )}
           />
         ) : null}
-        <div className="pointer-events-auto flex shrink-0 items-center gap-2">
-          {!isEconomyViewer ? (
-            <SourcesLinkButton onClick={() => setShowSourcesPanel(true)} />
-          ) : null}
-          <FeatureGuideButton viewerMode={viewerMode} onClick={() => setShowFeatureGuide(true)} />
-        </div>
+        {!isCompactUi ? (
+          <div className="pointer-events-auto flex shrink-0 items-center gap-2">
+            {!isEconomyViewer ? (
+              <SourcesLinkButton onClick={() => setShowSourcesPanel(true)} />
+            ) : null}
+            <FeatureGuideButton viewerMode={viewerMode} onClick={() => setShowFeatureGuide(true)} />
+          </div>
+        ) : null}
       </div>
+
+      {/* 모바일: 공습 경보는 하단 아이콘 — 상단 허브·주요전장 메뉴를 가리지 않음 */}
+      {isCompactUi && !isEconomyViewer ? (
+        <div className="pointer-events-none absolute bottom-[calc(var(--bottom-intel-stack-clearance)+0.65rem)] right-3 z-[55] flex flex-col items-end gap-2">
+          {showNeptun || neptunAlertCount > 0 ? (
+            <div className="pointer-events-auto">
+              <UkraineAirRaidPanel
+                alerts={neptunAlerts}
+                live={neptunLive}
+                liveStatus={neptunStatus}
+                error={neptunError}
+                lang={labelLanguage}
+                compact
+                onFocusRegion={(target) => handleAirRaidFocus(target, "neptun")}
+              />
+            </div>
+          ) : null}
+          {showTzevaAdom ? (
+            <div className="pointer-events-auto">
+              <TzevaAdomPanel
+                active={tzevaAdomActive}
+                history={tzevaAdomHistory}
+                live={tzevaAdomLive}
+                liveStatus={tzevaAdomStatus}
+                geoRestricted={tzevaAdomGeoRestricted}
+                error={tzevaAdomError}
+                lang={labelLanguage}
+                compact
+                onFocusRegion={(target) => handleAirRaidFocus(target, "tzeva")}
+              />
+            </div>
+          ) : null}
+        </div>
+      ) : null}
       <FeatureGuidePanel
         open={showFeatureGuide}
         viewerMode={viewerMode}

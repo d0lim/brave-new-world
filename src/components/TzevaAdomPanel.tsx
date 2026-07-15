@@ -25,6 +25,8 @@ type TzevaAdomPanelProps = {
   lang?: LabelLanguage;
   /** 칩·목록 클릭 시 해당 지역으로 이동 */
   onFocusRegion?: (target: AirRaidFocusTarget) => void;
+  /** 모바일 — 아이콘만 (히어로 가로 점유 최소화) */
+  compact?: boolean;
 };
 
 function formatTime(iso: string, lang: LabelLanguage) {
@@ -80,6 +82,7 @@ export function TzevaAdomPanel({
   error,
   lang = "ko",
   onFocusRegion,
+  compact = false,
 }: TzevaAdomPanelProps) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -142,51 +145,79 @@ export function TzevaAdomPanel({
   }
 
   return (
-    <div ref={rootRef} className="pointer-events-auto relative z-[62]">
+    <div ref={rootRef} className="pointer-events-auto relative z-[55]">
       <button
         type="button"
         aria-expanded={open}
         aria-haspopup="listbox"
         aria-label={tzevaUi("brand", lang)}
-        title={tzevaUi("openList", lang)}
+        title={
+          headline
+            ? `${tzevaUi("brand", lang)} · ${headline.region}`
+            : `${tzevaUi("brand", lang)} · ${statusLabel}`
+        }
         onClick={() => {
           const primary = active[0] ?? history[0];
           if (primary) focusAlert(primary);
           else if (onFocusRegion) onFocusRegion({ ...ISRAEL_FALLBACK });
           setOpen((v) => !v);
         }}
-        className={`flex max-w-[min(52vw,280px)] items-center gap-2 border px-3 py-2 text-xs shadow-lg backdrop-blur-md transition-all duration-200 ${
-          hasActive
-            ? "border-red-400/45 bg-[#2a0c12]/72 text-red-50"
-            : "border-red-300/20 bg-[#1a0c10]/55 text-red-100/90 hover:border-red-300/35"
-        } ${open ? "rounded-t-full rounded-b-md" : "rounded-full"}`}
+        className={
+          compact
+            ? `relative flex h-11 w-11 items-center justify-center border shadow-lg backdrop-blur-md transition-all duration-200 ${
+                hasActive
+                  ? "rounded-full border-red-400/50 bg-[#2a0c12]/85 text-red-50"
+                  : "rounded-full border-red-300/25 bg-[#1a0c10]/7 text-red-100/90"
+              }`
+            : `flex max-w-[min(52vw,280px)] items-center gap-2 border px-3 py-2 text-xs shadow-lg backdrop-blur-md transition-all duration-200 ${
+                hasActive
+                  ? "border-red-400/45 bg-[#2a0c12]/72 text-red-50"
+                  : "border-red-300/20 bg-[#1a0c10]/55 text-red-100/90 hover:border-red-300/35"
+              } ${open ? "rounded-t-full rounded-b-md" : "rounded-full"}`
+        }
       >
         <AlertBellIcon urgent={hasActive} />
-        <span className="min-w-0 flex-1 text-left">
-          <span className="block truncate text-[10px] font-semibold uppercase tracking-[0.14em] text-red-200/80">
-            {tzevaUi("brand", lang)}
-          </span>
-          <span className="mt-0.5 block truncate font-medium tracking-tight">
-            {headline
-              ? `${headline.region} · ${headline.title}`
-              : statusLabel}
-          </span>
-        </span>
-        <span
-          className={`h-1.5 w-1.5 shrink-0 rounded-full ${
-            hasActive ? "animate-pulse bg-red-400" : live ? "bg-emerald-400" : "bg-slate-500"
-          }`}
-        />
+        {!compact ? (
+          <>
+            <span className="min-w-0 flex-1 text-left">
+              <span className="block truncate text-[10px] font-semibold uppercase tracking-[0.14em] text-red-200/80">
+                {tzevaUi("brand", lang)}
+              </span>
+              <span className="mt-0.5 block truncate font-medium tracking-tight">
+                {headline ? `${headline.region} · ${headline.title}` : statusLabel}
+              </span>
+            </span>
+            <span
+              className={`h-1.5 w-1.5 shrink-0 rounded-full ${
+                hasActive ? "animate-pulse bg-red-400" : live ? "bg-emerald-400" : "bg-slate-500"
+              }`}
+            />
+          </>
+        ) : (
+          <span
+            className={`absolute bottom-1 right-1 h-1.5 w-1.5 rounded-full ${
+              hasActive ? "animate-pulse bg-red-400" : live ? "bg-emerald-400" : "bg-slate-500"
+            }`}
+          />
+        )}
       </button>
 
       <div
-        className={`absolute right-0 top-full z-[70] w-[min(92vw,320px)] origin-top transition-all duration-200 ease-out ${
+        className={`absolute right-0 z-[70] w-[min(92vw,320px)] origin-top transition-all duration-200 ease-out ${
+          compact ? "bottom-full mb-1.5 origin-bottom" : "top-full"
+        } ${
           open
             ? "pointer-events-auto scale-100 opacity-100"
             : "pointer-events-none scale-[0.98] opacity-0"
         }`}
       >
-        <div className="overflow-hidden rounded-b-2xl rounded-tl-2xl border border-red-400/25 border-t-0 bg-[#1a0c10]/95 shadow-2xl backdrop-blur-md">
+        <div
+          className={`overflow-hidden border border-red-400/25 bg-[#1a0c10]/95 shadow-2xl backdrop-blur-md ${
+            compact
+              ? "rounded-2xl"
+              : "rounded-b-2xl rounded-tl-2xl border-t-0"
+          }`}
+        >
           <div className="border-b border-red-400/15 px-3 py-2">
             <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-red-200/75">
               {tzevaUi("brand", lang)}

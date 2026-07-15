@@ -96,7 +96,7 @@ export function HoverNav({
     : "bg-sky-400/15 text-sky-50 shadow-[inset_0_0_0_1px_rgba(125,211,252,0.25)]";
 
   return (
-    <div className="pointer-events-none fixed inset-x-0 top-0 z-50 flex justify-center px-3 pt-3">
+    <div className="pointer-events-none fixed inset-x-0 top-0 z-[75] flex justify-center px-3 pt-3">
       <nav
         id="app-hover-nav"
         ref={navRef}
@@ -321,7 +321,7 @@ function HubDropdown({
       </button>
 
       {open ? (
-        <div className="absolute left-1/2 top-full z-50 mt-1.5 w-[min(92vw,280px)] -translate-x-1/2 rounded-xl border border-sky-200/15 bg-[#0c1a30]/95 p-2 shadow-2xl backdrop-blur-xl">
+        <div className="absolute left-1/2 top-full z-[80] mt-1.5 w-[min(92vw,280px)] -translate-x-1/2 rounded-xl border border-sky-200/15 bg-[#0c1a30]/95 p-2 shadow-2xl backdrop-blur-xl">
           <button
             type="button"
             onClick={() => onNavigate(selectionForHubNetwork(hub))}

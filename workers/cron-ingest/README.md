@@ -10,7 +10,7 @@ Next.js `src/workers/`(브라우저 Web Worker)와 분리해 **`workers/cron-ing
 | `../../drizzle/*.sql` | D1 마이그레이션 (`migrations_dir`) |
 | `src/index.ts` | Cron + `GET /health` · `GET /latest` · `POST /run` |
 | `src/firms.ts` | NASA FIRMS area CSV (전장 bbox) |
-| `src/gdelt.ts` | GDELT Geo API — 핫스팟+도메인 키워드(범위↑). 총량≤280·쿼리당≤24·150ms 간격으로 렉/API 제어 |
+| `src/gdeltExport.ts` | GDELT 15분 Export — 우크라이나·중동·중국-대만·한반도의 부정적 CAMEO 긴장 이벤트를 직접 추출 |
 
 ## 최초 세팅
 
@@ -60,6 +60,8 @@ npm run cf:ingest:dev
 
 - 표현식: `*/10 * * * *` (10분마다)
 - FIRMS + GDELT → D1 upsert → prune
+  - 우크라이나·중동·중국-대만·한반도 일반 뉴스
+  - 같은 4개 권역의 군사훈련·봉쇄·억지·제재·미사일 등 긴장 신호
 - 설정된 Warm URL로 Next에 POST:
   - 뉴스 RSS 스냅샷
   - MarineTraffic AIS → `ais_vessels`

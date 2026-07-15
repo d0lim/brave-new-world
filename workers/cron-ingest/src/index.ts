@@ -8,7 +8,7 @@ import {
   upsertGdeltPoints,
 } from "./db";
 import { fetchFirmsForTheaters } from "./firms";
-import { fetchGdeltPoints } from "./gdelt";
+import { fetchGdeltTensionPoints } from "./gdeltExport";
 
 export type { IngestEnv };
 
@@ -108,7 +108,7 @@ async function runIngest(env: IngestEnv): Promise<IngestResult> {
       firmsErrors.push("NASA_FIRMS_API_KEY (or FIRMS_MAP_KEY) missing — FIRMS skipped");
     }
 
-    const gdelt = await fetchGdeltPoints({ maxPoints: gdeltMax, timespan: "60min" });
+    const gdelt = await fetchGdeltTensionPoints({ maxPoints: gdeltMax });
     gdeltErrors.push(...gdelt.errors);
     gdeltCount = await upsertGdeltPoints(env.DB, gdelt.points);
 

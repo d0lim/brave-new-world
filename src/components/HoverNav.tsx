@@ -9,6 +9,7 @@ import {
   selectionForClaim,
   selectionForHubNetwork,
   selectionForRegime,
+  selectionForRegimeOverview,
   type HubDefinition,
 } from "@/data/hubNav";
 import {
@@ -146,19 +147,32 @@ export function HoverNav({
           </div>
 
           {!isEconomy ? (
-            <div className="grid grid-cols-4 items-stretch gap-1 border-t border-sky-200/10 px-1.5 pb-1.5 pt-1 sm:gap-1.5 sm:px-2 sm:pb-2 sm:pt-1.5">
-              {HUB_DEFINITIONS.map((hub) => (
-                <HubDropdown
-                  key={hub.id}
-                  hub={hub}
-                  open={openHubId === hub.id}
-                  onToggle={() =>
-                    setOpenHubId((prev) => (prev === hub.id ? null : hub.id))
-                  }
-                  onNavigate={handleHubNavigate}
-                />
-              ))}
-            </div>
+            <>
+              <div className="border-t border-sky-200/10 px-1.5 pt-1 sm:px-2 sm:pt-1.5">
+                <button
+                  type="button"
+                  onClick={() => handleHubNavigate(selectionForRegimeOverview())}
+                  className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-violet-300/25 bg-violet-500/15 px-2 py-1.5 text-[11px] font-semibold tracking-wide text-violet-50 shadow-[inset_0_0_18px_rgba(139,92,246,0.08)] transition hover:border-violet-200/45 hover:bg-violet-500/25 sm:text-xs"
+                >
+                  <span className="h-1.5 w-1.5 rounded-full bg-violet-300 shadow-[0_0_8px_rgba(196,181,253,0.9)]" />
+                  반서방국 분쟁사
+                  <span className="text-[9px] font-normal text-violet-200/60">11대 현장</span>
+                </button>
+              </div>
+              <div className="grid grid-cols-4 items-stretch gap-1 px-1.5 pb-1.5 pt-1 sm:gap-1.5 sm:px-2 sm:pb-2 sm:pt-1.5">
+                {HUB_DEFINITIONS.map((hub) => (
+                  <HubDropdown
+                    key={hub.id}
+                    hub={hub}
+                    open={openHubId === hub.id}
+                    onToggle={() =>
+                      setOpenHubId((prev) => (prev === hub.id ? null : hub.id))
+                    }
+                    onNavigate={handleHubNavigate}
+                  />
+                ))}
+              </div>
+            </>
           ) : null}
 
           {searchResults.length > 0 && (

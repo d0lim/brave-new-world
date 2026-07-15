@@ -68,7 +68,8 @@ const CONFLICT_FORCE_ON: Partial<LayerPrefs> = {
   showNeptun: true,
   showNeptunPreviousTrails: false,
   showTelegramOsint: true,
-  showUsCarriers: false,
+  /** 지정학 진입 즉시 전 세계 미 항모 배치·항구 위치 표시 */
+  showUsCarriers: true,
 };
 
 const CONFLICT_FORCE_OFF: Partial<LayerPrefs> = {

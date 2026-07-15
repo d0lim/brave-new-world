@@ -19,7 +19,28 @@ const UI = {
   changeViewMode: { ko: "보기 모드 변경", en: "Change view mode" },
   resetCheckboxSettings: { ko: "체크박스 설정 초기화", en: "Reset checkbox settings" },
   layers: { ko: "레이어", en: "Layers" },
-  backToMap: { ko: "✕ 지도로", en: "✕ Back to map" },
+  backToMap: { ko: "✕ 접기", en: "✕ Collapse" },
+  closeNewsDock: { ko: "뉴스 닫기 · 지구본만 보기", en: "Close news · map only" },
+  intelDockCollapseHint: {
+    ko: "살짝 내려 지구본 전체보기",
+    en: "Pull down for fullscreen globe",
+  },
+  intelDockCollapseAria: {
+    ko: "속보·뉴스 창 내리기",
+    en: "Pull down news dock",
+  },
+  intelDockExpandHint: {
+    ko: "올려서 속보·뉴스 다시 열기",
+    en: "Pull up to restore headlines",
+  },
+  intelDockExpandAria: {
+    ko: "속보 창 올리기",
+    en: "Expand news dock",
+  },
+  intelDockGlobeFullscreen: {
+    ko: "지구본 전체보기",
+    en: "Fullscreen globe",
+  },
   openOriginal: { ko: "원문 ↗", en: "Source ↗" },
   openPanel: { ko: "열기 ▶", en: "Open ▶" },
   translationKo: { ko: "한국어 번역", en: "Korean translation" },
@@ -128,13 +149,13 @@ const UI = {
   },
   hoverBackToMap: { ko: "지도로 돌아가기", en: "Back to map" },
   hoverBackToMapHint: {
-    ko: "전체 화면 뉴스를 닫고 3D 지구본으로 복귀합니다.",
-    en: "Close full-screen news and return to the 3D globe.",
+    ko: "하단 뉴스 도크를 접고 지구본만 조작합니다.",
+    en: "Collapse the bottom news dock and use the globe freely.",
   },
   hoverCloseNews: { ko: "뉴스 닫기", en: "Close news" },
   hoverCloseNewsHint: {
-    ko: "Intel 전체 화면을 닫고 지구본 조작으로 돌아갑니다.",
-    en: "Close Intel full-screen and return to globe controls.",
+    ko: "하단 뉴스 창을 닫아 지구본이 가려지지 않게 합니다.",
+    en: "Close the bottom news panel so the globe stays clear.",
   },
   hoverSheetNews: { ko: "뉴스", en: "News" },
   hoverSheetNewsHint: {

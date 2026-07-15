@@ -4,12 +4,14 @@ import { useMemo, useState } from "react";
 import type { AxisHubId } from "@/data/axisNetwork";
 import { hubById } from "@/data/hubNav";
 import {
+  FRICTION_EPISODES,
   episodesForHub,
   type FrictionEpisode,
 } from "@/data/frictionEpisodes";
 
 type AxisRegimePanelProps = {
-  hubId: AxisHubId;
+  /** null이면 특정 허브 필터 없이 전체 11대 에피소드 */
+  hubId: AxisHubId | null;
   selectedEpisodeId: string | null;
   onSelectEpisode: (episode: FrictionEpisode) => void;
   onClose: () => void;
@@ -30,11 +32,11 @@ export function AxisRegimePanel({
   onSelectEpisode,
   onClose,
 }: AxisRegimePanelProps) {
-  const hub = hubById(hubId);
+  const hub = hubId ? hubById(hubId) : null;
   const [showGlobal, setShowGlobal] = useState(true);
 
   const episodes = useMemo(
-    () => episodesForHub(hubId, showGlobal),
+    () => hubId ? episodesForHub(hubId, showGlobal) : [...FRICTION_EPISODES],
     [hubId, showGlobal],
   );
 
@@ -46,7 +48,7 @@ export function AxisRegimePanel({
             11대 · 반서방국 충돌사
           </p>
           <h2 className="mt-0.5 text-sm font-medium text-violet-50">
-            {hub?.label ?? hubId}
+            {hub?.label ?? "전체 허브 · 11대 현장"}
           </h2>
           <p className="mt-1 text-[10px] leading-4 text-violet-100/45">
             현장 상황 설명 큐레이션. 카드 → 좌표 이동 · 그 순간의 양피지 브리프.
@@ -61,6 +63,7 @@ export function AxisRegimePanel({
         </button>
       </div>
 
+      {hubId ? (
       <div className="flex items-center gap-2 border-b border-violet-200/10 px-3 py-1.5">
         <label className="flex cursor-pointer items-center gap-1.5 text-[10px] text-violet-100/70">
           <input
@@ -72,6 +75,7 @@ export function AxisRegimePanel({
           공통(인도차이나·아프리카) 포함
         </label>
       </div>
+      ) : null}
 
       <div className="min-h-0 flex-1 space-y-1.5 overflow-y-auto px-2 py-2">
         {episodes.length === 0 ? (

@@ -157,26 +157,50 @@ async function buildLandingsFromMirrors(precision) {
   return landings;
 }
 
+/**
+ * 경도 밴드별로 고르게 뽑아 한 해역(예: 미주)만 남는 편향을 줄인다.
+ */
 function diversifyCablePaths(paths, limit) {
   if (paths.length <= limit) return paths;
-  const byName = new Map();
+
+  const bandKey = (pathItem) => {
+    const midLng = (pathItem.bbox.minLng + pathItem.bbox.maxLng) / 2;
+    return Math.floor(((midLng + 180) % 360) / 30); // 0..11
+  };
+
+  const byBand = new Map();
   for (const pathItem of paths) {
-    const key = pathItem.name || pathItem.id;
-    if (!byName.has(key)) byName.set(key, []);
-    byName.get(key).push(pathItem);
+    const key = bandKey(pathItem);
+    if (!byBand.has(key)) byBand.set(key, []);
+    byBand.get(key).push(pathItem);
+  }
+  for (const group of byBand.values()) {
+    group.sort(
+      (a, b) =>
+        (a.scalerank ?? 9) - (b.scalerank ?? 9) ||
+        (b.meta?.lengthHint || 0) - (a.meta?.lengthHint || 0) ||
+        b.points.length - a.points.length,
+    );
   }
 
   const picked = [];
   const pickedIds = new Set();
-  const perSystem = Math.max(1, Math.min(4, Math.ceil(limit / Math.max(byName.size, 1))));
-
-  for (const group of byName.values()) {
-    for (const pathItem of group.slice(0, perSystem)) {
+  const bands = [...byBand.keys()].sort((a, b) => a - b);
+  let guard = 0;
+  while (picked.length < limit && guard < paths.length * 2) {
+    let advanced = false;
+    for (const band of bands) {
+      const group = byBand.get(band);
+      if (!group?.length) continue;
+      const next = group.shift();
+      if (!next || pickedIds.has(next.id)) continue;
+      picked.push(next);
+      pickedIds.add(next.id);
+      advanced = true;
       if (picked.length >= limit) break;
-      picked.push(pathItem);
-      pickedIds.add(pathItem.id);
     }
-    if (picked.length >= limit) break;
+    if (!advanced) break;
+    guard += 1;
   }
 
   if (picked.length < limit) {
@@ -191,6 +215,20 @@ function diversifyCablePaths(paths, limit) {
   return picked;
 }
 
+/** 로컬 ArcGIS 코리도가 특정 해역만이면 글로벌 미러로 대체 */
+function cableCoverageLooksGlobal(paths) {
+  if (paths.length < 20) return false;
+  let east = 0;
+  let west = 0;
+  for (const pathItem of paths) {
+    const mid = (pathItem.bbox.minLng + pathItem.bbox.maxLng) / 2;
+    if (mid >= -20) east += 1;
+    else west += 1;
+  }
+  // 유라시아·인도양 쪽(대략 lng≥-20)이 일정 비율 있어야 전역 소스
+  return east >= Math.max(8, Math.floor(paths.length * 0.15));
+}
+
 async function buildSubmarineCables() {
   const maxPts = IS_LITE ? 36 : 100;
   const precision = IS_LITE ? 2 : 3;
@@ -198,18 +236,23 @@ async function buildSubmarineCables() {
   try {
     const localGeo = loadLocalCableGeojson();
     if (localGeo) {
-      const paths = buildPathsFromCableGeo(localGeo, maxPts, precision);
-      const cappedPaths = diversifyCablePaths(paths, IS_LITE ? 80 : 900);
-      const landings = capArray(landingsFromPaths(cappedPaths, precision), 120, 1600);
-      return { paths: cappedPaths, landings };
+      const localPaths = buildPathsFromCableGeo(localGeo, maxPts, precision);
+      if (cableCoverageLooksGlobal(localPaths)) {
+        const cappedPaths = diversifyCablePaths(localPaths, IS_LITE ? 80 : 900);
+        const landings = capArray(landingsFromPaths(cappedPaths, precision), 120, 1600);
+        return { paths: cappedPaths, landings };
+      }
+      console.warn(
+        `   로컬 해저케이블은 지역 편향(미주 등, ${localPaths.length}개) → TeleGeography 미러 사용`,
+      );
     }
 
     const cableGeo = await fetchJsonFromMirrors(CABLE_GEO_URLS, "해저케이블");
     const paths = buildPathsFromCableGeo(cableGeo, maxPts, precision);
     const landings = await buildLandingsFromMirrors(precision);
     return {
-      paths: diversifyCablePaths(paths, IS_LITE ? 40 : 600),
-      landings: capArray(landings, 80, 1200),
+      paths: diversifyCablePaths(paths, IS_LITE ? 80 : 900),
+      landings: capArray(landings, 120, 1600),
     };
   } catch (error) {
     console.warn("   해저케이블 미러 fetch 실패, seed 사용:", error.message);

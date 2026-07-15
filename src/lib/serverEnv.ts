@@ -14,15 +14,15 @@ export function isApiStubMode(): boolean {
 }
 
 export function isNeptunEnabled(): boolean {
-  return process.env.NEPTUN_ENABLED === "true";
+  return process.env.NEPTUN_ENABLED?.trim() === "true";
 }
 
 export function isTzevaAdomEnabled(): boolean {
-  return process.env.TZEVA_ADOM_ENABLED === "true";
+  return process.env.TZEVA_ADOM_ENABLED?.trim() === "true";
 }
 
 export function isTelegramOsintEnabled(): boolean {
-  return process.env.TELEGRAM_OSINT_ENABLED === "true";
+  return process.env.TELEGRAM_OSINT_ENABLED?.trim() === "true";
 }
 
 export function getSyncPollMs(): number {

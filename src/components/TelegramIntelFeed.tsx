@@ -74,13 +74,13 @@ export function TelegramIntelFeed({
                 : "분쟁 지역 실시간 속보"}
             </p>
           </div>
-          <LiveBadge live={live} liveStatus={liveStatus} />
+          <LiveBadge live={live} liveStatus={liveStatus} embedMode={embedMode} />
         </div>
       ) : (
         <div className="mx-4 mt-3 shrink-0 rounded-xl border border-cyan-400/25 bg-cyan-950/15 px-3 py-2.5">
           <div className="flex items-center justify-between gap-2">
             <p className="text-xs font-semibold text-cyan-100">Telegram OSINT · Raw 피드</p>
-            <LiveBadge live={live} liveStatus={liveStatus} />
+            <LiveBadge live={live} liveStatus={liveStatus} embedMode={embedMode} />
           </div>
           <p className="mt-1 text-[11px] leading-5 text-cyan-200/60">
             RSS/GDELT 뉴스·AI 요약과 분리 · {embedMode ? `공개 임베드 ${channelCount || "—"}채널` : "수집기"}
@@ -146,9 +146,11 @@ export function TelegramIntelFeed({
 function LiveBadge({
   live,
   liveStatus,
+  embedMode,
 }: {
   live: boolean;
   liveStatus: TelegramIntelFeedProps["liveStatus"];
+  embedMode: boolean;
 }) {
   return (
     <span
@@ -161,7 +163,9 @@ function LiveBadge({
       {liveStatus === "loading"
         ? "동기화"
         : liveStatus === "error"
-          ? "오프라인"
+          ? embedMode
+            ? "재시도"
+            : "오프라인"
           : live
             ? "LIVE"
             : liveStatus === "waiting"

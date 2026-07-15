@@ -140,7 +140,9 @@ export type TransportPath = {
     | "neptun-projection"
     | "neptun-trail-archived"
     /** IRN–CHN–RUS–PRK 축·스포크 관계망 호 */
-    | "axis-link";
+    | "axis-link"
+    /** World Bank BRI 무역·운송 연결성 (chn→국가·도시) */
+    | "bri-trade";
   name: string | null;
   scalerank: number;
   lengthKm: number | null;

@@ -61,6 +61,8 @@ export type LayerPrefs = {
   showEastAsiaAdiz: boolean;
   /** IRN–CHN–RUS–PRK 축·스포크 외교·군수·하이브리드 관계망 */
   showAxisNetwork: boolean;
+  /** World Bank BRI 무역·운송 연결성 (중국→참여국) */
+  showBriTradeConnectivity: boolean;
   labelLanguage: LabelLanguage;
 };
 
@@ -114,6 +116,7 @@ export const DEFAULT_LAYER_PREFS: LayerPrefs = {
   showNeptunPreviousTrails: false,
   showEastAsiaAdiz: false,
   showAxisNetwork: false,
+  showBriTradeConnectivity: false,
   labelLanguage: "ko",
 };
 

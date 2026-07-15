@@ -10,6 +10,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type PointerEvent as ReactPointerEvent,
   type ReactNode,
 } from "react";
 import { emitBreakingDispatchSound } from "@/components/SoundEffectsBridge";
@@ -42,10 +43,13 @@ import { ECONOMY_TIER_LABELS } from "@/lib/news/mediaTiers";
 import { STOCK_TICKER_SYMBOLS } from "@/lib/stockTickers";
 import {
   heroHighlightSymbols,
+  INTEL_STACK_CLEARANCE_COLLAPSED,
+  readIntelDockCollapsed,
   resolveBreakingSos,
   resolveIntelStackClearance,
   resolveIntelStackMode,
   TICKER_SPIKE_THRESHOLD_PERCENT,
+  writeIntelDockCollapsed,
 } from "@/lib/news/intelStackMode";
 import {
   buildTodayBriefing,
@@ -447,7 +451,10 @@ export function DynamicIntelStack({
   const isAlert = mode === "alert";
   const highlightSymbols = isAlert && hero ? heroHighlightSymbols(hero) : [];
   const [todayHidden, setTodayHidden] = useState(false);
+  const [dockCollapsed, setDockCollapsed] = useState(false);
   const lastBreakingHeroIdRef = useRef<string | null>(null);
+  const dockDragRef = useRef<{ startY: number; dragging: boolean } | null>(null);
+  const [dockDragY, setDockDragY] = useState(0);
 
   /** S급만 SOS 모스 (A는 배너만 · 사이렌 없음) */
   useEffect(() => {
@@ -462,16 +469,41 @@ export function DynamicIntelStack({
 
   useEffect(() => {
     setTodayHidden(isTodayBriefingDismissed());
+    setDockCollapsed(readIntelDockCollapsed());
+  }, []);
+
+  const collapseDock = useCallback(() => {
+    setDockCollapsed(true);
+    writeIntelDockCollapsed(true);
+    setDockDragY(0);
+  }, []);
+
+  const expandDock = useCallback(() => {
+    setDockCollapsed(false);
+    writeIntelDockCollapsed(false);
+    setDockDragY(0);
   }, []);
 
   const todayBriefing = useMemo(() => {
-    if (fabOnly || isAlert || todayHidden) return null;
+    if (fabOnly || isAlert || todayHidden || dockCollapsed) return null;
     return buildTodayBriefing(payload, lang);
-  }, [fabOnly, isAlert, todayHidden, payload, lang]);
+  }, [fabOnly, isAlert, todayHidden, dockCollapsed, payload, lang]);
 
   useEffect(() => {
     if (fabOnly) {
       document.documentElement.style.setProperty("--bottom-intel-stack-clearance", "4.5rem");
+      return () => {
+        document.documentElement.style.setProperty(
+          "--bottom-intel-stack-clearance",
+          resolveIntelStackClearance("calm", viewerMode),
+        );
+      };
+    }
+    if (dockCollapsed) {
+      document.documentElement.style.setProperty(
+        "--bottom-intel-stack-clearance",
+        INTEL_STACK_CLEARANCE_COLLAPSED,
+      );
       return () => {
         document.documentElement.style.setProperty(
           "--bottom-intel-stack-clearance",
@@ -491,11 +523,11 @@ export function DynamicIntelStack({
         resolveIntelStackClearance("calm", viewerMode),
       );
     };
-  }, [fabOnly, mode, viewerMode, todayBriefing, isAlert]);
+  }, [fabOnly, mode, viewerMode, todayBriefing, isAlert, dockCollapsed]);
 
-  const showLegend = !fabOnly && viewerMode === "conflict";
-  const showCompactTicker = !fabOnly && (viewerMode === "economy" || showTicker);
-  const showFab = fabOnly || !isAlert;
+  const showLegend = !fabOnly && !dockCollapsed && viewerMode === "conflict";
+  const showCompactTicker = !fabOnly && !dockCollapsed && (viewerMode === "economy" || showTicker);
+  const showFab = fabOnly || !isAlert || dockCollapsed;
 
   const handleTodayOpen = useCallback(() => {
     if (!todayBriefing) return;
@@ -507,6 +539,36 @@ export function DynamicIntelStack({
     dismissTodayBriefing();
     setTodayHidden(true);
   }, []);
+
+  const onDockHandlePointerDown = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
+    if (event.button !== 0) return;
+    dockDragRef.current = { startY: event.clientY, dragging: true };
+    event.currentTarget.setPointerCapture(event.pointerId);
+  }, []);
+
+  const onDockHandlePointerMove = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
+    const drag = dockDragRef.current;
+    if (!drag?.dragging) return;
+    const delta = Math.max(0, event.clientY - drag.startY);
+    setDockDragY(delta);
+  }, []);
+
+  const onDockHandlePointerUp = useCallback(
+    (event: ReactPointerEvent<HTMLDivElement>) => {
+      const drag = dockDragRef.current;
+      dockDragRef.current = null;
+      if (!drag?.dragging) return;
+      try {
+        event.currentTarget.releasePointerCapture(event.pointerId);
+      } catch {
+        /* ignore */
+      }
+      const delta = Math.max(0, event.clientY - drag.startY);
+      if (delta > 56) collapseDock();
+      else setDockDragY(0);
+    },
+    [collapseDock],
+  );
 
   if (fabOnly) {
     return (
@@ -536,12 +598,68 @@ export function DynamicIntelStack({
     );
   }
 
+  if (dockCollapsed) {
+    return (
+      <div
+        id="bottom-intel-compact"
+        className="intel-stack intel-stack--collapsed pointer-events-none absolute bottom-3 left-1/2 z-20 flex w-[min(94vw,420px)] -translate-x-1/2 flex-col items-stretch"
+      >
+        <div
+          className={`intel-stack-panel pointer-events-auto flex items-center gap-2 rounded-2xl border px-3 py-2 shadow-2xl backdrop-blur-md ${
+            isEconomy
+              ? "border-emerald-300/20 bg-[#071018]/88"
+              : "border-sky-300/20 bg-[#0a1428]/88"
+          }`}
+        >
+          <button
+            type="button"
+            onClick={expandDock}
+            className="flex min-w-0 flex-1 items-center gap-2 text-left"
+            aria-label={t("intelDockExpandAria")}
+          >
+            <span className="intel-news-sheet__handle shrink-0" aria-hidden />
+            <span className="min-w-0">
+              <span className="block text-[11px] font-medium text-sky-50/90">
+                {t("intelDockGlobeFullscreen")}
+              </span>
+              <span className="block truncate text-[10px] text-sky-200/55">
+                {t("intelDockExpandHint")}
+              </span>
+            </span>
+          </button>
+          <HoverHint
+            placement="top"
+            title={isEconomy ? t("hoverEconomyFab") : t("hoverIntelFab")}
+            detail={isEconomy ? t("hoverEconomyFabHint") : t("hoverIntelFabHint")}
+          >
+            <button
+              type="button"
+              onClick={() => {
+                expandDock();
+                onOpenSheet("all");
+              }}
+              aria-label={isEconomy ? t("hoverEconomyFabOpenAria") : t("hoverIntelFabOpenAria")}
+              className={`intel-mini-fab flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border text-sm transition ${
+                isEconomy
+                  ? "border-emerald-300/25 bg-emerald-950/85 text-emerald-100"
+                  : "border-sky-300/20 bg-[#0a1830]/85 text-sky-100"
+              }`}
+            >
+              {isEconomy ? "📈" : "📰"}
+            </button>
+          </HoverHint>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div
       id="bottom-intel-compact"
       className={`intel-stack pointer-events-none absolute bottom-4 left-1/2 z-20 flex w-[min(96vw,720px)] -translate-x-1/2 flex-col items-stretch gap-2 ${
         isAlert ? "intel-stack--alert w-[min(96vw,860px)]" : "intel-stack--calm"
       }`}
+      style={dockDragY > 0 ? { transform: `translateY(${dockDragY}px)` } : undefined}
     >
       {todayBriefing ? (
         <TodayHotspotChip
@@ -563,6 +681,25 @@ export function DynamicIntelStack({
               : "border-sky-300/15 bg-[#0a1428]/88"
         }`}
       >
+        <div
+          className="flex cursor-grab touch-none flex-col items-center gap-1 px-3 pb-1 pt-2 active:cursor-grabbing"
+          onPointerDown={onDockHandlePointerDown}
+          onPointerMove={onDockHandlePointerMove}
+          onPointerUp={onDockHandlePointerUp}
+          onPointerCancel={onDockHandlePointerUp}
+          role="slider"
+          aria-valuemin={0}
+          aria-valuemax={1}
+          aria-valuenow={0}
+          aria-label={t("intelDockCollapseAria")}
+          title={t("intelDockCollapseHint")}
+        >
+          <span className="intel-news-sheet__handle" aria-hidden />
+          <span className="text-[10px] tracking-wide text-sky-200/45">
+            {t("intelDockCollapseHint")}
+          </span>
+        </div>
+
         {isAlert && hero ? (
           <HeroHeadlineBanner hero={hero} onOpenSheet={onOpenSheet} economy={isEconomy} />
         ) : null}
@@ -994,6 +1131,9 @@ export const IntelNewsSheet = forwardRef<BottomIntelStackHandle, IntelNewsSheetP
     const [newsSearchQuery, setNewsSearchQuery] = useState("");
     const [marketsSearchQuery, setMarketsSearchQuery] = useState("");
     const autoOpenedRef = useRef(false);
+    const sheetDragRef = useRef<{ startY: number; dragging: boolean } | null>(null);
+    const [sheetDragY, setSheetDragY] = useState(0);
+    const [sheetDragging, setSheetDragging] = useState(false);
 
     const openNewsPanel = useCallback(
       (theater: IntelTheaterFilter = "all", tab: IntelSheetTab = "news") => {
@@ -1012,8 +1152,52 @@ export const IntelNewsSheet = forwardRef<BottomIntelStackHandle, IntelNewsSheetP
     }, [autoOpenOnMount, initialIntelTab, openNewsPanel]);
 
     const closeNewsPanel = useCallback(() => {
+      setSheetDragY(0);
+      setSheetDragging(false);
+      writeIntelDockCollapsed(true);
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new Event("cv-intel-dock-collapse"));
+      }
       onClose();
     }, [onClose]);
+
+    useEffect(() => {
+      if (!open) {
+        setSheetDragY(0);
+        setSheetDragging(false);
+      }
+    }, [open]);
+
+    const onSheetHandlePointerDown = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
+      if (event.button !== 0) return;
+      sheetDragRef.current = { startY: event.clientY, dragging: true };
+      setSheetDragging(true);
+      event.currentTarget.setPointerCapture(event.pointerId);
+    }, []);
+
+    const onSheetHandlePointerMove = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
+      const drag = sheetDragRef.current;
+      if (!drag?.dragging) return;
+      setSheetDragY(Math.max(0, event.clientY - drag.startY));
+    }, []);
+
+    const onSheetHandlePointerUp = useCallback(
+      (event: ReactPointerEvent<HTMLDivElement>) => {
+        const drag = sheetDragRef.current;
+        sheetDragRef.current = null;
+        setSheetDragging(false);
+        if (!drag?.dragging) return;
+        try {
+          event.currentTarget.releasePointerCapture(event.pointerId);
+        } catch {
+          /* ignore */
+        }
+        const delta = Math.max(0, event.clientY - drag.startY);
+        if (delta > 72) closeNewsPanel();
+        else setSheetDragY(0);
+      },
+      [closeNewsPanel],
+    );
 
     useImperativeHandle(
       ref,
@@ -1092,12 +1276,38 @@ export const IntelNewsSheet = forwardRef<BottomIntelStackHandle, IntelNewsSheetP
 
     return (
       <div
-        className={`intel-news-sheet fixed inset-0 z-[44] flex flex-col bg-[#050b14] ${
+        className={`intel-news-sheet fixed inset-x-0 bottom-0 z-[44] flex flex-col ${
           open ? "intel-news-sheet--open" : ""
-        }`}
+        } ${sheetDragging ? "intel-news-sheet--dragging" : ""}`}
+        role="dialog"
+        aria-modal="false"
+        aria-label={preferEconomyNews ? t("intelSheetEconomyNews") : t("intelSheetNews")}
         aria-hidden={!open}
+        style={
+          open && sheetDragY > 0
+            ? { transform: `translateY(${sheetDragY}px)` }
+            : undefined
+        }
       >
-        <div className="flex shrink-0 items-center justify-between gap-3 border-b border-sky-300/10 px-4 py-3">
+        <div
+          className="flex shrink-0 cursor-grab touch-none flex-col items-center gap-1 px-3 pb-1 pt-2 active:cursor-grabbing"
+          onPointerDown={onSheetHandlePointerDown}
+          onPointerMove={onSheetHandlePointerMove}
+          onPointerUp={onSheetHandlePointerUp}
+          onPointerCancel={onSheetHandlePointerUp}
+          role="slider"
+          aria-valuemin={0}
+          aria-valuemax={1}
+          aria-valuenow={0}
+          aria-label={t("intelDockCollapseAria")}
+          title={t("intelDockCollapseHint")}
+        >
+          <span className="intel-news-sheet__handle" aria-hidden />
+          <span className="text-[10px] tracking-wide text-sky-200/45">
+            {t("intelDockCollapseHint")}
+          </span>
+        </div>
+        <div className="flex shrink-0 items-center justify-between gap-3 border-b border-sky-300/10 px-4 pb-3 pt-1.5">
           <div className="min-w-0">
             <p className="text-[10px] uppercase tracking-[0.28em] text-sky-200/70">Intel Stack</p>
             <p className="text-sm text-sky-50/95">
@@ -1153,7 +1363,7 @@ export const IntelNewsSheet = forwardRef<BottomIntelStackHandle, IntelNewsSheetP
             <HoverHint placement="bottom" title={t("hoverBackToMap")} detail={t("hoverBackToMapHint")}>
               <button
                 type="button"
-                onClick={onClose}
+                onClick={closeNewsPanel}
                 className="rounded-lg border border-slate-500 bg-slate-800/80 px-4 py-1.5 text-xs font-medium text-slate-100 hover:border-slate-300"
               >
                 {t("backToMap")}
@@ -1331,9 +1541,8 @@ export const IntelNewsSheet = forwardRef<BottomIntelStackHandle, IntelNewsSheetP
                   ) : null}
                 </div>
               )}
+              <AnalysisPanel hero={hero} payload={payload} open={open} />
             </div>
-
-            <AnalysisPanel hero={hero} payload={payload} open={open} />
           </>
         ) : sheetTab === "telegram" ? (
           <TelegramIntelFeed
@@ -1363,14 +1572,14 @@ export const IntelNewsSheet = forwardRef<BottomIntelStackHandle, IntelNewsSheetP
           />
         ) : null}
 
-        <div className="shrink-0 border-t border-sky-300/15 bg-[#050b14]/95 px-4 py-3 backdrop-blur-md">
+        <div className="shrink-0 border-t border-sky-300/15 bg-[#050b14]/80 px-4 py-2.5 backdrop-blur-md">
           <HoverHint placement="top" title={t("hoverCloseNews")} detail={t("hoverCloseNewsHint")}>
             <button
               type="button"
-              onClick={onClose}
-              className="w-full rounded-xl border border-slate-500/80 bg-slate-800/90 py-3 text-sm font-semibold text-slate-100 transition hover:border-slate-300 hover:bg-slate-700"
+              onClick={closeNewsPanel}
+              className="w-full rounded-xl border border-slate-500/80 bg-slate-800/90 py-2.5 text-sm font-semibold text-slate-100 transition hover:border-slate-300 hover:bg-slate-700"
             >
-              닫기 · 지도로 돌아가기
+              {t("closeNewsDock")}
             </button>
           </HoverHint>
         </div>
@@ -1445,6 +1654,9 @@ function TierSection({
     </section>
   );
 }
+
+const CLAUDE_API_HELP_URL =
+  "https://support.claude.com/ko/collections/5370014-claude-api-%EB%B0%8F-%EC%BD%98%EC%86%94";
 
 function AnalysisPanel({
   hero,
@@ -1618,6 +1830,44 @@ function AnalysisPanel({
             </>
           )}
         </p>
+
+        <div className="mt-3 space-y-2 border-t border-violet-400/15 pt-3">
+          <a
+            href={CLAUDE_API_HELP_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 text-xs font-medium text-violet-200 underline-offset-2 hover:text-violet-50 hover:underline"
+          >
+            {lang === "en" ? "How to get a Claude API key" : "클로드에서 API를 가져오는 방법"}
+            <span aria-hidden className="text-violet-300/50">
+              ↗
+            </span>
+          </a>
+          <div className="rounded-lg border border-violet-400/15 bg-violet-950/25 px-3 py-2.5 text-[11px] leading-5 text-violet-100/75">
+            <p className="font-medium text-violet-100/90">
+              {lang === "en" ? "Why this button exists" : "이 버튼이 필요한 이유"}
+            </p>
+            <p className="mt-1.5">
+              {lang === "en" ? (
+                <>
+                  <span className="font-medium text-violet-100/85">Analyze with my key</span> is
+                  optional. We cannot run personalized AI analysis for every visitor on the site&apos;s
+                  bill, so this button uses your own Anthropic API key only. Your key stays on this
+                  device; usage appears on your Claude Console invoice. Any server key we operate is
+                  reserved for editorial news digests—not for this button.
+                </>
+              ) : (
+                <>
+                  <span className="font-medium text-violet-100/85">「내 키로 분석」</span>은 선택
+                  기능입니다. 모든 방문자의 AI 분석 비용을 사이트가 대신 부담하기 어렵기 때문에,
+                  개인 맞춤 해석은 본인 Anthropic API 키로만 실행됩니다. 키는 이 기기에만 저장되며,
+                  사용량은 Claude Console 청구서에 반영됩니다. 사이트 운영용 키(있는 경우)는 긴급 뉴스
+                  편집 요약에만 쓰이고 이 버튼에는 사용되지 않습니다.
+                </>
+              )}
+            </p>
+          </div>
+        </div>
       </div>
     </section>
   );

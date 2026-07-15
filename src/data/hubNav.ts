@@ -404,6 +404,21 @@ export function selectionForRegime(hub: HubDefinition): NavSelection {
   };
 }
 
+/** 상단 nav의 전체 분쟁사 진입점 — 특정 허브 필터 없이 11대 에피소드 표시 */
+export function selectionForRegimeOverview(): NavSelection {
+  return {
+    id: "axis-regime-overview",
+    label: "반서방국 분쟁사",
+    lat: 34,
+    lng: 76,
+    altitude: 2.15,
+    description: "반서방 진영 내부의 주요 충돌 현장 11대 큐레이션",
+    bbox: { minLat: -20, maxLat: 70, minLng: -20, maxLng: 145 },
+    groupId: "axis-hubs",
+    focusMode: "regime",
+  };
+}
+
 /** HoverNav용 가상 그룹 — 실제 UI는 커스텀 드롭다운 */
 export const HUB_NAV_GROUP = {
   id: "axis-hubs",

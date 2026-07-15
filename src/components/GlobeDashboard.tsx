@@ -53,6 +53,10 @@ import {
   shouldOfferChromeCoach,
   type ChromeCoachStep,
 } from "@/components/ChromeOnboardingCoach";
+import {
+  AirRaidOnboardingCoach,
+  shouldOfferAirRaidCoach,
+} from "@/components/AirRaidOnboardingCoach";
 import { EntryCautionOverlay } from "@/components/EntryCautionOverlay";
 import { SoundMuteControl } from "@/components/SoundMuteControl";
 import { DomainGateOverlay } from "@/components/DomainGateOverlay";
@@ -234,6 +238,7 @@ import {
   isEastAsiaAdizVisibleAtAltitude,
 } from "@/lib/eastAsiaAdiz";
 import { axisNetworkToPaths } from "@/lib/axisNetworkPaths";
+import { briTradePathsToTransport, briTradeStrokeWidth } from "@/lib/briTradePaths";
 import { buildAxisHubCountriesGeoJson } from "@/lib/axisHubCountryPolygons";
 import {
   armsPairsToPaths,
@@ -1093,6 +1098,7 @@ const FLOW_PATH_KINDS = new Set([
   "msr",
   "neptun-projection",
   "axis-link",
+  "bri-trade",
 ]);
 const HEATMAP_MEANINGFUL_DELTA = 28;
 const LABEL_MEANINGFUL_DELTA = 56;
@@ -1417,6 +1423,7 @@ export function GlobeDashboard({
   const [entryGate, setEntryGate] = useState<EntryGate>(null);
   const domainThenDetailTimerRef = useRef<number | null>(null);
   const [chromeCoachStep, setChromeCoachStep] = useState<ChromeCoachStep | null>(null);
+  const [showAirRaidCoach, setShowAirRaidCoach] = useState(false);
   const battlefieldSoftZoneRef = useRef<BattlefieldZone | null>(null);
   const battlefieldManualUntilRef = useRef(0);
   const [showViewerIntro, setShowViewerIntro] = useState(false);
@@ -1709,6 +1716,7 @@ export function GlobeDashboard({
     showNeptunPreviousTrails,
     showEastAsiaAdiz,
     showAxisNetwork,
+    showBriTradeConnectivity,
     labelLanguage,
   } = layerPrefs;
 
@@ -1842,6 +1850,7 @@ export function GlobeDashboard({
   };
   const setShowEastAsiaAdiz = (v: boolean) => togglePref("showEastAsiaAdiz", v);
   const setShowAxisNetwork = (v: boolean) => togglePref("showAxisNetwork", v);
+  const setShowBriTradeConnectivity = (v: boolean) => togglePref("showBriTradeConnectivity", v);
 
   const showGdeltLayers =
     viewerChromePreset.fetchGdelt &&
@@ -2342,7 +2351,13 @@ export function GlobeDashboard({
     enabled: showRailGlow && transportLod.maxRailroads > 0,
     lat: layerViewState.lat,
     lng: layerViewState.lng,
-    radiusDeg: transportLod.radiusDeg,
+    // global tier의 radiusDeg=0은 전역 조회용이지만, 가까운 노선 우선 정렬을 위해 최소 반경 부여
+    radiusDeg:
+      transportLod.radiusDeg > 0
+        ? transportLod.radiusDeg
+        : globeLod.tier === "global"
+          ? 55
+          : 28,
     tier: globeLod.tier,
     max: transportLod.maxRailroads,
     maxScalerank: transportLod.railMaxScalerank,
@@ -2698,10 +2713,14 @@ export function GlobeDashboard({
   const polygonDataWithUkraine = polygonData;
 
   const axisHubCountriesGeoJson = useMemo(() => {
+    // 지정학 전용 — 지경학 창에서는 축 허브 국경 채움 표시 안 함
+    if (isEconomyViewer) {
+      return buildAxisHubCountriesGeoJson(undefined);
+    }
     return buildAxisHubCountriesGeoJson(data.countries, {
       activeIso: activeHubId ?? null,
     });
-  }, [activeHubId, data.countries]);
+  }, [activeHubId, data.countries, isEconomyViewer]);
 
   const eastAsiaAdizPaths = useMemo<TransportPath[]>(() => {
     if (!showEastAsiaAdiz) return [];
@@ -2726,6 +2745,11 @@ export function GlobeDashboard({
     axisArmsPayload,
     labelLanguage,
   ]);
+
+  const briTradePaths = useMemo<TransportPath[]>(() => {
+    if (!showBriTradeConnectivity) return [];
+    return briTradePathsToTransport(labelLanguage);
+  }, [showBriTradeConnectivity, labelLanguage]);
 
   const hubHighlightIsos = useMemo(() => {
     if (!activeHubId) return null;
@@ -2827,6 +2851,7 @@ export function GlobeDashboard({
       ...frictionWarZonePaths,
       ...eastAsiaAdizPaths,
       ...axisNetworkPaths,
+      ...briTradePaths,
       ...visibleShipping,
       ...visibleCables,
       ...visibleOilPipelines,
@@ -2837,6 +2862,7 @@ export function GlobeDashboard({
     [
       armsEmbargoFramePaths,
       axisNetworkPaths,
+      briTradePaths,
       disputeZonePaths,
       eastAsiaAdizPaths,
       frictionWarZonePaths,
@@ -3030,8 +3056,11 @@ export function GlobeDashboard({
   );
 
   const visibleUsCarriers = useMemo(
-    () => filterVisibleCarriers(carrierAisMerge.carriers, showUsCarriers),
-    [carrierAisMerge.carriers, showUsCarriers],
+    () =>
+      isEconomyViewer
+        ? []
+        : filterVisibleCarriers(carrierAisMerge.carriers, showUsCarriers),
+    [carrierAisMerge.carriers, isEconomyViewer, showUsCarriers],
   );
 
   const deployedCarrierCount = useMemo(
@@ -4479,13 +4508,14 @@ export function GlobeDashboard({
   }, [refreshCivAircraft, showAirTraffic]);
 
   useEffect(() => {
-    if (!showUsCarriers) return;
+    // 지경학에서는 항모·항구 위치 레이어/폴링 비활성
+    if (isEconomyViewer || !showUsCarriers) return;
     void refreshUsCarriers();
     const timer = window.setInterval(() => {
       void refreshUsCarriers();
     }, liveUsCarriersPollMs());
     return () => window.clearInterval(timer);
-  }, [refreshUsCarriers, showUsCarriers]);
+  }, [isEconomyViewer, refreshUsCarriers, showUsCarriers]);
 
   useEffect(() => {
     if (!showCyberIncidents) return;
@@ -4568,9 +4598,23 @@ export function GlobeDashboard({
       if (!res.ok) throw new Error(`sync HTTP ${res.status}`);
       await refreshTelegramAlerts();
     } catch {
-      setTelegramStatus("error");
+      // 공개 embed는 t.me 응답/타임아웃이 흔함. 캐시/대기 상태를 살리고 다음 폴링에서 재시도한다.
+      await refreshTelegramAlerts();
+      setTelegramStatus((prev) =>
+        telegramEmbedMode && (prev === "idle" || prev === "loading" || prev === "error")
+          ? "waiting"
+          : prev === "error"
+            ? "error"
+            : prev,
+      );
     }
-  }, [intelSheetOpen, refreshTelegramAlerts, showTelegramOsint, viewerChromePreset.fetchTelegram]);
+  }, [
+    intelSheetOpen,
+    refreshTelegramAlerts,
+    showTelegramOsint,
+    telegramEmbedMode,
+    viewerChromePreset.fetchTelegram,
+  ]);
 
   useEffect(() => {
     if ((!showTelegramOsint && !intelSheetOpen) || !globeReady) {
@@ -5066,6 +5110,20 @@ export function GlobeDashboard({
             onChange: setShowShippingLanes,
             accent: "blue",
           },
+          ...(isEconomyViewer
+            ? [
+                {
+                  id: "bri-trade",
+                  label: "일대일로 무역 연결",
+                  detail: showBriTradeConnectivity
+                    ? `호 ${briTradePaths.length.toLocaleString()} · World Bank BRI`
+                    : "꺼짐 · 중국→참여국 운송시간 절감",
+                  checked: layerPrefs.showBriTradeConnectivity,
+                  onChange: setShowBriTradeConnectivity,
+                  accent: "amber",
+                },
+              ]
+            : []),
           {
             id: "cables",
             label: "해저 케이블",
@@ -5146,6 +5204,7 @@ export function GlobeDashboard({
         onToggleAll: (enabled) =>
           toggleCategoryPrefs({
             showShippingLanes: enabled,
+            ...(isEconomyViewer ? { showBriTradeConnectivity: enabled } : {}),
             showSubmarineCables: enabled,
             showSubmarineTunnels: enabled,
             showAirports: enabled,
@@ -5387,6 +5446,7 @@ export function GlobeDashboard({
     lpg(showDiplomaticTension, false),
     lpg(showEastAsiaAdiz, false),
     lpg(showAxisNetwork, false),
+    lpg(showBriTradeConnectivity, false),
     lpg(showWarZones, false),
     lpg(showEconomicCenters, false),
     lpg(showElectionEvents, false),
@@ -6265,12 +6325,51 @@ export function GlobeDashboard({
   useEffect(() => {
     if (isLoading || loadError || !globeReady) return;
     if (entryGate !== null || showModePicker) return;
-    if (chromeCoachStep) return;
+    if (chromeCoachStep || showAirRaidCoach) return;
     if (shouldOfferChromeCoach()) return;
+    const airRaidVisible = Boolean(showNeptun || neptunAlertCount > 0 || showTzevaAdom);
+    if (!isEconomyViewer && airRaidVisible && shouldOfferAirRaidCoach()) return;
     if (!shouldShowQuickStart(viewerMode)) return;
     const timer = window.setTimeout(() => setShowQuickStart(true), 1200);
     return () => window.clearTimeout(timer);
-  }, [chromeCoachStep, entryGate, globeReady, isLoading, loadError, showModePicker, viewerMode]);
+  }, [
+    chromeCoachStep,
+    entryGate,
+    globeReady,
+    isEconomyViewer,
+    isLoading,
+    loadError,
+    neptunAlertCount,
+    showAirRaidCoach,
+    showModePicker,
+    showNeptun,
+    showTzevaAdom,
+    viewerMode,
+  ]);
+
+  /** 공습경보 칩이 처음 보일 때 1회 설명 */
+  useEffect(() => {
+    if (isEconomyViewer) return;
+    if (isLoading || loadError || !globeReady) return;
+    if (entryGate !== null || showModePicker || chromeCoachStep) return;
+    if (shouldOfferChromeCoach()) return;
+    if (!shouldOfferAirRaidCoach()) return;
+    const airRaidVisible = Boolean(showNeptun || neptunAlertCount > 0 || showTzevaAdom);
+    if (!airRaidVisible) return;
+    const timer = window.setTimeout(() => setShowAirRaidCoach(true), 900);
+    return () => window.clearTimeout(timer);
+  }, [
+    chromeCoachStep,
+    entryGate,
+    globeReady,
+    isEconomyViewer,
+    isLoading,
+    loadError,
+    neptunAlertCount,
+    showModePicker,
+    showNeptun,
+    showTzevaAdom,
+  ]);
 
   const layerDebugPrevRef = useRef<{
     labels: number;
@@ -6782,7 +6881,7 @@ export function GlobeDashboard({
         />
       ) : null}
 
-      {activeHubId && hubFocusMode === "regime" && !hubBriefOpen && !frictionEpisodeBrief ? (
+      {hubFocusMode === "regime" && !hubBriefOpen && !frictionEpisodeBrief ? (
         <AxisRegimePanel
           hubId={activeHubId}
           selectedEpisodeId={regimeSelectedEpisodeId}
@@ -7376,6 +7475,7 @@ export function GlobeDashboard({
                 if (path.kind === "neptun-trail-archived") return 1.2;
                 if (path.kind === "neptun-projection") return 1.05;
                 if (path.kind === "axis-link") return 1.35;
+                if (path.kind === "bri-trade") return briTradeStrokeWidth(path);
                 if (path.kind === "coastline") return 0.38;
                 if (path.kind === "country-border") {
                   return globeTextures.vectorBase
@@ -7771,30 +7871,30 @@ export function GlobeDashboard({
           isCompactUi ? "max-w-[calc(100vw-5.5rem)] flex-wrap" : ""
         }`}
       >
-        {!isCompactUi && !isEconomyViewer && (showNeptun || neptunAlertCount > 0) ? (
-          <div className="pointer-events-auto">
-            <UkraineAirRaidPanel
-              alerts={neptunAlerts}
-              live={neptunLive}
-              liveStatus={neptunStatus}
-              error={neptunError}
-              lang={labelLanguage}
-              onFocusRegion={(target) => handleAirRaidFocus(target, "neptun")}
-            />
-          </div>
-        ) : null}
-        {!isCompactUi && !isEconomyViewer && showTzevaAdom ? (
-          <div className="pointer-events-auto">
-            <TzevaAdomPanel
-              active={tzevaAdomActive}
-              history={tzevaAdomHistory}
-              live={tzevaAdomLive}
-              liveStatus={tzevaAdomStatus}
-              geoRestricted={tzevaAdomGeoRestricted}
-              error={tzevaAdomError}
-              lang={labelLanguage}
-              onFocusRegion={(target) => handleAirRaidFocus(target, "tzeva")}
-            />
+        {!isCompactUi && !isEconomyViewer && (showNeptun || neptunAlertCount > 0 || showTzevaAdom) ? (
+          <div id="air-raid-chrome" className="pointer-events-auto flex items-start gap-2">
+            {showNeptun || neptunAlertCount > 0 ? (
+              <UkraineAirRaidPanel
+                alerts={neptunAlerts}
+                live={neptunLive}
+                liveStatus={neptunStatus}
+                error={neptunError}
+                lang={labelLanguage}
+                onFocusRegion={(target) => handleAirRaidFocus(target, "neptun")}
+              />
+            ) : null}
+            {showTzevaAdom ? (
+              <TzevaAdomPanel
+                active={tzevaAdomActive}
+                history={tzevaAdomHistory}
+                live={tzevaAdomLive}
+                liveStatus={tzevaAdomStatus}
+                geoRestricted={tzevaAdomGeoRestricted}
+                error={tzevaAdomError}
+                lang={labelLanguage}
+                onFocusRegion={(target) => handleAirRaidFocus(target, "tzeva")}
+              />
+            ) : null}
           </div>
         ) : null}
         {!showLeftPanel && !econNavSelection ? (
@@ -7824,8 +7924,11 @@ export function GlobeDashboard({
       </div>
 
       {/* 모바일: 공습 경보는 하단 아이콘 — 상단 허브·주요전장 메뉴를 가리지 않음 */}
-      {isCompactUi && !isEconomyViewer ? (
-        <div className="pointer-events-none absolute bottom-[calc(var(--bottom-intel-stack-clearance)+0.65rem)] right-3 z-[55] flex flex-col items-end gap-2">
+      {isCompactUi && !isEconomyViewer && (showNeptun || neptunAlertCount > 0 || showTzevaAdom) ? (
+        <div
+          id="air-raid-chrome"
+          className="pointer-events-none absolute bottom-[calc(var(--bottom-intel-stack-clearance)+0.65rem)] right-3 z-[55] flex flex-col items-end gap-2"
+        >
           {showNeptun || neptunAlertCount > 0 ? (
             <div className="pointer-events-auto">
               <UkraineAirRaidPanel
@@ -8082,7 +8185,7 @@ export function GlobeDashboard({
           <button
             type="button"
             aria-label={t("ariaCloseRegionNews", labelLanguage)}
-            className="absolute inset-0 z-20 bg-black/30 backdrop-blur-[1px] lg:bg-transparent lg:backdrop-blur-none"
+            className="absolute inset-0 z-20 bg-black/15 lg:bg-transparent"
             onClick={() => setRegionNavSelection(null)}
           />
           <aside className="intel-panel intel-sidebar-right absolute right-0 top-0 z-30 flex h-full flex-col overflow-hidden border-l border-slate-800/80 p-4 shadow-2xl">
@@ -8158,7 +8261,7 @@ export function GlobeDashboard({
           <button
             type="button"
             aria-label={t("ariaCloseEconomyRegion", labelLanguage)}
-            className="absolute inset-0 z-20 bg-black/30 backdrop-blur-[1px] lg:bg-transparent lg:backdrop-blur-none"
+            className="absolute inset-0 z-20 bg-black/15 lg:bg-transparent"
             onClick={() => {
               setEconNavSelection(null);
               setEconNewsPanelReveal(false);
@@ -8305,6 +8408,20 @@ export function GlobeDashboard({
           viewerMode={viewerMode}
           lang={labelLanguage}
           onStepChange={setChromeCoachStep}
+        />
+      ) : null}
+
+      {showAirRaidCoach &&
+      entryGate === null &&
+      !showModePicker &&
+      !chromeCoachStep &&
+      !hubBriefOpen &&
+      !frictionEpisodeBrief ? (
+        <AirRaidOnboardingCoach
+          open
+          lang={labelLanguage}
+          placement={isCompactUi ? "above" : "below"}
+          onDismiss={() => setShowAirRaidCoach(false)}
         />
       ) : null}
       </NewsStreamProvider>

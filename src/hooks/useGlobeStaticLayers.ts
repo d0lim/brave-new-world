@@ -38,7 +38,8 @@ type ApiPointsPayload = {
 };
 
 function pathNearView(path: TransportPath, view: ViewState, radiusDeg: number) {
-  if (radiusDeg <= 0) return false;
+  // global tier radiusDeg=0 → 전역 허용 (서버 bboxNearView와 동일)
+  if (radiusDeg <= 0) return true;
   return isBboxNearView(path.bbox, view, radiusDeg);
 }
 

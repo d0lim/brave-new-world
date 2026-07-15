@@ -8,6 +8,7 @@ import {
   type EconInsightBrief,
   type MarketLinkDirection,
 } from "@/data/econInsightBriefs";
+import { localizeEconInsightBrief } from "@/data/criticalNodeKoreanBriefs";
 import { CRITICAL_NODES_ATTRIBUTION } from "@/data/criticalNodes";
 import {
   emitParchmentFoldSound,
@@ -27,6 +28,13 @@ function arrowFor(dir: MarketLinkDirection): string {
   if (dir === "up") return "↑";
   if (dir === "down") return "↓";
   return "·";
+}
+
+function riskLabel(level: EconInsightBrief["riskLevel"], lang: LabelLanguage): string {
+  if (lang === "en") return `RISK · ${level}`;
+  if (level === "CRITICAL") return "위험도 · 치명";
+  if (level === "HIGH") return "위험도 · 높음";
+  return "위험도 · 안정";
 }
 
 function formatUsdBn(value: number | null | undefined): string | null {
@@ -59,10 +67,11 @@ export function EconInsightParchment({
   const [phase, setPhase] = useState<"idle" | "folding" | "done">("idle");
   const [worldStats, setWorldStats] = useState<WorldStatsCard | null>(null);
   const [typedChars, setTypedChars] = useState(0);
-  const title = lang === "en" ? brief.titleEn : brief.titleKo;
+  const displayBrief = useMemo(() => localizeEconInsightBrief(brief, lang), [brief, lang]);
+  const title = lang === "en" ? displayBrief.titleEn : displayBrief.titleKo;
   const paragraphs = useMemo(
-    () => (compact ? brief.paragraphs.slice(0, 3) : brief.paragraphs),
-    [brief.paragraphs, compact],
+    () => (compact ? displayBrief.paragraphs.slice(0, 3) : displayBrief.paragraphs),
+    [displayBrief.paragraphs, compact],
   );
   const fullBody = useMemo(() => paragraphs.join("\n\n"), [paragraphs]);
   const totalChars = fullBody.length;
@@ -109,12 +118,12 @@ export function EconInsightParchment({
   }, [paragraphs, typedChars, totalChars]);
 
   useEffect(() => {
-    if (!brief.countryHint) {
+    if (!displayBrief.countryHint) {
       setWorldStats(null);
       return;
     }
     let cancelled = false;
-    const q = encodeURIComponent(brief.countryHint);
+    const q = encodeURIComponent(displayBrief.countryHint);
     void fetch(`/api/world-stats/countries?country=${q}`)
       .then((r) => r.json())
       .then((data: WorldStatsCard) => {
@@ -131,7 +140,7 @@ export function EconInsightParchment({
     return () => {
       cancelled = true;
     };
-  }, [brief.countryHint]);
+  }, [displayBrief.countryHint]);
 
   const finish = useCallback(
     (next: () => void) => {
@@ -180,9 +189,9 @@ export function EconInsightParchment({
             <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden px-7 py-8 sm:px-12 sm:py-10">
               <div className="mb-4 flex flex-wrap items-center justify-center gap-2">
                 <span
-                  className={`rounded-sm border px-3 py-1 font-mono text-[0.72rem] tracking-[0.18em] ${insightRiskToCss(brief.riskLevel)}`}
+                  className={`rounded-sm border px-3 py-1 font-mono text-[0.72rem] tracking-[0.18em] ${insightRiskToCss(displayBrief.riskLevel)}`}
                 >
-                  RISK · {brief.riskLevel}
+                  {riskLabel(displayBrief.riskLevel, lang)}
                 </span>
               </div>
 
@@ -198,12 +207,12 @@ export function EconInsightParchment({
                 className="mt-3 text-center text-[0.95rem] leading-relaxed tracking-[0.01em] text-[#5a4428]"
                 style={{ fontFamily: SPACE_GROTESK_STACK, fontWeight: 400 }}
               >
-                {brief.impactLine}
+                {displayBrief.impactLine}
               </p>
 
-              {brief.marketLinks.length > 0 ? (
+              {displayBrief.marketLinks.length > 0 ? (
                 <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
-                  {brief.marketLinks.map((link) => (
+                  {displayBrief.marketLinks.map((link) => (
                     <span
                       key={link.symbol}
                       className="rounded-sm border border-[#8b6914]/35 bg-[#efe0b8]/70 px-2.5 py-1 text-[0.78rem] tracking-wide text-[#3d2a18]"
@@ -218,18 +227,25 @@ export function EconInsightParchment({
               {worldStats && !worldStats.disabled && (gdp || worldStats.population != null) ? (
                 <div className="mt-4 rounded-sm border border-[#8b6914]/28 bg-[#f6ebcf]/55 px-3 py-2 text-center text-[0.82rem] leading-relaxed text-[#4a3724]">
                   <div className="font-medium tracking-[0.04em]" style={{ fontFamily: SPACE_GROTESK_STACK }}>
-                    {worldStats.name ?? brief.countryHint} · countries API
+                    {worldStats.name ?? displayBrief.countryHint} ·{" "}
+                    {lang === "en" ? "countries API" : "국가 통계"}
                   </div>
                   <div
                     className="mt-1 flex flex-wrap justify-center gap-x-3 gap-y-1 text-[0.75rem]"
                     style={{ fontFamily: SPACE_GROTESK_STACK, fontWeight: 500 }}
                   >
-                    {gdp ? <span>GDP {gdp}</span> : null}
+                    {gdp ? <span>{lang === "en" ? "GDP" : "GDP"} {gdp}</span> : null}
                     {worldStats.population != null ? (
-                      <span>Pop {(worldStats.population / 1e6).toFixed(1)}M</span>
+                      <span>
+                        {lang === "en" ? "Pop" : "인구"}{" "}
+                        {(worldStats.population / 1e6).toFixed(1)}M
+                      </span>
                     ) : null}
                     {worldStats.tradePctGdp != null ? (
-                      <span>Trade {worldStats.tradePctGdp.toFixed(1)}% GDP</span>
+                      <span>
+                        {lang === "en" ? "Trade" : "무역"}{" "}
+                        {worldStats.tradePctGdp.toFixed(1)}% GDP
+                      </span>
                     ) : null}
                   </div>
                 </div>

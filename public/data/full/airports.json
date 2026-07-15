@@ -1,5 +1,4 @@
 [
-	{"i":"airport-AU-0799","k":"airport","n":"[Duplicate] Western Sydney International Airport","la":-33.8881,"ln":150.7147,"s":1,"m":{"iso":"AU","iata":null,"icao":"AU-0799","type":"large_airport","source":"ourairports-data"}},
 	{"i":"airport-TTCP","k":"airport","n":"A.N.R. Robinson International Airport","la":11.1496,"ln":-60.8313,"s":1,"m":{"iso":"TT","iata":"TAB","icao":"TTCP","type":"large_airport","source":"ourairports-data"}},
 	{"i":"airport-EKYT","k":"airport","n":"Aalborg Airport","la":57.0948,"ln":9.8499,"s":1,"m":{"iso":"DK","iata":"AAL","icao":"EKYT","type":"large_airport","source":"ourairports-data"}},
 	{"i":"airport-EKAH","k":"airport","n":"Aarhus Airport","la":56.3033,"ln":10.6183,"s":1,"m":{"iso":"DK","iata":"AAR","icao":"EKAH","type":"large_airport","source":"ourairports-data"}},
@@ -724,7 +723,6 @@
 	{"i":"airport-UTFN","k":"airport","n":"Namangan International Airport","la":40.9846,"ln":71.5578,"s":1,"m":{"iso":"UZ","iata":"NMA","icao":"UTFN","type":"large_airport","source":"ourairports-data"}},
 	{"i":"airport-FQNP","k":"airport","n":"Nampula Airport","la":-15.1056,"ln":39.2818,"s":1,"m":{"iso":"MZ","iata":"APL","icao":"FQNP","type":"large_airport","source":"ourairports-data"}},
 	{"i":"airport-ZSCN","k":"airport","n":"Nanchang Changbei International Airport","la":28.8648,"ln":115.9027,"s":1,"m":{"iso":"CN","iata":"KHN","icao":"ZSCN","type":"large_airport","source":"ourairports-data"}},
-	{"i":"airport-YSWS","k":"airport","n":"Nancy Bird Walton, Western Sydney International Airport","la":-33.8881,"ln":150.7147,"s":1,"m":{"iso":"AU","iata":"WSI","icao":"YSWS","type":"large_airport","source":"ourairports-data"}},
 	{"i":"airport-ZSNJ","k":"airport","n":"Nanjing Lukou International Airport","la":31.735,"ln":118.8659,"s":1,"m":{"iso":"CN","iata":"NKG","icao":"ZSNJ","type":"large_airport","source":"ourairports-data"}},
 	{"i":"airport-ZGNN","k":"airport","n":"Nanning Wuxu International Airport","la":22.5981,"ln":108.1819,"s":1,"m":{"iso":"CN","iata":"NNG","icao":"ZGNN","type":"large_airport","source":"ourairports-data"}},
 	{"i":"airport-LIRN","k":"airport","n":"Naples International Airport","la":40.886,"ln":14.2908,"s":1,"m":{"iso":"IT","iata":"NAP","icao":"LIRN","type":"large_airport","source":"ourairports-data"}},
@@ -1132,6 +1130,7 @@
 	{"i":"airport-EDLV","k":"airport","n":"Weeze (Niederrhein) Airport","la":51.6014,"ln":6.1412,"s":1,"m":{"iso":"DE","iata":"NRN","icao":"EDLV","type":"large_airport","source":"ourairports-data"}},
 	{"i":"airport-NZWN","k":"airport","n":"Wellington International Airport","la":-41.3268,"ln":174.8069,"s":1,"m":{"iso":"NZ","iata":"WLG","icao":"NZWN","type":"large_airport","source":"ourairports-data"}},
 	{"i":"airport-ZSWZ","k":"airport","n":"Wenzhou Longwan International Airport","la":27.9106,"ln":120.8535,"s":1,"m":{"iso":"CN","iata":"WNZ","icao":"ZSWZ","type":"large_airport","source":"ourairports-data"}},
+	{"i":"airport-AU-0539","k":"airport","n":"Western Sydney International (Nancy-Bird Walton) Airport","la":-33.8835,"ln":150.713,"s":1,"m":{"iso":"AU","iata":"WSI","icao":"AU-0539","type":"large_airport","source":"ourairports-data"}},
 	{"i":"airport-KHOU","k":"airport","n":"William P. Hobby Airport","la":29.6453,"ln":-95.2768,"s":1,"m":{"iso":"US","iata":"HOU","icao":"KHOU","type":"large_airport","source":"ourairports-data"}},
 	{"i":"airport-CYWG","k":"airport","n":"Winnipeg / James Armstrong Richardson International Airport","la":49.91,"ln":-97.2399,"s":1,"m":{"iso":"CA","iata":"YWG","icao":"CYWG","type":"large_airport","source":"ourairports-data"}},
 	{"i":"airport-ZHHH","k":"airport","n":"Wuhan Tianhe International Airport","la":30.7748,"ln":114.2137,"s":1,"m":{"iso":"CN","iata":"WUH","icao":"ZHHH","type":"large_airport","source":"ourairports-data"}},
@@ -1198,5 +1197,6 @@
 	{"i":"airport-NTHE","k":"airport","n":"Ahe Airport","la":-14.4281,"ln":-146.257,"s":2,"m":{"iso":"PF","iata":"AHE","icao":"NTHE","type":"medium_airport","source":"ourairports-data"}},
 	{"i":"airport-DAAS","k":"airport","n":"Ain Arnat Airport","la":36.1785,"ln":5.3299,"s":2,"m":{"iso":"DZ","iata":"QSF","icao":"DAAS","type":"medium_airport","source":"ourairports-data"}},
 	{"i":"airport-DAUU","k":"airport","n":"Ain Beida Airport","la":31.9172,"ln":5.4128,"s":2,"m":{"iso":"DZ","iata":"OGX","icao":"DAUU","type":"medium_airport","source":"ourairports-data"}},
-	{"i":"airport-SPHO","k":"airport","n":"Air Force Colonel Alfredo Mendivil Duarte Airport","la":-13.1548,"ln":-74.2044,"s":2,"m":{"iso":"PE","iata":"AYP","icao":"SPHO","type":"medium_airport","source":"ourairports-data"}}
+	{"i":"airport-SPHO","k":"airport","n":"Air Force Colonel Alfredo Mendivil Duarte Airport","la":-13.1548,"ln":-74.2044,"s":2,"m":{"iso":"PE","iata":"AYP","icao":"SPHO","type":"medium_airport","source":"ourairports-data"}},
+	{"i":"airport-LFKJ","k":"airport","n":"Ajaccio Napoléon Bonaparte airport","la":41.9236,"ln":8.8029,"s":2,"m":{"iso":"FR","iata":"AJA","icao":"LFKJ","type":"medium_airport","source":"ourairports-data"}}
 ]

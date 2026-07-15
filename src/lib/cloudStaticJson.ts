@@ -1,6 +1,6 @@
 import fs from "fs";
 import path from "path";
-import { getDataCdnBase, getServerDataProfile } from "@/lib/serverEnv";
+import { getDataCdnBase, getServerDataProfile, isApiStubMode } from "@/lib/serverEnv";
 import type { DataProfile } from "@/lib/runtimeConfig.types";
 
 /**
@@ -116,6 +116,15 @@ export async function loadCloudStaticJson<T>(
   const cacheKey = `${resolved}:${safe}`;
   if (memoryCache.has(cacheKey)) {
     return memoryCache.get(cacheKey) as T;
+  }
+
+  // stub/로컬 개발: public/data 재빌드가 CDN보다 먼저 보이게
+  if (isApiStubMode()) {
+    const fromFs = readFsJson<T>(safe, resolved);
+    if (fromFs != null) {
+      memoryCache.set(cacheKey, fromFs);
+      return fromFs;
+    }
   }
 
   const fromCdn = await fetchCdnJson<T>(safe, resolved);

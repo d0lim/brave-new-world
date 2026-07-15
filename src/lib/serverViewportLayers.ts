@@ -115,7 +115,8 @@ export function filterTransportPathsForViewport(
   if (maxCount <= 0) return [];
 
   const view = { lat, lng, altitude: 1 };
-  const visible: TransportPath[] = [];
+  type Ranked = { path: TransportPath; arterial: boolean; dist: number };
+  const ranked: Ranked[] = [];
 
   for (const path of paths) {
     if (path.scalerank > maxScalerank) continue;
@@ -123,11 +124,33 @@ export function filterTransportPathsForViewport(
     if (!isArterial && radiusDeg > 0 && !bboxNearView(path.bbox, view, radiusDeg)) {
       continue;
     }
-    visible.push(path);
-    if (visible.length >= maxCount) break;
+    const midLat = (path.bbox.minLat + path.bbox.maxLat) / 2;
+    const midLng = (path.bbox.minLng + path.bbox.maxLng) / 2;
+    const dist = Math.sqrt(
+      (midLat - lat) ** 2 + longitudeDistance(midLng, lng) ** 2,
+    );
+    // 뷰 밖 동맥도 전역에서는 허용하되, 가까운 것부터 채우도록 거리 기록
+    ranked.push({ path, arterial: isArterial, dist });
   }
 
-  return visible;
+  ranked.sort((a, b) => {
+    // 뷰 반경 안을 우선, 그다음 scalerank·거리
+    const aIn = radiusDeg <= 0 || a.dist <= radiusDeg || a.arterial ? 0 : 1;
+    const bIn = radiusDeg <= 0 || b.dist <= radiusDeg || b.arterial ? 0 : 1;
+    if (radiusDeg > 0) {
+      const aNear = a.dist <= radiusDeg ? 0 : 1;
+      const bNear = b.dist <= radiusDeg ? 0 : 1;
+      if (aNear !== bNear) return aNear - bNear;
+    } else if (aIn !== bIn) {
+      return aIn - bIn;
+    }
+    if (a.path.scalerank !== b.path.scalerank) {
+      return a.path.scalerank - b.path.scalerank;
+    }
+    return a.dist - b.dist;
+  });
+
+  return ranked.slice(0, maxCount).map((item) => item.path);
 }
 
 export async function queryViewportPaths(

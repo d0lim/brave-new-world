@@ -27,6 +27,7 @@ export const COMPACT_CONFLICT_PRESETS: CompactChipDef[] = [
       showUkraineControl: true,
       showNeptun: true,
       showTzevaAdom: true,
+      showUsCarriers: true,
     },
   },
   {
@@ -59,6 +60,7 @@ export const COMPACT_ECONOMY_PRESETS: CompactChipDef[] = [
     labelEn: "Lanes",
     layers: {
       showShippingLanes: true,
+      showBriTradeConnectivity: true,
       showPorts: true,
       showLogisticsRisk: true,
       showCriticalNodes: true,

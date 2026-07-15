@@ -1,5 +1,4 @@
 [
-	{"i":"airport-AU-0799","k":"airport","n":"[Duplicate] Western Sydney International Airport","la":-33.8881,"ln":150.7147,"s":1,"m":{"iso":"AU","iata":null,"icao":"AU-0799","type":"large_airport","source":"ourairports-data"}},
 	{"i":"airport-TTCP","k":"airport","n":"A.N.R. Robinson International Airport","la":11.1496,"ln":-60.8313,"s":1,"m":{"iso":"TT","iata":"TAB","icao":"TTCP","type":"large_airport","source":"ourairports-data"}},
 	{"i":"airport-EKYT","k":"airport","n":"Aalborg Airport","la":57.0948,"ln":9.8499,"s":1,"m":{"iso":"DK","iata":"AAL","icao":"EKYT","type":"large_airport","source":"ourairports-data"}},
 	{"i":"airport-EKAH","k":"airport","n":"Aarhus Airport","la":56.3033,"ln":10.6183,"s":1,"m":{"iso":"DK","iata":"AAR","icao":"EKAH","type":"large_airport","source":"ourairports-data"}},
@@ -118,5 +117,6 @@
 	{"i":"airport-HCMF","k":"airport","n":"Bender Qassim International Airport","la":11.2752,"ln":49.1392,"s":1,"m":{"iso":"SO","iata":"BSA","icao":"HCMF","type":"large_airport","source":"ourairports-data"}},
 	{"i":"airport-GMMD","k":"airport","n":"Beni Mellal Airport","la":32.4019,"ln":-6.3159,"s":1,"m":{"iso":"MA","iata":"BEM","icao":"GMMD","type":"large_airport","source":"ourairports-data"}},
 	{"i":"airport-HLLB","k":"airport","n":"Benina International Airport","la":32.0968,"ln":20.2695,"s":1,"m":{"iso":"LY","iata":"BEN","icao":"HLLB","type":"large_airport","source":"ourairports-data"}},
-	{"i":"airport-EES","k":"airport","n":"Berenice International Airport / Banas Cape Air Base","la":23.9804,"ln":35.4603,"s":1,"m":{"iso":"EG","iata":"EES","icao":"EES","type":"large_airport","source":"ourairports-data"}}
+	{"i":"airport-EES","k":"airport","n":"Berenice International Airport / Banas Cape Air Base","la":23.9804,"ln":35.4603,"s":1,"m":{"iso":"EG","iata":"EES","icao":"EES","type":"large_airport","source":"ourairports-data"}},
+	{"i":"airport-ENBR","k":"airport","n":"Bergen Airport, Flesland","la":60.2934,"ln":5.2181,"s":1,"m":{"iso":"NO","iata":"BGO","icao":"ENBR","type":"large_airport","source":"ourairports-data"}}
 ]

@@ -3,7 +3,15 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useLocale } from "@/contexts/LocaleContext";
 
-export type LayerToggleAccent = "emerald" | "red" | "orange" | "fuchsia" | "blue" | "white" | "green";
+export type LayerToggleAccent =
+  | "emerald"
+  | "red"
+  | "orange"
+  | "amber"
+  | "fuchsia"
+  | "blue"
+  | "white"
+  | "green";
 
 export type LayerToggleItem = {
   id: string;
@@ -41,6 +49,8 @@ function accentClass(accent: LayerToggleAccent) {
       return "accent-red-400";
     case "orange":
       return "accent-orange-400";
+    case "amber":
+      return "accent-amber-400";
     case "fuchsia":
       return "accent-fuchsia-400";
     case "blue":
@@ -63,6 +73,8 @@ function tagAccentClasses(accent: LayerToggleAccent, checked: boolean) {
       return "border-red-400/45 bg-red-500/15 text-red-100 shadow-[0_0_12px_rgba(239,68,68,0.12)]";
     case "orange":
       return "border-orange-400/45 bg-orange-500/15 text-orange-100 shadow-[0_0_12px_rgba(251,146,60,0.12)]";
+    case "amber":
+      return "border-amber-400/45 bg-amber-500/15 text-amber-100 shadow-[0_0_12px_rgba(251,191,36,0.12)]";
     case "fuchsia":
       return "border-fuchsia-400/45 bg-fuchsia-500/15 text-fuchsia-100";
     case "blue":

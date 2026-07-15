@@ -380,6 +380,25 @@ main[data-viewer="economy"] .font-en,
   width: min(100vw, var(--intel-sidebar-width));
 }
 
+/* 좁은 화면: 우측 뉴스도 하단 도크로 — 지구본 상단 유지 */
+@media (max-width: 1023px) {
+  .intel-sidebar-right {
+    top: auto !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    width: 100% !important;
+    max-width: none;
+    height: min(52vh, 560px) !important;
+    max-height: min(52vh, 560px);
+    border-left: none !important;
+    border-top: 1px solid rgba(125, 211, 252, 0.16);
+    border-top-left-radius: 1.25rem;
+    border-top-right-radius: 1.25rem;
+    box-shadow: 0 -18px 48px rgba(0, 0, 0, 0.45);
+  }
+}
+
 .stock-ticker-scroll {
   scrollbar-width: none;
   -ms-overflow-style: none;
@@ -493,14 +512,30 @@ main[data-viewer="economy"] .font-en,
   animation: intel-stack-focus-flash-keyframes 0.9s ease-out;
 }
 
-/* 풀스크린 뉴스: 아래에서 쫙 올라와 화면 전체 덮음 */
+/* 하단 뉴스 도크: 지구본 상단은 남기고 아래에서 올라옴 */
 .intel-news-sheet {
-  transform: translateY(100%);
+  height: min(52vh, 560px);
+  max-height: min(52vh, 560px);
+  transform: translateY(110%);
   visibility: hidden;
   pointer-events: none;
+  border-top-left-radius: 1.25rem;
+  border-top-right-radius: 1.25rem;
+  border-top: 1px solid rgba(125, 211, 252, 0.16);
+  background: rgba(5, 11, 20, 0.94);
+  box-shadow: 0 -18px 48px rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
   transition:
     transform 0.38s cubic-bezier(0.32, 0, 0.17, 1),
     visibility 0.38s step-end;
+}
+
+@media (max-width: 640px) {
+  .intel-news-sheet {
+    height: min(58vh, 620px);
+    max-height: min(58vh, 620px);
+  }
 }
 
 .intel-news-sheet--open {
@@ -510,6 +545,21 @@ main[data-viewer="economy"] .font-en,
   transition:
     transform 0.38s cubic-bezier(0.22, 1, 0.32, 1),
     visibility 0s;
+}
+
+.intel-news-sheet--dragging {
+  transition: none !important;
+}
+
+.intel-news-sheet__handle {
+  width: 2.75rem;
+  height: 0.28rem;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.45);
+}
+
+.intel-stack--collapsed .intel-news-sheet__handle {
+  background: rgba(125, 211, 252, 0.55);
 }
 
 .intel-news-sheet--open .intel-tier-section {

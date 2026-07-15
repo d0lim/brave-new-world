@@ -8,20 +8,24 @@ export type TransportLod = {
   maxRailroads: number;
 };
 
+/**
+ * Natural Earth 10m railroads 의 SCALERANK는 최소 4부터 시작.
+ * global에 2를 쓰면 철도가 전부 걸러져 “켜도 안 뜸”.
+ */
 const LIMITS: Record<GlobeLodTier, Omit<TransportLod, "label" | "radiusDeg">> = {
   global: {
-    railMaxScalerank: 2,
-    arterialMaxRank: 2,
+    railMaxScalerank: 4,
+    arterialMaxRank: 4,
     maxRailroads: 480,
   },
   continent: {
-    railMaxScalerank: 5,
-    arterialMaxRank: 2,
+    railMaxScalerank: 6,
+    arterialMaxRank: 4,
     maxRailroads: 900,
   },
   regional: {
     railMaxScalerank: 8,
-    arterialMaxRank: 3,
+    arterialMaxRank: 5,
     maxRailroads: 1000,
   },
   near: {

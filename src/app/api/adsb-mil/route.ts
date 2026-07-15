@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { apiStubResponse } from "@/lib/apiStub";
 import { fetchAdsbMilitary } from "@/lib/adsbWarmFetch";
 import { getAdsbApiKey } from "@/lib/adsbClient";
-import { readAdsbFromD1 } from "@/lib/d1MaritimeAir";
+import { readAdsbFromD1, readAdsbFromIngestWorker } from "@/lib/d1MaritimeAir";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -29,6 +29,19 @@ export async function GET(request: Request) {
         attribution: "ADS-B (via Cloudflare D1 cron warm)",
         source: "d1",
         provider: "d1",
+        mode: "military",
+        cached: true,
+      });
+    }
+    const fromWorker = await readAdsbFromIngestWorker({ mode: "mil", max });
+    if (fromWorker && fromWorker.count > 0) {
+      return NextResponse.json({
+        receivedAt: fromWorker.receivedAt,
+        count: fromWorker.count,
+        aircraft: fromWorker.aircraft,
+        attribution: "ADS-B mil (via Cloudflare cron worker)",
+        source: "ingest-worker",
+        provider: "ingest-worker",
         mode: "military",
         cached: true,
       });

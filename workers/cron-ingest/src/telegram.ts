@@ -117,9 +117,12 @@ async function fetchChannel(
 
 export async function fetchTelegramAlerts(options?: {
   maxAlerts?: number;
+  /** Cron 서브요청 한도 — 채널 수 상한 (기본 35) */
+  maxChannels?: number;
 }): Promise<{ alerts: TelegramAlertRow[]; channelCount: number; errors: string[] }> {
   const errors: string[] = [];
-  const channels = WORKER_TELEGRAM_CHANNELS;
+  const channelCap = options?.maxChannels && options.maxChannels > 0 ? options.maxChannels : 35;
+  const channels = WORKER_TELEGRAM_CHANNELS.slice(0, channelCap);
   const collected: TelegramAlertRow[] = [];
 
   for (let i = 0; i < channels.length; i += FETCH_BATCH) {

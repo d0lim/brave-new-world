@@ -3,6 +3,7 @@ import type { AisVessel, MilitaryAircraft, StaticPoint } from "@/data/geoTypes";
 import { SUBMARINE_TUNNEL_SEED } from "@/data/submarineTunnels";
 import { getDb } from "@/db";
 import { adsbAircraft, aisVessels, submarineTunnels } from "@/db/schema";
+import { ingestWorkerBase } from "@/lib/d1LiveSnapshots";
 
 /** AIS/ADS-B D1 신선도 (Cron 10분 주기보다 약간 길게) */
 export const AIS_D1_TTL_MS = 15 * 60_000;
@@ -220,6 +221,82 @@ export async function readAdsbFromD1(options: {
       receivedAt: new Date().toISOString(),
       count: aircraft.length,
       aircraft,
+    };
+  } catch {
+    return null;
+  }
+}
+
+/** Vercel 등 D1 바인딩 없을 때 cron 워커 /ais 로 폴백 */
+export async function readAisFromIngestWorker(options: {
+  category?: "military" | "commercial" | "other" | "all";
+  max: number;
+}): Promise<{ vessels: AisVessel[]; count: number; source: "d1"; receivedAt: string } | null> {
+  const base = ingestWorkerBase();
+  if (!base) return null;
+  const category = options.category ?? "all";
+  try {
+    const qs = new URLSearchParams({
+      max: String(options.max),
+      category,
+    });
+    const res = await fetch(`${base}/ais?${qs.toString()}`, {
+      headers: { Accept: "application/json" },
+      cache: "no-store",
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!res.ok) return null;
+    const payload = (await res.json()) as { vessels?: AisVessel[] };
+    if (!Array.isArray(payload.vessels) || payload.vessels.length === 0) return null;
+    return {
+      source: "d1",
+      receivedAt: new Date().toISOString(),
+      count: payload.vessels.length,
+      vessels: payload.vessels,
+    };
+  } catch {
+    return null;
+  }
+}
+
+/** Vercel 등 D1 바인딩 없을 때 cron 워커 /adsb 로 폴백 */
+export async function readAdsbFromIngestWorker(options: {
+  mode: "mil" | "civ";
+  max: number;
+  west?: number;
+  south?: number;
+  east?: number;
+  north?: number;
+}): Promise<{
+  aircraft: MilitaryAircraft[];
+  count: number;
+  source: "d1";
+  receivedAt: string;
+} | null> {
+  const base = ingestWorkerBase();
+  if (!base) return null;
+  try {
+    const qs = new URLSearchParams({
+      mode: options.mode,
+      max: String(options.max),
+    });
+    if (options.west != null) qs.set("west", String(options.west));
+    if (options.south != null) qs.set("south", String(options.south));
+    if (options.east != null) qs.set("east", String(options.east));
+    if (options.north != null) qs.set("north", String(options.north));
+    const res = await fetch(`${base}/adsb?${qs.toString()}`, {
+      headers: { Accept: "application/json" },
+      cache: "no-store",
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!res.ok) return null;
+    const payload = (await res.json()) as { aircraft?: MilitaryAircraft[] };
+    if (!Array.isArray(payload.aircraft) || payload.aircraft.length === 0) return null;
+    return {
+      source: "d1",
+      receivedAt: new Date().toISOString(),
+      count: payload.aircraft.length,
+      aircraft: payload.aircraft,
     };
   } catch {
     return null;

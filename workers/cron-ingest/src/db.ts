@@ -1,4 +1,11 @@
-import type { FirmsFireRow, GdeltPointRow, IngestEnv, TelegramAlertRow } from "./env";
+import type {
+  AdsbAircraftRow,
+  AisVesselRow,
+  FirmsFireRow,
+  GdeltPointRow,
+  IngestEnv,
+  TelegramAlertRow,
+} from "./env";
 
 const INSERT_CHUNK = 40;
 
@@ -124,6 +131,200 @@ export async function upsertTelegramAlerts(db: D1Database, alerts: TelegramAlert
   }
 
   return written;
+}
+
+export async function upsertAisVessels(db: D1Database, vessels: AisVesselRow[]) {
+  if (vessels.length === 0) return 0;
+  const ingestedAt = nowIso();
+  let written = 0;
+
+  for (let i = 0; i < vessels.length; i += INSERT_CHUNK) {
+    const chunk = vessels.slice(i, i + INSERT_CHUNK);
+    const statements = chunk.map((v) =>
+      db
+        .prepare(
+          `INSERT INTO ais_vessels (
+            id, mmsi, ship_name, lat, lng, sog, cog, true_heading,
+            ship_type, ship_type_label, category, provider, timestamp, ingested_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          ON CONFLICT(id) DO UPDATE SET
+            ship_name = excluded.ship_name,
+            lat = excluded.lat,
+            lng = excluded.lng,
+            sog = excluded.sog,
+            cog = excluded.cog,
+            true_heading = excluded.true_heading,
+            ship_type = excluded.ship_type,
+            ship_type_label = excluded.ship_type_label,
+            category = excluded.category,
+            provider = excluded.provider,
+            timestamp = excluded.timestamp,
+            ingested_at = excluded.ingested_at`,
+        )
+        .bind(
+          v.id,
+          v.mmsi,
+          v.ship_name,
+          v.lat,
+          v.lng,
+          v.sog,
+          v.cog,
+          v.true_heading,
+          v.ship_type,
+          v.ship_type_label,
+          v.category,
+          v.provider,
+          v.timestamp,
+          ingestedAt,
+        ),
+    );
+    await db.batch(statements);
+    written += chunk.length;
+  }
+
+  return written;
+}
+
+export async function upsertAdsbAircraft(db: D1Database, aircraft: AdsbAircraftRow[]) {
+  if (aircraft.length === 0) return 0;
+  const ingestedAt = nowIso();
+  let written = 0;
+
+  for (let i = 0; i < aircraft.length; i += INSERT_CHUNK) {
+    const chunk = aircraft.slice(i, i + INSERT_CHUNK);
+    const statements = chunk.map((ac) =>
+      db
+        .prepare(
+          `INSERT INTO adsb_aircraft (
+            id, hex, mode, callsign, registration, lat, lng, altitude, altitude_geom,
+            ground_speed, track, type, category, db_flags, squawk, emergency,
+            payload_json, hub, ingested_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          ON CONFLICT(id) DO UPDATE SET
+            callsign = excluded.callsign,
+            registration = excluded.registration,
+            lat = excluded.lat,
+            lng = excluded.lng,
+            altitude = excluded.altitude,
+            altitude_geom = excluded.altitude_geom,
+            ground_speed = excluded.ground_speed,
+            track = excluded.track,
+            type = excluded.type,
+            category = excluded.category,
+            db_flags = excluded.db_flags,
+            squawk = excluded.squawk,
+            emergency = excluded.emergency,
+            payload_json = excluded.payload_json,
+            hub = excluded.hub,
+            ingested_at = excluded.ingested_at`,
+        )
+        .bind(
+          ac.id,
+          ac.hex,
+          ac.mode,
+          ac.callsign,
+          ac.registration,
+          ac.lat,
+          ac.lng,
+          ac.altitude,
+          ac.altitude_geom,
+          ac.ground_speed,
+          ac.track,
+          ac.type,
+          ac.category,
+          ac.db_flags,
+          ac.squawk,
+          ac.emergency,
+          ac.payload_json,
+          ac.hub,
+          ingestedAt,
+        ),
+    );
+    await db.batch(statements);
+    written += chunk.length;
+  }
+
+  return written;
+}
+
+export async function readAisVessels(
+  db: D1Database,
+  opts: { category?: string; limit: number; maxAgeMinutes?: number },
+) {
+  const cutoff = new Date(
+    Date.now() - (opts.maxAgeMinutes ?? 20) * 60 * 1000,
+  ).toISOString();
+  const category = opts.category && opts.category !== "all" ? opts.category : null;
+  const rows = category
+    ? await db
+        .prepare(
+          `SELECT id, mmsi, ship_name, lat, lng, sog, cog, true_heading,
+                  ship_type, ship_type_label, category, provider, timestamp, ingested_at
+           FROM ais_vessels
+           WHERE ingested_at >= ? AND category = ?
+           ORDER BY ingested_at DESC LIMIT ?`,
+        )
+        .bind(cutoff, category, opts.limit)
+        .all<Record<string, unknown>>()
+    : await db
+        .prepare(
+          `SELECT id, mmsi, ship_name, lat, lng, sog, cog, true_heading,
+                  ship_type, ship_type_label, category, provider, timestamp, ingested_at
+           FROM ais_vessels
+           WHERE ingested_at >= ?
+           ORDER BY ingested_at DESC LIMIT ?`,
+        )
+        .bind(cutoff, opts.limit)
+        .all<Record<string, unknown>>();
+  return rows.results ?? [];
+}
+
+export async function readAdsbAircraft(
+  db: D1Database,
+  opts: {
+    mode: "mil" | "civ";
+    limit: number;
+    west?: number;
+    south?: number;
+    east?: number;
+    north?: number;
+    maxAgeMinutes?: number;
+  },
+) {
+  const cutoff = new Date(
+    Date.now() - (opts.maxAgeMinutes ?? 15) * 60 * 1000,
+  ).toISOString();
+  const hasBbox =
+    opts.west != null &&
+    opts.south != null &&
+    opts.east != null &&
+    opts.north != null;
+
+  const rows = hasBbox
+    ? await db
+        .prepare(
+          `SELECT id, hex, mode, callsign, registration, lat, lng, altitude, altitude_geom,
+                  ground_speed, track, type, category, db_flags, squawk, emergency,
+                  payload_json, hub, ingested_at
+           FROM adsb_aircraft
+           WHERE mode = ? AND ingested_at >= ?
+             AND lat >= ? AND lat <= ? AND lng >= ? AND lng <= ?
+           ORDER BY ingested_at DESC LIMIT ?`,
+        )
+        .bind(opts.mode, cutoff, opts.south!, opts.north!, opts.west!, opts.east!, opts.limit)
+        .all<Record<string, unknown>>()
+    : await db
+        .prepare(
+          `SELECT id, hex, mode, callsign, registration, lat, lng, altitude, altitude_geom,
+                  ground_speed, track, type, category, db_flags, squawk, emergency,
+                  payload_json, hub, ingested_at
+           FROM adsb_aircraft
+           WHERE mode = ? AND ingested_at >= ?
+           ORDER BY ingested_at DESC LIMIT ?`,
+        )
+        .bind(opts.mode, cutoff, opts.limit)
+        .all<Record<string, unknown>>();
+  return rows.results ?? [];
 }
 
 export async function readFirmsFires(
@@ -279,5 +480,20 @@ export function readIntVar(env: IngestEnv, key: keyof IngestEnv, fallback: numbe
 
 export function getFirmsMapKey(env: IngestEnv): string | null {
   const key = (env.NASA_FIRMS_API_KEY || env.FIRMS_MAP_KEY || "").trim();
+  return key || null;
+}
+
+export function getMarineTrafficKey(env: IngestEnv): string | null {
+  const key = (env.MARINETRAFFIC_API_KEY || env.MarineTraffic_API_KEY || "").trim();
+  return key || null;
+}
+
+export function getAdsbApiKey(env: IngestEnv): string | null {
+  const key = (env.ADSBEXCHANGE_API_KEY || env.ADSB_API_KEY || env.ADSBX_API_KEY || "").trim();
+  return key || null;
+}
+
+export function getAisstreamKey(env: IngestEnv): string | null {
+  const key = (env.AISSTREAM_API_KEY || "").trim();
   return key || null;
 }

@@ -52,6 +52,18 @@ export type IngestEnv = {
   TELEGRAM_MAX_ALERTS?: string;
   /** "false"/"0" 이면 텔레그램 스크레이프 비활성 */
   TELEGRAM_INGEST_ENABLED?: string;
+  /** MarineTraffic exportvessels API key */
+  MARINETRAFFIC_API_KEY?: string;
+  MarineTraffic_API_KEY?: string;
+  /** ADS-B Exchange gateway key (없으면 adsb.fi 오픈데이터) */
+  ADSBEXCHANGE_API_KEY?: string;
+  ADSB_API_KEY?: string;
+  ADSBX_API_KEY?: string;
+  /** AISstream WebSocket (MarineTraffic 실패 시 폴백) */
+  AISSTREAM_API_KEY?: string;
+  AIS_MAX_VESSELS?: string;
+  ADSB_MIL_MAX?: string;
+  ADSB_CIV_PER_HUB?: string;
 };
 
 export type FirmsFireRow = {
@@ -88,4 +100,41 @@ export type TelegramAlertRow = {
   text: string;
   message_url: string | null;
   received_at: string;
+};
+
+export type AisVesselRow = {
+  id: string;
+  mmsi: string;
+  ship_name: string | null;
+  lat: number;
+  lng: number;
+  sog: number | null;
+  cog: number | null;
+  true_heading: number | null;
+  ship_type: number | null;
+  ship_type_label: string | null;
+  category: string;
+  provider: string;
+  timestamp: string | null;
+};
+
+export type AdsbAircraftRow = {
+  id: string;
+  hex: string;
+  mode: string;
+  callsign: string | null;
+  registration: string | null;
+  lat: number;
+  lng: number;
+  altitude: number | null;
+  altitude_geom: number | null;
+  ground_speed: number | null;
+  track: number | null;
+  type: string | null;
+  category: string | null;
+  db_flags: number | null;
+  squawk: string | null;
+  emergency: string | null;
+  payload_json: string;
+  hub: string | null;
 };

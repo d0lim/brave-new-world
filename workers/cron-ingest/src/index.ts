@@ -2,15 +2,21 @@ import type { IngestEnv } from "./env";
 import {
   getFirmsMapKey,
   pruneOldRows,
+  readAdsbAircraft,
+  readAisVessels,
   readFirmsFires,
   readGdeltPoints,
   readIntVar,
   readTelegramAlerts,
   recordIngestRun,
+  upsertAdsbAircraft,
+  upsertAisVessels,
   upsertFirmsFires,
   upsertGdeltPoints,
   upsertTelegramAlerts,
 } from "./db";
+import { fetchAisVessels } from "./ais";
+import { fetchAdsbAircraft } from "./adsb";
 import { fetchFirmsForTheaters } from "./firms";
 import { fetchGdeltTensionPoints } from "./gdeltExport";
 import { fetchTelegramAlerts } from "./telegram";
@@ -26,6 +32,8 @@ type IngestResult = {
   firmsCount: number;
   gdeltCount: number;
   telegramCount: number;
+  aisCount: number;
+  adsbCount: number;
   newsWarm?: WarmResult;
   videoNewsWarm?: WarmResult;
   aisWarm?: WarmResult;
@@ -36,6 +44,8 @@ type IngestResult = {
   firmsErrors: string[];
   gdeltErrors: string[];
   telegramErrors: string[];
+  aisErrors: string[];
+  adsbErrors: string[];
   pruned?: {
     firmsDeleted: number;
     gdeltDeleted: number;
@@ -81,9 +91,13 @@ async function runIngest(env: IngestEnv): Promise<IngestResult> {
   const firmsErrors: string[] = [];
   const gdeltErrors: string[] = [];
   const telegramErrors: string[] = [];
+  const aisErrors: string[] = [];
+  const adsbErrors: string[] = [];
   let firmsCount = 0;
   let gdeltCount = 0;
   let telegramCount = 0;
+  let aisCount = 0;
+  let adsbCount = 0;
   let pruned: IngestResult["pruned"];
   let newsWarm: IngestResult["newsWarm"];
   let videoNewsWarm: IngestResult["videoNewsWarm"];
@@ -104,6 +118,18 @@ async function runIngest(env: IngestEnv): Promise<IngestResult> {
       168,
       Math.max(6, readIntVar(env, "RETENTION_HOURS", 48)),
     );
+
+    // ADS-B 먼저(빠른 HTTP) → AIS(WebSocket ~4s) → FIRMS/GDELT
+    const milMax = Math.min(800, Math.max(50, readIntVar(env, "ADSB_MIL_MAX", 400)));
+    const civPerHub = Math.min(120, Math.max(20, readIntVar(env, "ADSB_CIV_PER_HUB", 80)));
+    const adsb = await fetchAdsbAircraft(env, { milMax, civPerHub, maxHubs: 4 });
+    adsbErrors.push(...adsb.errors.slice(0, 12));
+    adsbCount = await upsertAdsbAircraft(env.DB, adsb.aircraft);
+
+    const aisMax = Math.min(800, Math.max(50, readIntVar(env, "AIS_MAX_VESSELS", 400)));
+    const ais = await fetchAisVessels(env, aisMax);
+    aisErrors.push(...ais.errors.slice(0, 8));
+    aisCount = await upsertAisVessels(env.DB, ais.vessels);
 
     const mapKey = getFirmsMapKey(env);
     if (mapKey) {
@@ -127,7 +153,7 @@ async function runIngest(env: IngestEnv): Promise<IngestResult> {
       env.TELEGRAM_INGEST_ENABLED !== "0";
     if (telegramEnabled) {
       const tgMax = Math.min(400, Math.max(50, readIntVar(env, "TELEGRAM_MAX_ALERTS", 200)));
-      const telegram = await fetchTelegramAlerts({ maxAlerts: tgMax });
+      const telegram = await fetchTelegramAlerts({ maxAlerts: tgMax, maxChannels: 25 });
       telegramErrors.push(...telegram.errors.slice(0, 10));
       telegramCount = await upsertTelegramAlerts(env.DB, telegram.alerts);
     }
@@ -152,6 +178,8 @@ async function runIngest(env: IngestEnv): Promise<IngestResult> {
       firmsCount,
       gdeltCount,
       telegramCount,
+      aisCount,
+      adsbCount,
       newsWarm,
       videoNewsWarm,
       aisWarm,
@@ -162,6 +190,8 @@ async function runIngest(env: IngestEnv): Promise<IngestResult> {
       firmsErrors,
       gdeltErrors,
       telegramErrors,
+      aisErrors,
+      adsbErrors,
       pruned,
       error: hardFail ? firmsErrors.join("; ") || "ingest failed" : null,
     };
@@ -178,6 +208,10 @@ async function runIngest(env: IngestEnv): Promise<IngestResult> {
         gdeltErrors,
         telegramErrors,
         telegramCount,
+        aisCount,
+        adsbCount,
+        aisErrors,
+        adsbErrors,
         pruned,
         newsWarm,
         videoNewsWarm,
@@ -201,7 +235,7 @@ async function runIngest(env: IngestEnv): Promise<IngestResult> {
         gdeltCount,
         ok: false,
         error: message,
-        detail: { firmsErrors, gdeltErrors, telegramErrors, telegramCount, newsWarm, aisWarm, adsbWarm, tunnelsWarm, disputeHatchWarm, ukraineHatchWarm },
+        detail: { firmsErrors, gdeltErrors, telegramErrors, telegramCount, aisCount, adsbCount, aisErrors, adsbErrors, newsWarm, aisWarm, adsbWarm, tunnelsWarm, disputeHatchWarm, ukraineHatchWarm },
       });
     } catch {
       // ignore secondary logging failure
@@ -213,6 +247,8 @@ async function runIngest(env: IngestEnv): Promise<IngestResult> {
       firmsCount,
       gdeltCount,
       telegramCount,
+      aisCount,
+      adsbCount,
       newsWarm,
       aisWarm,
       adsbWarm,
@@ -222,6 +258,8 @@ async function runIngest(env: IngestEnv): Promise<IngestResult> {
       firmsErrors,
       gdeltErrors,
       telegramErrors,
+      aisErrors,
+      adsbErrors,
       error: message,
     };
   }
@@ -255,7 +293,7 @@ const worker = {
     ctx.waitUntil(
       runIngest(env).then((result) => {
         console.log(
-          `[ingest] ok=${result.ok} firms=${result.firmsCount} gdelt=${result.gdeltCount} telegram=${result.telegramCount}` +
+          `[ingest] ok=${result.ok} firms=${result.firmsCount} gdelt=${result.gdeltCount} telegram=${result.telegramCount} ais=${result.aisCount} adsb=${result.adsbCount}` +
             (result.newsWarm
               ? ` newsWarm=${result.newsWarm.ok ? "ok" : "fail"}`
               : ""),
@@ -279,6 +317,8 @@ const worker = {
           telegram: "GET /telegram?limit=200 (public read of D1 alerts)",
           firms: "GET /firms?west&south&east&north&max (public read of D1 fires)",
           gdelt: "GET /gdelt?limit=1200 (public read of D1 tension points)",
+          ais: "GET /ais?category=all|military|commercial&max=250",
+          adsb: "GET /adsb?mode=mil|civ&west&south&east&north&max=400",
         },
       });
     }
@@ -346,6 +386,96 @@ const worker = {
       });
     }
 
+    if (url.pathname === "/ais") {
+      const maxRaw = Number.parseInt(url.searchParams.get("max") || "250", 10);
+      const max = Math.min(1000, Math.max(1, Number.isFinite(maxRaw) ? maxRaw : 250));
+      const category = url.searchParams.get("category") || "all";
+      let vessels: Array<Record<string, unknown>> = [];
+      try {
+        const rows = await readAisVessels(env.DB, { category, limit: max });
+        vessels = rows.map((row) => ({
+          id: row.id,
+          mmsi: row.mmsi,
+          shipName: row.ship_name,
+          lat: row.lat,
+          lng: row.lng,
+          speedOverGround: row.sog,
+          courseOverGround: row.cog,
+          trueHeading: row.true_heading,
+          shipType: row.ship_type,
+          shipTypeLabel: row.ship_type_label,
+          category: row.category,
+          timestamp: row.timestamp,
+        }));
+      } catch {
+        vessels = [];
+      }
+      return jsonPublic({
+        receivedAt: new Date().toISOString(),
+        source: "d1-cron",
+        count: vessels.length,
+        vessels,
+      });
+    }
+
+    if (url.pathname === "/adsb") {
+      const num = (k: string) => {
+        const v = Number(url.searchParams.get(k));
+        return Number.isFinite(v) ? v : null;
+      };
+      const modeParam = url.searchParams.get("mode");
+      const mode: "mil" | "civ" = modeParam === "civ" ? "civ" : "mil";
+      const maxRaw = Number.parseInt(url.searchParams.get("max") || "400", 10);
+      const max = Math.min(1000, Math.max(1, Number.isFinite(maxRaw) ? maxRaw : 400));
+      const west = num("west");
+      const south = num("south");
+      const east = num("east");
+      const north = num("north");
+      let aircraft: Array<Record<string, unknown>> = [];
+      try {
+        const rows = await readAdsbAircraft(env.DB, {
+          mode,
+          limit: max,
+          west: west ?? undefined,
+          south: south ?? undefined,
+          east: east ?? undefined,
+          north: north ?? undefined,
+        });
+        aircraft = rows.map((row) => {
+          try {
+            return JSON.parse(String(row.payload_json)) as Record<string, unknown>;
+          } catch {
+            return {
+              id: row.hex,
+              hex: row.hex,
+              callsign: row.callsign,
+              registration: row.registration,
+              lat: row.lat,
+              lng: row.lng,
+              altitude: row.altitude,
+              altitudeGeom: row.altitude_geom,
+              groundSpeed: row.ground_speed,
+              track: row.track,
+              type: row.type,
+              category: row.category,
+              dbFlags: row.db_flags,
+              squawk: row.squawk,
+              emergency: row.emergency,
+            };
+          }
+        });
+      } catch {
+        aircraft = [];
+      }
+      return jsonPublic({
+        receivedAt: new Date().toISOString(),
+        source: "d1-cron",
+        mode,
+        count: aircraft.length,
+        aircraft,
+      });
+    }
+
     if (url.pathname === "/telegram") {
       const limitRaw = Number.parseInt(url.searchParams.get("limit") || "200", 10);
       const limit = Math.min(400, Math.max(1, Number.isFinite(limitRaw) ? limitRaw : 200));
@@ -390,6 +520,16 @@ const worker = {
       } catch {
         // migration 0005 not applied yet
       }
+      let aisRows = 0;
+      let adsbRows = 0;
+      try {
+        const ais = await env.DB.prepare(`SELECT COUNT(*) AS c FROM ais_vessels`).first<{ c: number }>();
+        const adsb = await env.DB.prepare(`SELECT COUNT(*) AS c FROM adsb_aircraft`).first<{ c: number }>();
+        aisRows = ais?.c ?? 0;
+        adsbRows = adsb?.c ?? 0;
+      } catch {
+        // migration 0002
+      }
       let newsSnapshots = 0;
       let newsItems = 0;
       try {
@@ -412,6 +552,8 @@ const worker = {
         firmsRows: firms?.c ?? 0,
         gdeltRows: gdelt?.c ?? 0,
         telegramRows,
+        aisRows,
+        adsbRows,
         newsSnapshots,
         newsItems,
         lastRun: last ?? null,

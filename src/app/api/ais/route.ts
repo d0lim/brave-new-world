@@ -8,7 +8,7 @@ import {
   parseAisClassFilter,
   type AisClassFilter,
 } from "@/lib/aisVesselClass";
-import { readAisFromD1 } from "@/lib/d1MaritimeAir";
+import { readAisFromD1, readAisFromIngestWorker } from "@/lib/d1MaritimeAir";
 import {
   fetchMarineTrafficCommercial,
   getMarineTrafficApiKey,
@@ -311,6 +311,20 @@ export async function GET(request: Request) {
         provider: "d1",
         classFilter,
         source: "d1",
+        cached: true,
+      });
+    }
+    const fromWorker = await readAisFromIngestWorker({
+      category: d1Category,
+      max: maxVessels,
+    });
+    if (fromWorker && fromWorker.count > 0) {
+      return NextResponse.json({
+        receivedAt: fromWorker.receivedAt,
+        vessels: filterVessels(fromWorker.vessels, classFilter, maxVessels),
+        provider: "ingest-worker",
+        classFilter,
+        source: "ingest-worker",
         cached: true,
       });
     }

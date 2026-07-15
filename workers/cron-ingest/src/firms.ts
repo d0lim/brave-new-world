@@ -6,7 +6,7 @@ const DEFAULT_SOURCE = "VIIRS_SNPP_NRT";
  * 여러 위성 소스를 병합해 커버리지 공백을 없앤다.
  * SNPP NRT가 비는 구간이 있어 NOAA-20/21을 함께 조회한다.
  */
-const FIRMS_SOURCES = ["VIIRS_NOAA20_NRT", "VIIRS_SNPP_NRT", "VIIRS_NOAA21_NRT"];
+const FIRMS_SOURCES = ["VIIRS_NOAA20_NRT"];
 
 /** Conflict theaters — keep small for Worker CPU/time limits */
 export const FIRMS_THEATERS: {

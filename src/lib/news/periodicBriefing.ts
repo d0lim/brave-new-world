@@ -145,6 +145,16 @@ const LAMP_TITLE_ECON = {
   },
 } as const;
 
+function looksMostlyKorean(text: string): boolean {
+  const ko = (text.match(/[\uac00-\ud7a3]/g) ?? []).length;
+  const latin = (text.match(/[A-Za-z]/g) ?? []).length;
+  return ko >= 6 && ko >= latin * 0.5;
+}
+
+function pickKoreanLines(lines: string[], limit = 2): string[] {
+  return lines.filter(looksMostlyKorean).slice(0, limit);
+}
+
 function buildGeoFallback(tier: BriefingTier, dayKey: string, lang: LabelLanguage): PeriodicBriefing | null {
   if (FRICTION_EPISODES.length === 0) return null;
   const ko = lang !== "en";
@@ -160,14 +170,14 @@ function buildGeoFallback(tier: BriefingTier, dayKey: string, lang: LabelLanguag
     title: `${kicker}\n${episode.title}`,
     paragraphs: ko
       ? [
-          `${yearText} · ${episode.locationName}`,
+          `오늘 등불을 ${episode.locationName} 쪽에 잠시 세워 봅니다. ${yearText}의 그 자리에서 시작된 이야기는 아직도 지도 위에 남아 있습니다.`,
           episode.briefing,
-          "라이브 집계가 아직 비어 있어 큐레이션 회고로 대신합니다. 지도 허브 「반서방국 충돌사」에서 이어서 볼 수 있습니다.",
+          "라이브 집계가 비어 있어도, 과거 충돌의 결은 오늘의 긴장을 읽는 렌즈가 됩니다. 지도 허브 「반서방국 충돌사」에서 이어서 읽어 보세요. 이 등불은 자정에 다시 켜집니다.",
         ]
       : [
-          `${yearText} · ${episode.locationName}`,
+          `Tonight we rest the lamp on ${episode.locationName} (${yearText}).`,
           episode.briefing,
-          "Live aggregates are empty — showing a curated episode. Continue in the hub Frictions section.",
+          "Live aggregates are empty — a curated episode stands in. Continue in Frictions. This lamp relights at local midnight.",
         ],
   };
 }
@@ -178,11 +188,32 @@ function buildEconFallback(tier: BriefingTier, dayKey: string, lang: LabelLangua
   const ko = lang !== "en";
   const brief = briefs[hashKeyToIndex(dayKey, briefs.length)];
   const kicker = ko ? LAMP_TITLE_ECON.ko[tier] : LAMP_TITLE_ECON.en[tier];
+
+  if (ko) {
+    const koLines = pickKoreanLines(brief.paragraphs, 2);
+    const body =
+      koLines.length > 0
+        ? koLines
+        : [
+            `${brief.titleKo}은(는) 물자와 가격이 지나가는 병목입니다. 긴장이 번지면 에너지·물류·물가 경로로 파급됩니다.`,
+          ];
+    return {
+      tier,
+      key: dayKey,
+      title: `${kicker}\n${brief.titleKo}`,
+      paragraphs: [
+        `오늘 시장 등불은 ${brief.titleKo}을(를) 골라 들었습니다. 숫자 표가 아니라, 한 줄기의 흐름으로 읽어 봅니다.`,
+        ...body,
+        "수치는 시리즈마다 시점이 다를 수 있습니다. 이 등불은 매일 자정에 다시 켜집니다.",
+      ],
+    };
+  }
+
   return {
     tier,
     key: dayKey,
-    title: `${kicker}\n${ko ? brief.titleKo : brief.titleEn}`,
-    paragraphs: [brief.impactLine, ...brief.paragraphs],
+    title: `${kicker}\n${brief.titleEn}`,
+    paragraphs: [brief.impactLine, ...brief.paragraphs.slice(0, 3)],
   };
 }
 
@@ -213,82 +244,115 @@ export function buildBriefingFromStats(
 
   const hot =
     stats.topGdeltTag || stats.topTelegramRegion
-      ? [stats.topGdeltTag, stats.topTelegramRegion].filter(Boolean).join(" · ")
+      ? [stats.topGdeltTag, stats.topTelegramRegion].filter(Boolean).join(ko ? "과 " : " / ")
       : null;
 
   const titleLine = hot
     ? ko
-      ? `지금 가장 뜨거운 곳: ${hot}`
-      : `Hottest theater: ${hot}`
+      ? `${hot} 쪽에서 바람이 셉니다`
+      : `Wind rising around ${hot}`
     : ko
-      ? "라이브 관측 브리핑"
-      : "Live observation briefing";
-
-  const countParts: string[] = [];
-  if (stats.gdeltCount > 0) {
-    countParts.push(
-      ko
-        ? `GDELT 긴장점 ${stats.gdeltCount.toLocaleString()}건`
-        : `${stats.gdeltCount.toLocaleString()} GDELT tension points`,
-    );
-  }
-  if (stats.firmsCount > 0) {
-    countParts.push(
-      ko
-        ? `FIRMS 열원 ${stats.firmsCount.toLocaleString()}건`
-        : `${stats.firmsCount.toLocaleString()} FIRMS hotspots`,
-    );
-  }
-  if (stats.telegramCount > 0) {
-    countParts.push(
-      ko
-        ? `텔레그램 속보 ${stats.telegramCount.toLocaleString()}건`
-        : `${stats.telegramCount.toLocaleString()} Telegram alerts`,
-    );
-  }
-  if (stats.newsItemCount > 0) {
-    countParts.push(
-      ko
-        ? `뉴스 스트림 ${stats.newsItemCount.toLocaleString()}건`
-        : `${stats.newsItemCount.toLocaleString()} news items`,
-    );
-  }
+      ? econ
+        ? "시장이 잠든 사이, 지도는 깨어 있습니다"
+        : "오늘 밤, 전선이 속삭이는 소리"
+      : econ
+        ? "While markets sleep, the map stays awake"
+        : "Tonight the front whispers";
 
   const paragraphs: string[] = [];
-  if (countParts.length > 0) {
-    paragraphs.push(
-      ko
-        ? `같은 창의 라이브 관측: ${countParts.join(" · ")}.`
-        : `Live window: ${countParts.join(" · ")}.`,
-    );
-  }
 
-  const gdeltSamples = stats.detail?.gdeltSamples?.slice(0, 3) ?? [];
-  if (gdeltSamples.length > 0) {
-    const names = gdeltSamples.map((s) => s.name).join(ko ? " · " : " · ");
-    paragraphs.push(
-      ko ? `주목 긴장 지점: ${names}.` : `Watchpoints: ${names}.`,
-    );
-  }
-
-  const tgSamples = stats.detail?.telegramSamples?.slice(0, 2) ?? [];
-  if (tgSamples.length > 0) {
-    for (const s of tgSamples) {
+  if (ko) {
+    const sceneBits: string[] = [];
+    if (stats.gdeltCount > 0) {
+      sceneBits.push(`긴장 신호가 ${stats.gdeltCount.toLocaleString()}곳에서 깜빡였고`);
+    }
+    if (stats.firmsCount > 0) {
+      sceneBits.push(`열원 ${stats.firmsCount.toLocaleString()}점이 밤하늘을 찍어 두었으며`);
+    }
+    if (stats.telegramCount > 0) {
+      sceneBits.push(`현장 채널 ${stats.telegramCount.toLocaleString()}건이 짧은 전언을 남겼습니다`);
+    } else if (stats.newsItemCount > 0) {
+      sceneBits.push(`뉴스 흐름 ${stats.newsItemCount.toLocaleString()}건이 같은 창을 스쳐 갔습니다`);
+    }
+    if (sceneBits.length > 0) {
+      const joined = sceneBits.join(" ");
       paragraphs.push(
-        ko
-          ? `[${s.region}] ${s.text}`
-          : `[${s.region}] ${s.text}`,
+        hot
+          ? `등불을 켜자 ${hot} 방향이 먼저 밝아집니다. ${joined}`
+          : `등불을 켜자 지도가 천천히 숨을 고릅니다. ${joined}`,
       );
     }
+
+    const gdeltSamples = stats.detail?.gdeltSamples?.slice(0, 3) ?? [];
+    const koPlaces = gdeltSamples
+      .map((s) => s.name)
+      .filter((n) => looksMostlyKorean(n) || /[가-힣]/.test(n));
+    const placeNames =
+      koPlaces.length > 0
+        ? koPlaces.slice(0, 3).join(" · ")
+        : gdeltSamples
+            .map((s) => s.name)
+            .slice(0, 2)
+            .join(" · ");
+    if (placeNames) {
+      paragraphs.push(
+        `시선을 낮추면 ${placeNames} 일대가 오늘 이야기의 무대입니다. 이름만으로도 전선의 결이 느껴집니다.`,
+      );
+    }
+
+    const tgSamples = stats.detail?.telegramSamples?.slice(0, 3) ?? [];
+    const koTg = tgSamples.filter((s) => looksMostlyKorean(s.text));
+    if (koTg.length > 0) {
+      const s = koTg[0]!;
+      paragraphs.push(
+        `${s.region} 쪽에서 이런 말이 흘러나왔습니다. 「${s.text.slice(0, 140)}${s.text.length > 140 ? "…" : ""}」`,
+      );
+    } else if (tgSamples.length > 0) {
+      const regions = [...new Set(tgSamples.map((s) => s.region).filter(Boolean))].slice(0, 2);
+      paragraphs.push(
+        regions.length > 0
+          ? `현장 채널은 ${regions.join("·")} 일대를 가리킵니다. 원문은 외국어 섞임이 많아, 위치와 온도만 남기고 읽습니다.`
+          : "현장 채널의 원문은 외국어 섞임이 많아, 위치와 온도만 남기고 읽습니다.",
+      );
+    }
+
+    if (paragraphs.length === 0) return null;
+
+    paragraphs.push(
+      econ
+        ? "숫자의 나열이 아니라, 오늘 시장이 숨을 고르는 한 장면으로 받아 주세요. 이 등불은 자정에 다시 켜집니다."
+        : "정보 목록이 아니라, 오늘 전장이 남긴 한 장면으로 받아 주세요. 이 등불은 자정에 다시 켜집니다.",
+    );
+  } else {
+    const countParts: string[] = [];
+    if (stats.gdeltCount > 0) countParts.push(`${stats.gdeltCount.toLocaleString()} GDELT sparks`);
+    if (stats.firmsCount > 0) countParts.push(`${stats.firmsCount.toLocaleString()} FIRMS embers`);
+    if (stats.telegramCount > 0) {
+      countParts.push(`${stats.telegramCount.toLocaleString()} field notes`);
+    }
+    if (stats.newsItemCount > 0 && countParts.length < 2) {
+      countParts.push(`${stats.newsItemCount.toLocaleString()} headlines`);
+    }
+    if (countParts.length > 0) {
+      paragraphs.push(
+        hot
+          ? `The lamp finds ${hot} first. Across the window: ${countParts.join(", ")}.`
+          : `The lamp warms the map. Across the window: ${countParts.join(", ")}.`,
+      );
+    }
+    const gdeltSamples = stats.detail?.gdeltSamples?.slice(0, 3) ?? [];
+    if (gdeltSamples.length > 0) {
+      paragraphs.push(
+        `Stage lights fall on ${gdeltSamples.map((s) => s.name).join(", ")}.`,
+      );
+    }
+    const tgSamples = stats.detail?.telegramSamples?.slice(0, 2) ?? [];
+    for (const s of tgSamples) {
+      paragraphs.push(`[${s.region}] ${s.text.slice(0, 160)}${s.text.length > 160 ? "…" : ""}`);
+    }
+    if (paragraphs.length === 0) return null;
+    paragraphs.push("Not a checklist — a scene. This lamp relights at local midnight.");
   }
-
-  if (paragraphs.length === 0) return null;
-
-  paragraphs.push(
-    ko
-      ? "이 등불은 매일 자정에 다시 켜집니다. 확인하면 오늘 분은 닫히고, 내일 다시 찾아옵니다."
-      : "This lamp relights at local midnight. Dismiss for today — it returns tomorrow.",
-  );
 
   return {
     tier,

@@ -280,12 +280,12 @@ function buildNarratives(args: {
   const ko: string[] = [];
   const en: string[] = [];
 
-  // Core snapshot
+  // Core snapshot — prose, not a metric dump
   ko.push(
-    `${name} 거시 스냅샷 — GDP ${fmtUsdCompact(gdpUsd)} · 1인당 ${fmtUsdCompact(gdpPerCapitaUsd)} · 성장 ${fmtPct(gdpGrowthPct)} · 인플레 ${fmtPct(inflationPct)} · 실업 ${fmtPct(unemploymentPct)}.`,
+    `${name} 이야기를 꺼내면, 먼저 경제의 몸집이 보입니다. GDP는 ${fmtUsdCompact(gdpUsd)}, 1인당 ${fmtUsdCompact(gdpPerCapitaUsd)} 근처에서 숨을 고르고, 성장 ${fmtPct(gdpGrowthPct)}·물가 ${fmtPct(inflationPct)}·실업 ${fmtPct(unemploymentPct)}이 오늘의 기온을 만듭니다.`,
   );
   en.push(
-    `${name} macro snapshot — GDP ${fmtUsdCompact(gdpUsd)} · GDP/cap ${fmtUsdCompact(gdpPerCapitaUsd)} · growth ${fmtPct(gdpGrowthPct)} · inflation ${fmtPct(inflationPct)} · unemployment ${fmtPct(unemploymentPct)}.`,
+    `${name} opens with scale: GDP ${fmtUsdCompact(gdpUsd)}, about ${fmtUsdCompact(gdpPerCapitaUsd)} per person, with growth ${fmtPct(gdpGrowthPct)}, inflation ${fmtPct(inflationPct)}, and unemployment ${fmtPct(unemploymentPct)} setting the room temperature.`,
   );
 
   // Inflation shock narrative
@@ -294,21 +294,21 @@ function buildNarratives(args: {
     const adjEn = shakeAdjective(inflationShock.rangePp, "en");
     const delta =
       inflationShock.deltaPp != null
-        ? `직전년 대비 ${fmtPct(inflationShock.deltaPp)}p`
-        : "전년 대비 변화는 제한적";
+        ? `직전년보다 ${fmtPct(inflationShock.deltaPp)}%p 움직였습니다`
+        : "전년 대비로는 큰 출렁임이 없었습니다";
     const deltaEn =
       inflationShock.deltaPp != null
-        ? `${fmtPct(inflationShock.deltaPp)}p vs prior year`
-        : "limited year-on-year change";
+        ? `${fmtPct(inflationShock.deltaPp)}pp versus the prior year`
+        : "little year-on-year drama";
     ko.push(
-      `인플레이션은 최근 ${inflationShock.series.length}년 창에서 ${adj} 흐름입니다(범위 ${inflationShock.rangePp.toFixed(1)}%p, ${inflationShock.min?.toFixed(1)}→${inflationShock.max?.toFixed(1)}). 최신 ${inflationShock.latestYear ?? ""}년 ${inflationShock.latest.toFixed(1)}%, ${delta}.`,
+      `물가는 최근 ${inflationShock.series.length}년 창에서 ${adj} 흐름이었습니다. ${inflationShock.min?.toFixed(1)}%에서 ${inflationShock.max?.toFixed(1)}%까지 폭이 ${inflationShock.rangePp.toFixed(1)}%p나 벌어졌고, ${inflationShock.latestYear ?? "최근"}년에는 ${inflationShock.latest.toFixed(1)}%를 찍었습니다. ${delta}.`,
     );
     en.push(
-      `Inflation looks ${adjEn} over the last ${inflationShock.series.length} years (range ${inflationShock.rangePp.toFixed(1)}pp, ${inflationShock.min?.toFixed(1)}→${inflationShock.max?.toFixed(1)}). Latest ${inflationShock.latestYear ?? ""}: ${inflationShock.latest.toFixed(1)}%, ${deltaEn}.`,
+      `Prices have looked ${adjEn} over the last ${inflationShock.series.length} years, swinging ${inflationShock.rangePp.toFixed(1)}pp from ${inflationShock.min?.toFixed(1)} to ${inflationShock.max?.toFixed(1)}. In ${inflationShock.latestYear ?? "the latest year"} they printed ${inflationShock.latest.toFixed(1)}% — ${deltaEn}.`,
     );
   } else if (inflationPct != null) {
-    ko.push(`소비자물가 상승률은 약 ${inflationPct.toFixed(1)}%로 집계됩니다.`);
-    en.push(`Consumer price inflation prints around ${inflationPct.toFixed(1)}%.`);
+    ko.push(`소비자물가는 대략 ${inflationPct.toFixed(1)}% 부근에서 이야기를 이어 갑니다.`);
+    en.push(`Consumer prices hover around ${inflationPct.toFixed(1)}%.`);
   }
 
   // Growth shock
@@ -316,51 +316,51 @@ function buildNarratives(args: {
     const adj = shakeAdjective(growthShock.rangePp, "ko");
     const adjEn = shakeAdjective(growthShock.rangePp, "en");
     ko.push(
-      `실질 GDP 성장은 ${adj} 구간입니다(최근 창 범위 ${growthShock.rangePp.toFixed(1)}%p). 최신 ${growthShock.latestYear ?? ""}년 ${fmtPct(growthShock.latest)}${
-        growthShock.deltaPp != null ? `, 직전년 대비 ${fmtPct(growthShock.deltaPp)}p` : ""
-      }.`,
+      `성장의 맥박은 ${adj} 편이었습니다. 최근 창 범위 ${growthShock.rangePp.toFixed(1)}%p 안에서, ${growthShock.latestYear ?? "최근"}년 실질 성장은 ${fmtPct(growthShock.latest)}${
+        growthShock.deltaPp != null ? `로, 직전년 대비 ${fmtPct(growthShock.deltaPp)}%p` : ""
+      }를 남겼습니다.`,
     );
     en.push(
-      `Real GDP growth has been ${adjEn} (window range ${growthShock.rangePp.toFixed(1)}pp). Latest ${growthShock.latestYear ?? ""}: ${fmtPct(growthShock.latest)}${
-        growthShock.deltaPp != null ? `, ${fmtPct(growthShock.deltaPp)}p vs prior year` : ""
+      `Growth has felt ${adjEn} (window range ${growthShock.rangePp.toFixed(1)}pp). Latest ${growthShock.latestYear ?? ""} real growth: ${fmtPct(growthShock.latest)}${
+        growthShock.deltaPp != null ? `, ${fmtPct(growthShock.deltaPp)}pp vs prior year` : ""
       }.`,
     );
   } else if (gdpGrowthPct != null) {
-    ko.push(`실질 성장률은 약 ${fmtPct(gdpGrowthPct)}입니다.`);
-    en.push(`Real growth is about ${fmtPct(gdpGrowthPct)}.`);
+    ko.push(`실질 성장률은 약 ${fmtPct(gdpGrowthPct)}로, 이야기의 다음 문장을 고릅니다.`);
+    en.push(`Real growth sits near ${fmtPct(gdpGrowthPct)}.`);
   }
 
   // External / fiscal
   const extBitsKo: string[] = [];
   const extBitsEn: string[] = [];
   if (tradePctGdp != null) {
-    extBitsKo.push(`무역/GDP ${tradePctGdp.toFixed(0)}%`);
-    extBitsEn.push(`trade/GDP ${tradePctGdp.toFixed(0)}%`);
+    extBitsKo.push(`무역이 GDP의 ${tradePctGdp.toFixed(0)}%를 차지하고`);
+    extBitsEn.push(`trade near ${tradePctGdp.toFixed(0)}% of GDP`);
   }
   if (currentAccountPctGdp != null) {
-    extBitsKo.push(`경상수지 ${fmtPct(currentAccountPctGdp)} GDP`);
+    extBitsKo.push(`경상수지는 GDP 대비 ${fmtPct(currentAccountPctGdp)}`);
     extBitsEn.push(`current account ${fmtPct(currentAccountPctGdp)} of GDP`);
   }
   if (govDebtPctGdp != null) {
-    extBitsKo.push(`정부부채 ${govDebtPctGdp.toFixed(0)}% GDP`);
-    extBitsEn.push(`gov debt ${govDebtPctGdp.toFixed(0)}% of GDP`);
+    extBitsKo.push(`정부부채는 ${govDebtPctGdp.toFixed(0)}% 수준`);
+    extBitsEn.push(`gov debt around ${govDebtPctGdp.toFixed(0)}% of GDP`);
   }
   if (milSpendPctGdp != null) {
-    extBitsKo.push(`국방 ${milSpendPctGdp.toFixed(1)}% GDP`);
+    extBitsKo.push(`국방은 GDP의 ${milSpendPctGdp.toFixed(1)}%`);
     extBitsEn.push(`defense ${milSpendPctGdp.toFixed(1)}% of GDP`);
   }
   if (extBitsKo.length) {
-    ko.push(`대외·재정 축: ${extBitsKo.join(" · ")}.`);
-    en.push(`External/fiscal axis: ${extBitsEn.join(" · ")}.`);
+    ko.push(`바깥으로 열린 창을 보면, ${extBitsKo.join(", ")}입니다.`);
+    en.push(`Looking outward: ${extBitsEn.join("; ")}.`);
   }
 
   // Peer compare
   if (peers.length > 0) {
     const peerBits = peers
-      .map((p) => `${p.name}(성장 ${fmtPct(p.gdpGrowthPct)} · 인플레 ${fmtPct(p.inflationPct)})`)
+      .map((p) => `${p.name}(성장 ${fmtPct(p.gdpGrowthPct)}, 물가 ${fmtPct(p.inflationPct)})`)
       .join(", ");
     const peerBitsEn = peers
-      .map((p) => `${p.name}(growth ${fmtPct(p.gdpGrowthPct)} · infl ${fmtPct(p.inflationPct)})`)
+      .map((p) => `${p.name} (growth ${fmtPct(p.gdpGrowthPct)}, infl ${fmtPct(p.inflationPct)})`)
       .join(", ");
     const selfVs = peers[0];
     let compareKo = "";
@@ -369,10 +369,10 @@ function buildNarratives(args: {
       const d = inflationPct - selfVs.inflationPct;
       compareKo =
         d > 0.4
-          ? ` 인플레는 ${selfVs.name}보다 ${Math.abs(d).toFixed(1)}%p 높습니다.`
+          ? ` 물가 온도는 ${selfVs.name}보다 ${Math.abs(d).toFixed(1)}%p 높습니다.`
           : d < -0.4
-            ? ` 인플레는 ${selfVs.name}보다 ${Math.abs(d).toFixed(1)}%p 낮습니다.`
-            : ` 인플레는 ${selfVs.name}과 비슷한 수준입니다.`;
+            ? ` 물가 온도는 ${selfVs.name}보다 ${Math.abs(d).toFixed(1)}%p 낮습니다.`
+            : ` 물가 온도는 ${selfVs.name}과 비슷한 방입니다.`;
       compareEn =
         d > 0.4
           ? ` Inflation runs ${Math.abs(d).toFixed(1)}pp hotter than ${selfVs.name}.`
@@ -380,12 +380,12 @@ function buildNarratives(args: {
             ? ` Inflation runs ${Math.abs(d).toFixed(1)}pp cooler than ${selfVs.name}.`
             : ` Inflation is roughly in line with ${selfVs.name}.`;
     }
-    ko.push(`피어 비교 — ${peerBits}.${compareKo}`);
-    en.push(`Peer check — ${peerBitsEn}.${compareEn}`);
+    ko.push(`옆자리 피어를 곁에 두면 — ${peerBits}.${compareKo}`);
+    en.push(`Beside its peers — ${peerBitsEn}.${compareEn}`);
   }
 
-  ko.push(`수치 출처: ${SOTW_ATTRIBUTION} (World Bank / IMF 계열). 시점·정의는 지표별로 다를 수 있습니다.`);
-  en.push(`Source: ${SOTW_ATTRIBUTION} (World Bank / IMF family). Vintage and definitions vary by series.`);
+  ko.push(`이 장면의 숫자는 ${SOTW_ATTRIBUTION} 기준입니다. 지표마다 시점과 정의가 다를 수 있으니, 표가 아니라 이야기의 소품으로 읽어 주세요.`);
+  en.push(`Figures via ${SOTW_ATTRIBUTION} (World Bank / IMF family). Treat vintages as props in the story, not a ledger.`);
 
   return { ko, en };
 }
@@ -505,22 +505,50 @@ export function narrativeForLang(macro: SotwMacroDeep, lang: LabelLanguage): str
   return lang === "en" ? macro.narrativeEn : macro.narrativeKo;
 }
 
-/** 시장 등불용 — 여러 국 내러티브를 합쳐 짧은 브리핑 문단 세트 */
+/** 시장 등불용 — 지표 나열이 아니라 짧은 스토리 문단 */
 export function composeMarketLampParagraphs(
   macros: SotwMacroDeep[],
   lang: LabelLanguage,
+  opts?: { focusTitle?: string; koreanExtras?: string[] },
 ): string[] {
-  if (macros.length === 0) return [];
+  if (macros.length === 0 && !(opts?.koreanExtras?.length)) return [];
   const out: string[] = [];
-  for (const m of macros) {
-    const lines = narrativeForLang(m, lang);
-    // 스냅샷 + 인플레 충격(+성장) 위주 2~3줄
-    out.push(...lines.slice(0, 3));
+  const ko = lang !== "en";
+
+  if (ko) {
+    const names = macros.map((m) => m.name ?? m.id).filter(Boolean);
+    if (opts?.focusTitle) {
+      out.push(
+        `오늘 시장 등불은 「${opts.focusTitle}」을(를) 무대에 올립니다.${
+          names.length > 0 ? ` 그 곁에 ${names.join("·")}의 거시 숨결을 겹칩니다.` : ""
+        }`,
+      );
+    } else if (names.length > 0) {
+      out.push(`오늘 시장 등불은 ${names.join("과 ")}의 이야기를 천천히 읽어 줍니다.`);
+    }
+    for (const extra of (opts?.koreanExtras ?? []).slice(0, 2)) {
+      out.push(extra);
+    }
+    for (const m of macros.slice(0, 2)) {
+      const lines = narrativeForLang(m, "ko").filter(
+        (line) => !line.startsWith("이 장면의 숫자는") && !line.startsWith("수치 출처"),
+      );
+      // 스냅샷 1 + 물가/성장 중 1
+      out.push(...lines.slice(0, 2));
+    }
+    out.push(
+      "표로 외우지 말고, 오늘 시장이 어떤 기온인지 한 장면으로 받아 주세요. 수치는 Statistics of the World 기준이며 시리즈마다 시점이 다를 수 있습니다.",
+    );
+    return out;
   }
-  if (lang === "en") {
-    out.push("Figures via Statistics of the World. Definitions and vintages differ by series.");
-  } else {
-    out.push("수치는 Statistics of the World 기준입니다. 지표·시점은 시리즈마다 다를 수 있습니다.");
+
+  const names = macros.map((m) => m.name ?? m.id).filter(Boolean);
+  if (opts?.focusTitle) {
+    out.push(`Tonight's market lamp rests on “${opts.focusTitle}”${names.length ? `, with ${names.join(" & ")} in the wings` : ""}.`);
   }
+  for (const m of macros.slice(0, 2)) {
+    out.push(...narrativeForLang(m, "en").slice(0, 2));
+  }
+  out.push("Not a spreadsheet — a scene. Figures via Statistics of the World; vintages vary.");
   return out;
 }

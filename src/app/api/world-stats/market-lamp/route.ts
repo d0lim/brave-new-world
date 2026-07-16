@@ -50,7 +50,9 @@ export async function GET(request: Request) {
         disabled: false,
         dayKey,
         countries: macros.map((m) => m.id ?? m.name),
-        paragraphs: composeMarketLampParagraphs(macros, lang),
+        paragraphs: composeMarketLampParagraphs(macros, lang, {
+          focusTitle: lang === "en" ? countryParam : undefined,
+        }),
         macros,
         attribution: SOTW_ATTRIBUTION,
       });
@@ -83,19 +85,26 @@ export async function GET(request: Request) {
     }
 
     const titleSeed = lang === "en" ? primary.titleEn : primary.titleKo;
-    const impact = primary.impactLine;
+    const koreanExtras =
+      lang === "ko"
+        ? primary.paragraphs.filter((p) => {
+            const koChars = (p.match(/[\uac00-\ud7a3]/g) ?? []).length;
+            const latin = (p.match(/[A-Za-z]/g) ?? []).length;
+            return koChars >= 6 && koChars >= latin * 0.5;
+          })
+        : [];
 
     return NextResponse.json({
       disabled: false,
       dayKey,
       focusNavId: primary.navId,
       focusTitle: titleSeed,
-      impactLine: impact,
+      impactLine: lang === "en" ? primary.impactLine : undefined,
       countries: macros.map((m) => m.name ?? m.id),
-      paragraphs: [
-        impact,
-        ...composeMarketLampParagraphs(macros, lang),
-      ],
+      paragraphs: composeMarketLampParagraphs(macros, lang, {
+        focusTitle: titleSeed,
+        koreanExtras,
+      }),
       macros,
       attribution: SOTW_ATTRIBUTION,
     });

@@ -57,7 +57,10 @@ export function FrictionHistoryChrome({
   }
 
   return (
-    <aside className="pointer-events-auto absolute bottom-[calc(5.5rem+env(safe-area-inset-bottom,0px))] left-3 z-[48] flex max-h-[min(52vh,420px)] w-[min(94vw,340px)] flex-col overflow-hidden rounded-2xl border border-violet-300/25 bg-[#120e18]/94 shadow-2xl backdrop-blur-xl">
+    <aside
+      id="friction-history-chrome"
+      className="pointer-events-auto absolute bottom-[calc(5.5rem+env(safe-area-inset-bottom,0px))] left-3 z-[48] flex max-h-[min(52vh,420px)] w-[min(94vw,340px)] flex-col overflow-hidden rounded-2xl border border-violet-300/25 bg-[#120e18]/94 shadow-2xl backdrop-blur-xl"
+    >
       <div className="flex items-start justify-between gap-2 border-b border-violet-200/10 px-3 py-2.5">
         <div className="min-w-0">
           <p className="text-[10px] uppercase tracking-[0.2em] text-violet-200/55">

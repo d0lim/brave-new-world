@@ -16,7 +16,7 @@ type UiSpotlightCoachmarkProps = {
   onSkip?: () => void;
   /** 말풍선·화살표가 타겟의 아래(기본) / 위 */
   placement?: SpotlightPlacement;
-  accent?: "sky" | "amber" | "emerald" | "rose";
+  accent?: "sky" | "amber" | "emerald" | "rose" | "violet";
 };
 
 /**
@@ -82,12 +82,19 @@ export function UiSpotlightCoachmark({
               card: "border-red-400/35 bg-[#1a0a0e]/96 text-red-50",
               btn: "border-red-400/35 text-red-100/90 hover:bg-red-400/15",
             }
-          : {
-              ring: "border-sky-300/90",
-              text: "text-sky-200",
-              card: "border-sky-300/30 bg-[#0a1830]/95 text-sky-50",
-              btn: "border-sky-300/30 text-sky-100/90 hover:bg-sky-400/15",
-            };
+          : accent === "violet"
+            ? {
+                ring: "border-violet-300/90",
+                text: "text-violet-100",
+                card: "border-violet-300/35 bg-[#120e18]/96 text-violet-50",
+                btn: "border-violet-300/35 text-violet-100/90 hover:bg-violet-400/15",
+              }
+            : {
+                ring: "border-sky-300/90",
+                text: "text-sky-200",
+                card: "border-sky-300/30 bg-[#0a1830]/95 text-sky-50",
+                btn: "border-sky-300/30 text-sky-100/90 hover:bg-sky-400/15",
+              };
 
   const bubbleLeft = Math.min(
     Math.max(12, cx - 150),

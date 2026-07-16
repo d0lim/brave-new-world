@@ -57,6 +57,11 @@ import {
   type ChromeCoachStep,
 } from "@/components/ChromeOnboardingCoach";
 import {
+  FrictionOnboardingCoach,
+  shouldOfferFrictionCoach,
+  type FrictionCoachStep,
+} from "@/components/FrictionOnboardingCoach";
+import {
   AirRaidOnboardingCoach,
   shouldOfferAirRaidCoach,
 } from "@/components/AirRaidOnboardingCoach";
@@ -1494,6 +1499,9 @@ export function GlobeDashboard({
   const [entryGate, setEntryGate] = useState<EntryGate>(null);
   const domainThenDetailTimerRef = useRef<number | null>(null);
   const [chromeCoachStep, setChromeCoachStep] = useState<ChromeCoachStep | null>(null);
+  const [frictionCoachStep, setFrictionCoachStep] = useState<FrictionCoachStep | null>(null);
+  const frictionCoachAwaitHistoryRef = useRef(false);
+  const frictionCoachListAckRef = useRef(false);
   const [showAirRaidCoach, setShowAirRaidCoach] = useState(false);
   const [periodicBriefing, setPeriodicBriefing] = useState<PeriodicBriefing | null>(null);
   /** 로컬 자정에 바뀜 — 매일 등불 재점화 트리거 */
@@ -1992,9 +2000,88 @@ export function GlobeDashboard({
     setFrictionActiveStageId(null);
     setHubBriefOpen(false);
     setRegionNavSelection(null);
+    setFrictionCoachStep(null);
+    frictionCoachAwaitHistoryRef.current = false;
+    frictionCoachListAckRef.current = false;
     const controls = globeRef.current?.controls();
     if (controls) controls.maxDistance = 720;
   }, [clearFrictionEpisodeTimer, clearHubBriefTimer]);
+
+  const handleFrictionCoachStepChange = useCallback((next: FrictionCoachStep | null) => {
+    setFrictionCoachStep((prev) => {
+      if (prev === "list" && next === null) {
+        frictionCoachListAckRef.current = true;
+        if (shouldOfferFrictionCoach()) {
+          frictionCoachAwaitHistoryRef.current = true;
+        } else {
+          frictionCoachAwaitHistoryRef.current = false;
+        }
+      }
+      if (next === null && !shouldOfferFrictionCoach()) {
+        frictionCoachAwaitHistoryRef.current = false;
+      }
+      return next;
+    });
+  }, []);
+
+  /** 분쟁외교사 목록 첫 진입 — 크롬 코치가 없을 때만 */
+  useEffect(() => {
+    if (isEconomyViewer) return;
+    if (hubFocusMode !== "regime") {
+      setFrictionCoachStep((prev) => (prev ? null : prev));
+      frictionCoachAwaitHistoryRef.current = false;
+      frictionCoachListAckRef.current = false;
+      return;
+    }
+    if (chromeCoachStep || showAirRaidCoach) return;
+    if (!shouldOfferFrictionCoach()) return;
+    if (frictionCoachListAckRef.current) return;
+    if (frictionCoachStep) return;
+    if (regimeSelectedEpisodeId || hubBriefOpen || frictionEpisodeBrief) return;
+    const timer = window.setTimeout(() => setFrictionCoachStep("list"), 450);
+    return () => window.clearTimeout(timer);
+  }, [
+    chromeCoachStep,
+    frictionCoachStep,
+    frictionEpisodeBrief,
+    hubBriefOpen,
+    hubFocusMode,
+    isEconomyViewer,
+    regimeSelectedEpisodeId,
+    showAirRaidCoach,
+  ]);
+
+  /** 목록 코치 중 에피소드 선택 → 역사 스텝 대기 */
+  useEffect(() => {
+    if (!regimeSelectedEpisodeId) return;
+    if (frictionCoachStep === "list") {
+      frictionCoachListAckRef.current = true;
+      if (shouldOfferFrictionCoach()) frictionCoachAwaitHistoryRef.current = true;
+      setFrictionCoachStep(null);
+    }
+  }, [frictionCoachStep, regimeSelectedEpisodeId]);
+
+  /** 역사 크롬 표시 + 양피지 닫힌 뒤 → 조작법 스텝 */
+  useEffect(() => {
+    if (isEconomyViewer) return;
+    if (!historyImmersionActive || !regimeSelectedEpisodeId) return;
+    if (hubBriefOpen || frictionEpisodeBrief) return;
+    if (chromeCoachStep || showAirRaidCoach) return;
+    if (!shouldOfferFrictionCoach()) return;
+    if (!frictionCoachAwaitHistoryRef.current) return;
+    if (frictionCoachStep === "history") return;
+    const timer = window.setTimeout(() => setFrictionCoachStep("history"), 500);
+    return () => window.clearTimeout(timer);
+  }, [
+    chromeCoachStep,
+    frictionCoachStep,
+    frictionEpisodeBrief,
+    historyImmersionActive,
+    hubBriefOpen,
+    isEconomyViewer,
+    regimeSelectedEpisodeId,
+    showAirRaidCoach,
+  ]);
 
   const closeHubBrief = useCallback(() => {
     setHubBriefOpen(false);
@@ -8992,7 +9079,8 @@ export function GlobeDashboard({
       entryGate === null &&
       !showModePicker &&
       !hubBriefOpen &&
-      !frictionEpisodeBrief ? (
+      !frictionEpisodeBrief &&
+      !frictionCoachStep ? (
         <ChromeOnboardingCoach
           step={chromeCoachStep}
           viewerMode={viewerMode}
@@ -9001,10 +9089,23 @@ export function GlobeDashboard({
         />
       ) : null}
 
+      {frictionCoachStep &&
+      entryGate === null &&
+      !showModePicker &&
+      !chromeCoachStep &&
+      !isEconomyViewer ? (
+        <FrictionOnboardingCoach
+          step={frictionCoachStep}
+          lang={labelLanguage}
+          onStepChange={handleFrictionCoachStepChange}
+        />
+      ) : null}
+
       {showAirRaidCoach &&
       entryGate === null &&
       !showModePicker &&
       !chromeCoachStep &&
+      !frictionCoachStep &&
       !hubBriefOpen &&
       !frictionEpisodeBrief ? (
         <AirRaidOnboardingCoach

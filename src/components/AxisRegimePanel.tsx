@@ -41,7 +41,10 @@ export function AxisRegimePanel({
   );
 
   return (
-    <aside className="pointer-events-auto absolute right-3 top-20 z-40 flex max-h-[min(78vh,560px)] w-[min(94vw,340px)] flex-col overflow-hidden rounded-2xl border border-violet-300/20 bg-[#120e18]/92 shadow-2xl backdrop-blur-xl">
+    <aside
+      id="axis-regime-panel"
+      className="pointer-events-auto absolute right-3 top-20 z-40 flex max-h-[min(78vh,560px)] w-[min(94vw,340px)] flex-col overflow-hidden rounded-2xl border border-violet-300/20 bg-[#120e18]/92 shadow-2xl backdrop-blur-xl"
+    >
       <div className="flex items-start justify-between gap-2 border-b border-violet-200/10 px-3 py-2.5">
         <div>
           <p className="text-[10px] uppercase tracking-[0.2em] text-violet-200/55">

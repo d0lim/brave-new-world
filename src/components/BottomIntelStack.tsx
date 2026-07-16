@@ -70,6 +70,94 @@ import {
 } from "@/lib/news/theaterMap";
 import { resolveEconomyArticleFlyTarget } from "@/lib/news/economyMapFly";
 
+const INTEL_DRAG_HINT_KEY = "geowatch-intel-drag-hint-v1";
+
+function readIntelDragHintDismissed(): boolean {
+  if (typeof window === "undefined") return true;
+  try {
+    return localStorage.getItem(INTEL_DRAG_HINT_KEY) === "1";
+  } catch {
+    return true;
+  }
+}
+
+function dismissIntelDragHint(): void {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(INTEL_DRAG_HINT_KEY, "1");
+  } catch {
+    /* ignore */
+  }
+}
+
+function IntelNewsCloseButton({
+  onClick,
+  ariaLabel,
+  className = "",
+}: {
+  onClick: () => void;
+  ariaLabel: string;
+  className?: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={ariaLabel}
+      title={ariaLabel}
+      className={`tap-target flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-red-400/50 bg-red-950/80 text-base font-bold leading-none text-red-50 shadow-[0_4px_14px_rgba(127,29,29,0.35)] transition hover:border-red-300/75 hover:bg-red-900/90 hover:text-white active:scale-95 ${className}`}
+    >
+      ✕
+    </button>
+  );
+}
+
+function IntelDragDismissHint({ economy = false }: { economy?: boolean }) {
+  const { t } = useLocale();
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    setVisible(!readIntelDragHintDismissed());
+  }, []);
+
+  const hide = useCallback(() => {
+    dismissIntelDragHint();
+    setVisible(false);
+  }, []);
+
+  if (!visible) return null;
+
+  const tone = economy
+    ? "border-emerald-300/28 bg-emerald-950/55 text-emerald-50"
+    : "border-sky-300/30 bg-sky-950/60 text-sky-50";
+  const subTone = economy ? "text-emerald-100/78" : "text-sky-100/78";
+  const btnTone = economy
+    ? "border-emerald-300/35 text-emerald-100/90 hover:bg-emerald-400/12"
+    : "border-sky-300/35 text-sky-100/90 hover:bg-sky-400/12";
+
+  return (
+    <div
+      className={`mx-3 flex shrink-0 items-start gap-2.5 rounded-xl border px-3 py-2.5 shadow-lg backdrop-blur-sm ${tone}`}
+      role="note"
+    >
+      <span className="mt-0.5 shrink-0 text-sm leading-none opacity-85" aria-hidden>
+        ↓
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="text-xs font-semibold">{t("intelDragDismissTitle")}</p>
+        <p className={`mt-0.5 text-[11px] leading-snug ${subTone}`}>{t("intelDragDismissBody")}</p>
+      </div>
+      <button
+        type="button"
+        onClick={hide}
+        className={`shrink-0 rounded-lg border px-2.5 py-1 text-[10px] font-medium transition ${btnTone}`}
+      >
+        {t("intelDragDismissGotIt")}
+      </button>
+    </div>
+  );
+}
+
 export type BottomIntelStackHandle = {
   openNewsPanel: (theater?: IntelTheaterFilter, tab?: IntelSheetTab) => void;
   closeNewsPanel: () => void;
@@ -478,6 +566,7 @@ export function DynamicIntelStack({
     setDockCollapsed(true);
     writeIntelDockCollapsed(true);
     setDockDragY(0);
+    dismissIntelDragHint();
   }, []);
 
   const expandDock = useCallback(() => {
@@ -701,6 +790,7 @@ export function DynamicIntelStack({
             {t("intelDockCollapseHint")}
           </span>
         </div>
+        <IntelDragDismissHint economy={isEconomy} />
 
         {isAlert && hero ? (
           <HeroHeadlineBanner hero={hero} onOpenSheet={onOpenSheet} economy={isEconomy} />
@@ -1156,6 +1246,7 @@ export const IntelNewsSheet = forwardRef<BottomIntelStackHandle, IntelNewsSheetP
     const closeNewsPanel = useCallback(() => {
       setSheetDragY(0);
       setSheetDragging(false);
+      dismissIntelDragHint();
       writeIntelDockCollapsed(true);
       if (typeof window !== "undefined") {
         window.dispatchEvent(new Event("cv-intel-dock-collapse"));
@@ -1309,6 +1400,7 @@ export const IntelNewsSheet = forwardRef<BottomIntelStackHandle, IntelNewsSheetP
             {t("intelDockCollapseHint")}
           </span>
         </div>
+        {open ? <IntelDragDismissHint economy={preferEconomyNews} /> : null}
         <div className="flex shrink-0 items-center justify-between gap-3 border-b border-sky-300/10 px-4 pb-3 pt-1.5">
           <div className="min-w-0">
             <p className="text-[10px] uppercase tracking-[0.28em] text-sky-200/70">Intel Stack</p>
@@ -1362,14 +1454,11 @@ export const IntelNewsSheet = forwardRef<BottomIntelStackHandle, IntelNewsSheetP
                 </label>
               </HoverHint>
             ) : null}
-            <HoverHint placement="bottom" title={t("hoverBackToMap")} detail={t("hoverBackToMapHint")}>
-              <button
-                type="button"
+            <HoverHint placement="bottom" title={t("closeNewsDock")} detail={t("hoverBackToMapHint")}>
+              <IntelNewsCloseButton
                 onClick={closeNewsPanel}
-                className="rounded-lg border border-slate-500 bg-slate-800/80 px-4 py-1.5 text-xs font-medium text-slate-100 hover:border-slate-300"
-              >
-                {t("backToMap")}
-              </button>
+                ariaLabel={t("closeNewsGlobeOnlyAria")}
+              />
             </HoverHint>
           </div>
         </div>
@@ -1574,15 +1663,13 @@ export const IntelNewsSheet = forwardRef<BottomIntelStackHandle, IntelNewsSheetP
           />
         ) : null}
 
-        <div className="shrink-0 border-t border-sky-300/15 bg-[#050b14]/80 px-4 py-2.5 backdrop-blur-md">
-          <HoverHint placement="top" title={t("hoverCloseNews")} detail={t("hoverCloseNewsHint")}>
-            <button
-              type="button"
+        <div className="flex shrink-0 items-center justify-center border-t border-sky-300/15 bg-[#050b14]/80 px-4 py-3 backdrop-blur-md">
+          <HoverHint placement="top" title={t("closeNewsDock")} detail={t("hoverCloseNewsHint")}>
+            <IntelNewsCloseButton
               onClick={closeNewsPanel}
-              className="w-full rounded-xl border border-slate-500/80 bg-slate-800/90 py-2.5 text-sm font-semibold text-slate-100 transition hover:border-slate-300 hover:bg-slate-700"
-            >
-              {t("closeNewsDock")}
-            </button>
+              ariaLabel={t("closeNewsGlobeOnlyAria")}
+              className="h-10 w-10 text-lg"
+            />
           </HoverHint>
         </div>
       </div>

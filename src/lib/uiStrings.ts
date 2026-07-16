@@ -19,11 +19,18 @@ const UI = {
   changeViewMode: { ko: "보기 모드 변경", en: "Change view mode" },
   resetCheckboxSettings: { ko: "체크박스 설정 초기화", en: "Reset checkbox settings" },
   layers: { ko: "레이어", en: "Layers" },
-  backToMap: { ko: "✕ 접기", en: "✕ Collapse" },
+  backToMap: { ko: "접기", en: "Collapse" },
   closeNewsDock: { ko: "뉴스 닫기 · 지구본만 보기", en: "Close news · map only" },
+  closeNewsGlobeOnlyAria: { ko: "뉴스 닫기 · 지구본만 보기", en: "Close news · map only" },
+  intelDragDismissTitle: { ko: "뉴스 창 내리기", en: "Pull down to close" },
+  intelDragDismissBody: {
+    ko: "위 핸들을 아래로 끌면 뉴스 창이 닫히고 지구본만 볼 수 있습니다.",
+    en: "Drag the handle down to close the news panel and view the globe.",
+  },
+  intelDragDismissGotIt: { ko: "알겠어요", en: "Got it" },
   intelDockCollapseHint: {
-    ko: "살짝 내려 지구본 전체보기",
-    en: "Pull down for fullscreen globe",
+    ko: "아래로 끌어 내리기",
+    en: "Drag down to dismiss",
   },
   intelDockCollapseAria: {
     ko: "속보·뉴스 창 내리기",

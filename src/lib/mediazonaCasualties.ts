@@ -47,11 +47,10 @@ export type MediazonaCasualtySnapshot = {
   liveScrapedAt?: string | null;
 };
 
-/** Donetsk 전선 부근 — 체크박스 없이 지정학 탭에서 표시 */
-export const MEDIAZONA_FRONT_MARKER = {
-  lat: 48.52,
-  lng: 37.85,
-} as const;
+import { UKRAINE_CASUALTY_MARKER } from "@/lib/warCasualtyTheaters";
+
+/** 우크라이나 지리 중심 — 영토 고정 좌표 */
+export const MEDIAZONA_FRONT_MARKER = UKRAINE_CASUALTY_MARKER;
 
 export const MEDIAZONA_CASUALTY_SEED: MediazonaCasualtySnapshot = {
   confirmedNamedDeaths: 230_600,

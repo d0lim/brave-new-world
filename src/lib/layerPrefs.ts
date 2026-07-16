@@ -131,8 +131,8 @@ export const DEFAULT_LAYER_PREFS: LayerPrefs = {
   showBriTradeConnectivity: false,
   showUsDfcSupplyChain: false,
   labelLanguage: "ko",
-  /** 모바일은 지도를 긁지 않아도 되는 알림 리스트를 기본으로 — 유저가 언제든 지도로 전환 가능 */
-  mobileHomeView: "alerts",
+  /** 모바일 기본은 지도 화면 */
+  mobileHomeView: "globe",
 };
 
 const LEGACY_LAYER_KEYS = [

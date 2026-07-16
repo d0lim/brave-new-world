@@ -10,7 +10,6 @@ import { LegendReopenButton } from "@/components/MapOverlayLegendPanel";
 import { FeatureGuideButton, FeatureGuidePanel } from "@/components/FeatureGuidePanel";
 import { MethodologySourcesPanel, SourcesLinkButton } from "@/components/MethodologySourcesPanel";
 import { ShareViewButton } from "@/components/ShareViewButton";
-import { MobileAlertFeed } from "@/components/MobileAlertFeed";
 import { trackEvent } from "@/lib/trackClient";
 import { GdeltAlertPanel } from "@/components/GdeltAlertPanel";
 import { TelegramOsintPanel } from "@/components/TelegramOsintPanel";
@@ -425,7 +424,9 @@ import {
   MEDIAZONA_FRONT_MARKER,
   type MediazonaCasualtySnapshot,
 } from "@/lib/mediazonaCasualties";
+import { THEATER_CASUALTY_SEEDS } from "@/lib/warCasualtyTheaters";
 import {
+  applyCasualtyOverlayMetrics,
   createWarCasualtyOverlayElement,
   getCasualtyOverlayScale,
   WOUNDED_FIXED_NOTE,
@@ -3927,35 +3928,63 @@ export function GlobeDashboard({
     showWarZones,
   ]);
 
-  /** Mediazona 사망 + CSIS 부상 — 지정학 전용. 우크라 좌표에 고정(카메라 무관) · 모바일 제외 */
+  /** Mediazona 사망 + CSIS 부상 — 지정학 전용. 전장별 영토 좌표 고정 · 모바일 제외 */
   const casualtySkullMarkers = useMemo<CasualtySkullHtmlMarker[]>(() => {
     if (isEconomyViewer || isCompactUi) return [];
     const snap = mediazonaCasualties;
     const en = labelLanguage === "en";
-    const theaterId = "russia-ukraine";
-    return [
-      {
-        markerId: "casualty-skull-ru-ua",
+
+    return THEATER_CASUALTY_SEEDS.map((seed) => {
+      const isUkraine = seed.theaterId === "russia-ukraine";
+      const killed = isUkraine ? snap.confirmedNamedDeaths : seed.killed;
+      const wounded = isUkraine
+        ? (snap.estimatedWounded ?? MEDIAZONA_CASUALTY_SEED.estimatedWounded)
+        : seed.wounded;
+      const lat = isUkraine ? (snap.marker?.lat ?? MEDIAZONA_FRONT_MARKER.lat) : seed.lat;
+      const lng = isUkraine ? (snap.marker?.lng ?? MEDIAZONA_FRONT_MARKER.lng) : seed.lng;
+      const asOf = isUkraine ? snap.confirmedNamedDeathsAsOf : seed.asOf;
+      const woundedNote = isUkraine
+        ? en
+          ? WOUNDED_FIXED_NOTE.en
+          : WOUNDED_FIXED_NOTE.ko
+        : en
+          ? seed.woundedNoteEn
+          : seed.woundedNoteKo;
+
+      return {
+        markerId: `casualty-skull-${seed.theaterId}`,
         displayKind: "casualty-skull" as const,
-        id: "mediazona-ru-confirmed",
-        theaterId,
-        lat: snap.marker?.lat ?? MEDIAZONA_FRONT_MARKER.lat,
-        lng: snap.marker?.lng ?? MEDIAZONA_FRONT_MARKER.lng,
-        killed: snap.confirmedNamedDeaths,
-        wounded: snap.estimatedWounded ?? MEDIAZONA_CASUALTY_SEED.estimatedWounded,
+        id: isUkraine ? "mediazona-ru-confirmed" : `casualty-${seed.theaterId}`,
+        theaterId: seed.theaterId,
+        lat,
+        lng,
+        killed,
+        wounded,
         killedLabel: en
-          ? (snap.marker?.killedLabelEn ?? "KIA")
-          : (snap.marker?.killedLabelKo ?? "사망"),
+          ? isUkraine
+            ? (snap.marker?.killedLabelEn ?? "KIA")
+            : "KIA"
+          : isUkraine
+            ? (snap.marker?.killedLabelKo ?? "사망")
+            : "사망",
         woundedLabel: en
-          ? (snap.marker?.woundedLabelEn ?? "WIA")
-          : (snap.marker?.woundedLabelKo ?? "부상"),
-        asOf: snap.confirmedNamedDeathsAsOf,
-        sourceHint: "Mediazona × BBC · CSIS WIA est.",
+          ? isUkraine
+            ? (snap.marker?.woundedLabelEn ?? "WIA")
+            : "WIA"
+          : isUkraine
+            ? (snap.marker?.woundedLabelKo ?? "부상")
+            : "부상",
+        asOf,
+        sourceHint: isUkraine
+          ? "Mediazona × BBC · CSIS WIA est."
+          : en
+            ? seed.sourceHintEn
+            : seed.sourceHintKo,
         elegyLines: en ? CASUALTY_ELEGY_LINES.en : CASUALTY_ELEGY_LINES.ko,
-        woundedNote: en ? WOUNDED_FIXED_NOTE.en : WOUNDED_FIXED_NOTE.ko,
-        territorySpanDeg: getCombatTheaterSpanDeg(theaterId),
-      },
-    ];
+        woundedNote,
+        territorySpanDeg: getCombatTheaterSpanDeg(seed.theaterId),
+      };
+    });
   }, [isCompactUi, isEconomyViewer, labelLanguage, mediazonaCasualties]);
 
   const ukraineSettlementHtmlMarkers = useMemo<UkraineSettlementHtmlMarker[]>(() => {
@@ -7826,9 +7855,7 @@ export function GlobeDashboard({
                     layerAltitudeRef.current,
                     Number.isFinite(span) ? span : 10,
                   );
-                  const visScale = isVisible ? scale : scale * 0.86;
-                  el.style.transform = `translate(-50%, -100%) scale(${visScale})`;
-                  el.style.transformOrigin = "center bottom";
+                  applyCasualtyOverlayMetrics(el, scale, isVisible);
                   el.style.pointerEvents = isVisible ? "auto" : "none";
                   return;
                 }
@@ -8572,27 +8599,6 @@ export function GlobeDashboard({
           </div>
         ) : (
           <div className="cv-compact-only pointer-events-auto flex shrink-0 items-center gap-2">
-            <button
-              type="button"
-              onClick={() => {
-                const next = layerPrefs.mobileHomeView === "alerts" ? "globe" : "alerts";
-                trackEvent("mobile_home_view_toggle", { to: next }, { lang: labelLanguage, viewerMode });
-                togglePref("mobileHomeView", next);
-              }}
-              aria-label={
-                layerPrefs.mobileHomeView === "alerts"
-                  ? labelLanguage === "en"
-                    ? "View map"
-                    : "지도 보기"
-                  : labelLanguage === "en"
-                    ? "View alerts"
-                    : "알림 보기"
-              }
-              aria-pressed={layerPrefs.mobileHomeView === "alerts"}
-              className="tap-target flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-sky-300/25 bg-slate-950/70 text-[15px] text-sky-100 shadow-sm transition hover:border-sky-200/45"
-            >
-              {layerPrefs.mobileHomeView === "alerts" ? "🌐" : "🔔"}
-            </button>
             <ShareViewButton getCanvas={() => globeRef.current?.renderer().domElement ?? null} />
           </div>
         )}
@@ -9121,15 +9127,6 @@ export function GlobeDashboard({
           lang={labelLanguage}
           placement={isCompactUi ? "above" : "below"}
           onDismiss={() => setShowAirRaidCoach(false)}
-        />
-      ) : null}
-
-      {isCompactUi && layerPrefs.mobileHomeView === "alerts" ? (
-        <MobileAlertFeed
-          onSwitchToGlobe={() => {
-            trackEvent("mobile_home_view_toggle", { to: "globe" }, { lang: labelLanguage, viewerMode });
-            togglePref("mobileHomeView", "globe");
-          }}
         />
       ) : null}
 

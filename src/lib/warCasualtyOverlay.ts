@@ -15,6 +15,8 @@ export type WarCasualtyOverlayInput = {
   /** 부상 줄 호버 시 짧은 설명 (고정 추정치 등). 없으면 부상 전용 팁 없음 */
   woundedNote?: string;
   altitude?: number;
+  /** 전장 박스 스팬(°) — 영토 대비 글자 크기 */
+  territorySpanDeg?: number;
 };
 
 /** 우크라 부상(CSIS)용 기본 짧은 안내 */
@@ -56,13 +58,20 @@ export function markCasualtyElegyTyped(theaterId: string): void {
 }
 
 /**
- * 화면 비율 유지용 배율.
- * 전역(고고도)에서 한눈에 보이게 크게, LOD 줌인 시 작아짐.
+ * 영토에 붙어 보이는 배율.
+ * 고고도(전역): 크게 보이되, 줌인하면 영토보다 작아지도록 altitude에 비례 축소.
+ * 넓은 전장(territorySpanDeg↑)은 같은 고도에서 글자가 조금 더 큼.
  */
-export function getCasualtyOverlayScale(altitude: number): number {
-  const a = Math.max(0.02, Number.isFinite(altitude) ? altitude : 1.8);
-  const raw = Math.sqrt(a / 0.28);
-  return Math.min(3.35, Math.max(0.4, raw));
+export function getCasualtyOverlayScale(
+  altitude: number,
+  territorySpanDeg = 10,
+): number {
+  const a = Math.max(0.04, Number.isFinite(altitude) ? altitude : 1.8);
+  const span = Math.max(3, Number.isFinite(territorySpanDeg) ? territorySpanDeg : 10);
+  // 기준: 우크라 스팬(~14°) · alt 1.8 → ~2.4, alt 0.25 → ~0.42
+  const spanFactor = Math.sqrt(span / 14);
+  const raw = (a / 0.72) * spanFactor;
+  return Math.min(3.1, Math.max(0.28, raw));
 }
 
 export function formatCasualtyCount(n: number): string {
@@ -76,6 +85,10 @@ function escapeHtml(value: string | null | undefined) {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
 }
+
+/** SB 어그로 Bold — layout --font-sb-agro */
+const CASUALTY_NUMBER_FONT =
+  'var(--font-sb-agro), "SB Agro", "SBAgro", sans-serif';
 
 const SKULL_SVG = `<svg width="40" height="40" viewBox="0 0 24 24" aria-hidden="true" style="display:block;flex-shrink:0">
   <path fill="#ffffff" d="M12 2C7.6 2 4.2 5.1 4.2 9.1c0 2.4 1.1 4.5 2.8 5.9L6 20.2c0 .4.3.8.8.8h1.6c.3 0 .6-.2.7-.5L10 18h4l.9 2.5c.1.3.4.5.7.5h1.6c.4 0 .8-.4.8-.8l-1-5.2c1.7-1.4 2.8-3.5 2.8-5.9C19.8 5.1 16.4 2 12 2zm-3.2 7.2c-.7 0-1.3-.6-1.3-1.3S8.1 6.6 8.8 6.6s1.3.6 1.3 1.3-.6 1.3-1.3 1.3zm6.4 0c-.7 0-1.3-.6-1.3-1.3s.6-1.3 1.3-1.3 1.3.6 1.3 1.3-.6 1.3-1.3 1.3zM9.5 14.2c.7.5 1.6.8 2.5.8s1.8-.3 2.5-.8c.2-.1.2-.4 0-.5-.7-.4-1.6-.7-2.5-.7s-1.8.3-2.5.7c-.2.1-.2.4 0-.5z"/>
@@ -97,7 +110,8 @@ const WOUNDED_SVG = `<svg width="40" height="40" viewBox="0 0 24 24" aria-hidden
 export function createWarCasualtyOverlayElement(
   input: WarCasualtyOverlayInput,
 ): HTMLElement {
-  const scale = getCasualtyOverlayScale(input.altitude ?? 1.8);
+  const spanDeg = input.territorySpanDeg ?? 10;
+  const scale = getCasualtyOverlayScale(input.altitude ?? 1.8, spanDeg);
   const lines = input.elegyLines ?? CASUALTY_ELEGY_LINES.ko;
   const theaterId = input.theaterId;
   const woundedNote = input.woundedNote?.trim() || "";
@@ -105,6 +119,7 @@ export function createWarCasualtyOverlayElement(
   const el = document.createElement("div");
   el.className = "casualty-skull-marker war-casualty-overlay";
   el.dataset.theaterId = theaterId;
+  el.dataset.territorySpan = String(spanDeg);
   el.style.display = "flex";
   el.style.flexDirection = "row";
   el.style.alignItems = "center";
@@ -117,8 +132,7 @@ export function createWarCasualtyOverlayElement(
   el.style.zIndex = "7";
   el.style.filter = "drop-shadow(0 2px 6px rgba(0,0,0,0.9))";
 
-  const gothic =
-    '"Arial Black","Impact","Haettenschweiler","Franklin Gothic Heavy","Pretendard",sans-serif';
+  const numberFont = CASUALTY_NUMBER_FONT;
   const elegyFont = '"Pretendard","IBM Plex Sans","Noto Sans KR",sans-serif';
 
   const counts = document.createElement("div");
@@ -139,10 +153,10 @@ export function createWarCasualtyOverlayElement(
     wrap.innerHTML = `
       ${iconSvg}
       <div style="display:flex;flex-direction:column;align-items:flex-start;gap:1px;line-height:1">
-        <div style="color:#ffffff;font-family:${gothic};font-weight:900;font-size:34px;letter-spacing:0.01em;font-variant-numeric:tabular-nums;-webkit-text-stroke:0.4px rgba(0,0,0,0.35)">${escapeHtml(
+        <div class="casualty-count-num" style="color:#ffffff;font-family:${numberFont};font-weight:700;font-size:34px;letter-spacing:0.01em;font-variant-numeric:tabular-nums;-webkit-text-stroke:0.35px rgba(0,0,0,0.35)">${escapeHtml(
           formatCasualtyCount(count),
         )}</div>
-        <div style="color:rgba(255,255,255,0.92);font-family:${gothic};font-weight:800;font-size:11px;letter-spacing:0.12em;text-transform:uppercase">${escapeHtml(
+        <div class="casualty-count-label" style="color:rgba(255,255,255,0.92);font-family:${numberFont};font-weight:700;font-size:11px;letter-spacing:0.08em;text-transform:uppercase">${escapeHtml(
           label,
         )}</div>
       </div>`;

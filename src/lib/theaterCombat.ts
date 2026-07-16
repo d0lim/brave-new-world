@@ -29,6 +29,14 @@ const THEATER_BOXES: TheaterBox[] = [
   { id: "korea", south: 33, north: 43, west: 124, east: 132 },
 ];
 
+/** 전장 박스 한 변(°) — 사상자 글자 크기(영토 대비)용 */
+export function getCombatTheaterSpanDeg(theaterId: string): number {
+  const box = THEATER_BOXES.find((b) => b.id === theaterId);
+  if (!box) return 10;
+  const latSpan = Math.max(1, box.north - box.south);
+  const lngSpan = Math.max(1, box.east - box.west);
+  return Math.sqrt(latSpan * lngSpan);
+}
 export function isActiveWarTheater(id: CombatTheaterId): id is ActiveWarTheaterId {
   return (ACTIVE_WAR_THEATER_IDS as readonly string[]).includes(id);
 }

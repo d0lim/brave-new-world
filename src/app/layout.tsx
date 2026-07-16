@@ -85,6 +85,15 @@ const spaceGrotesk = Space_Grotesk({
   display: "swap",
 });
 
+/** 전쟁구역 사상자 숫자 — SB 어그로 Bold */
+const sbAgro = localFont({
+  src: "./fonts/SBAgro-Bold.ttf",
+  weight: "700",
+  style: "normal",
+  variable: "--font-sb-agro",
+  display: "swap",
+});
+
 export const metadata: Metadata = {
   title: "멋진 신세계",
   description:
@@ -121,7 +130,7 @@ export default function RootLayout({
   return (
     <html lang="ko" suppressHydrationWarning style={{ background: "#02040a" }}>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} ${letterHand.variable} ${letterScript.variable} ${pretendard.variable} ${gmarket.variable} ${ibmPlexSans.variable} ${ibmPlexMono.variable} ${spaceGrotesk.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} ${letterHand.variable} ${letterScript.variable} ${pretendard.variable} ${gmarket.variable} ${ibmPlexSans.variable} ${ibmPlexMono.variable} ${spaceGrotesk.variable} ${sbAgro.variable} antialiased`}
         style={{
           background: "#02040a",
           minHeight: "100dvh",

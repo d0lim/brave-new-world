@@ -769,3 +769,10 @@ main[data-viewer="economy"] .font-en,
     opacity: 0.9;
   }
 }
+
+/* 전쟁구역 사상자 — SB 어그로 Bold, 영토 좌표에 고정 */
+.war-casualty-overlay .casualty-count-num,
+.war-casualty-overlay .casualty-count-label {
+  font-family: var(--font-sb-agro), "SB Agro", sans-serif;
+  font-weight: 700;
+}

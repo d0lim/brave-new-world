@@ -409,6 +409,7 @@ import {
   type SituationCallout,
 } from "@/data/situationCalloutTypes";
 import {
+  getCombatTheaterSpanDeg,
   resolveActiveWarTheaterAt,
   resolveCombatTheaterAt,
 } from "@/lib/theaterCombat";
@@ -673,6 +674,7 @@ type CasualtySkullHtmlMarker = {
   sourceHint: string;
   elegyLines: readonly [string, string];
   woundedNote?: string;
+  territorySpanDeg: number;
 };
 
 type HtmlOverlayMarker =
@@ -1002,6 +1004,7 @@ function createCasualtySkullBadge(
     woundedLabel: marker.woundedLabel,
     elegyLines: marker.elegyLines,
     woundedNote: marker.woundedNote,
+    territorySpanDeg: marker.territorySpanDeg,
     altitude,
   });
 }
@@ -3833,19 +3836,18 @@ export function GlobeDashboard({
     showWarZones,
   ]);
 
-  /** Mediazona 사망 + CSIS 부상 — 지정학 전용, 체크박스 없음. 전역에서도 우크라 바라보면 표시 */
+  /** Mediazona 사망 + CSIS 부상 — 지정학 전용. 우크라 좌표에 고정(카메라 무관) */
   const casualtySkullMarkers = useMemo<CasualtySkullHtmlMarker[]>(() => {
     if (isEconomyViewer) return [];
-    const theater = resolveCombatTheaterAt(filterCenter.lat, filterCenter.lng);
-    if (theater !== "russia-ukraine" && !showUkraineControl) return [];
     const snap = mediazonaCasualties;
     const en = labelLanguage === "en";
+    const theaterId = "russia-ukraine";
     return [
       {
         markerId: "casualty-skull-ru-ua",
         displayKind: "casualty-skull" as const,
         id: "mediazona-ru-confirmed",
-        theaterId: "russia-ukraine",
+        theaterId,
         lat: snap.marker?.lat ?? MEDIAZONA_FRONT_MARKER.lat,
         lng: snap.marker?.lng ?? MEDIAZONA_FRONT_MARKER.lng,
         killed: snap.confirmedNamedDeaths,
@@ -3860,16 +3862,10 @@ export function GlobeDashboard({
         sourceHint: "Mediazona × BBC · CSIS WIA est.",
         elegyLines: en ? CASUALTY_ELEGY_LINES.en : CASUALTY_ELEGY_LINES.ko,
         woundedNote: en ? WOUNDED_FIXED_NOTE.en : WOUNDED_FIXED_NOTE.ko,
+        territorySpanDeg: getCombatTheaterSpanDeg(theaterId),
       },
     ];
-  }, [
-    filterCenter.lat,
-    filterCenter.lng,
-    isEconomyViewer,
-    labelLanguage,
-    mediazonaCasualties,
-    showUkraineControl,
-  ]);
+  }, [isEconomyViewer, labelLanguage, mediazonaCasualties]);
 
   const ukraineSettlementHtmlMarkers = useMemo<UkraineSettlementHtmlMarker[]>(() => {
     if (!showUkraineControl) return [];
@@ -7734,11 +7730,14 @@ export function GlobeDashboard({
                   return;
                 }
                 if (el.classList.contains("casualty-skull-marker")) {
-                  const scale = getCasualtyOverlayScale(layerAltitudeRef.current);
+                  const span = Number(el.dataset.territorySpan || 10);
+                  const scale = getCasualtyOverlayScale(
+                    layerAltitudeRef.current,
+                    Number.isFinite(span) ? span : 10,
+                  );
                   const visScale = isVisible ? scale : scale * 0.86;
                   el.style.transform = `translate(-50%, -100%) scale(${visScale})`;
                   el.style.transformOrigin = "center bottom";
-                  // 호버 타입라이터용 — 보일 때만 포인터 허용
                   el.style.pointerEvents = isVisible ? "auto" : "none";
                   return;
                 }

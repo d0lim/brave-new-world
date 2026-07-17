@@ -1178,6 +1178,8 @@ type IntelNewsSheetProps = {
   initialIntelTab?: IntelSheetTab;
   autoOpenOnMount?: boolean;
   onCloseTelegramLayer?: () => void;
+  /** 뉴스 신뢰도 등급 패널 */
+  onOpenTrust?: () => void;
 };
 
 export const IntelNewsSheet = forwardRef<BottomIntelStackHandle, IntelNewsSheetProps>(
@@ -1204,6 +1206,7 @@ export const IntelNewsSheet = forwardRef<BottomIntelStackHandle, IntelNewsSheetP
       initialIntelTab = "news",
       autoOpenOnMount = false,
       onCloseTelegramLayer,
+      onOpenTrust,
     },
     ref,
   ) {
@@ -1454,21 +1457,32 @@ export const IntelNewsSheet = forwardRef<BottomIntelStackHandle, IntelNewsSheetP
           </div>
           <div className="flex shrink-0 items-center gap-2">
             {sheetTab === "news" && (!preferEconomyNews || economyTab === "news") ? (
-              <HoverHint
-                placement="bottom"
-                title={t("hoverTier3Title")}
-                detail={t("hoverTier3Hint")}
-              >
-                <label className="flex cursor-pointer items-center gap-1.5 text-[10px] text-amber-200/80">
-                  <input
-                    type="checkbox"
-                    checked={showTier3}
-                    onChange={(e) => setShowTier3(e.target.checked)}
-                    className="h-3 w-3 accent-amber-400"
-                  />
-                  {t("tier3Toggle")}
-                </label>
-              </HoverHint>
+              <>
+                {onOpenTrust ? (
+                  <button
+                    type="button"
+                    onClick={onOpenTrust}
+                    className="text-[10px] font-medium text-sky-200/80 underline-offset-2 transition hover:text-sky-100 hover:underline"
+                  >
+                    등급이란?
+                  </button>
+                ) : null}
+                <HoverHint
+                  placement="bottom"
+                  title={t("hoverTier3Title")}
+                  detail={t("hoverTier3Hint")}
+                >
+                  <label className="flex cursor-pointer items-center gap-1.5 text-[10px] text-amber-200/80">
+                    <input
+                      type="checkbox"
+                      checked={showTier3}
+                      onChange={(e) => setShowTier3(e.target.checked)}
+                      className="h-3 w-3 accent-amber-400"
+                    />
+                    {t("tier3Toggle")}
+                  </label>
+                </HoverHint>
+              </>
             ) : null}
             <HoverHint placement="bottom" title={t("closeNewsDock")} detail={t("hoverBackToMapHint")}>
               <IntelNewsCloseButton

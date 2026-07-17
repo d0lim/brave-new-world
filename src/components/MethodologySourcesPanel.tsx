@@ -41,6 +41,8 @@ import {
 type MethodologySourcesPanelProps = {
   open: boolean;
   onClose: () => void;
+  /** 뉴스·OSINT 신뢰도 등급 패널로 이동 */
+  onOpenTrust?: () => void;
 };
 
 const VIINA_CHECKLIST = [
@@ -52,7 +54,11 @@ const VIINA_CHECKLIST = [
   "유료 SaaS 전 법률 자문 권장",
 ] as const;
 
-export function MethodologySourcesPanel({ open, onClose }: MethodologySourcesPanelProps) {
+export function MethodologySourcesPanel({
+  open,
+  onClose,
+  onOpenTrust,
+}: MethodologySourcesPanelProps) {
   if (!open) return null;
 
   const shipped = NEWS_LAYER_SOURCE_CATALOG.filter((n) => n.status === "shipped");
@@ -86,6 +92,21 @@ export function MethodologySourcesPanel({ open, onClose }: MethodologySourcesPan
         </div>
 
         <div className="flex-1 space-y-4 overflow-y-auto px-4 py-4">
+          {onOpenTrust ? (
+            <section className="rounded-xl border border-sky-400/25 bg-sky-950/30 p-3">
+              <h3 className="text-sm font-medium text-sky-50">뉴스 · OSINT 신뢰도 등급</h3>
+              <p className="mt-1.5 text-[12px] leading-5 text-sky-100/75">
+                Tier 1/2/3 편집독립 축과 텔레그램 OSINT 교차검증 축을 한곳에서 봅니다.
+              </p>
+              <button
+                type="button"
+                onClick={onOpenTrust}
+                className="mt-2 text-[12px] font-semibold text-sky-200 underline-offset-2 transition hover:underline"
+              >
+                뉴스 신뢰도 등급 →
+              </button>
+            </section>
+          ) : null}
           <section className="rounded-xl border border-violet-800/40 bg-violet-950/20 p-3">
             <h3 className="text-sm font-medium text-violet-100">
               OpenAlex — 학술 참고문헌 ({OPENALEX_POLICY.product})

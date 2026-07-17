@@ -27,7 +27,6 @@ export function PeriodicBriefingParchment({
       ctaLabel={lang === "en" ? "Until tomorrow" : "내일 다시"}
       onContinue={onDismiss}
       playBreakingDispatch
-      typewriter
       titleId="periodic-briefing-title"
     />
   );

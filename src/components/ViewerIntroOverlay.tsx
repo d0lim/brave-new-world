@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback } from "react";
+import { trustIntroLine, type TrustLang } from "@/data/newsTrustTiers";
 import { getViewerChrome } from "@/lib/viewerChrome";
 import type { ViewerMode } from "@/lib/viewPackages";
 
@@ -30,9 +31,18 @@ type ViewerIntroOverlayProps = {
   visible: boolean;
   viewerMode: ViewerMode;
   onDismiss: () => void;
+  /** 신뢰도 등급 패널 열기 — 첫화면 한 줄 링크 */
+  onOpenTrust?: () => void;
+  trustLang?: TrustLang;
 };
 
-export function ViewerIntroOverlay({ visible, viewerMode, onDismiss }: ViewerIntroOverlayProps) {
+export function ViewerIntroOverlay({
+  visible,
+  viewerMode,
+  onDismiss,
+  onOpenTrust,
+  trustLang = "ko",
+}: ViewerIntroOverlayProps) {
   const chrome = getViewerChrome(viewerMode);
   const isEconomy = viewerMode === "economy";
 
@@ -40,6 +50,10 @@ export function ViewerIntroOverlay({ visible, viewerMode, onDismiss }: ViewerInt
     markViewerIntroDone(viewerMode);
     onDismiss();
   }, [onDismiss, viewerMode]);
+
+  const openTrust = useCallback(() => {
+    onOpenTrust?.();
+  }, [onOpenTrust]);
 
   if (!visible) return null;
 
@@ -108,6 +122,33 @@ export function ViewerIntroOverlay({ visible, viewerMode, onDismiss }: ViewerInt
             </li>
           ))}
         </ul>
+
+        <div
+          className={`mt-3 rounded-xl border px-3 py-2.5 ${
+            isEconomy
+              ? "border-emerald-400/20 bg-emerald-950/35"
+              : "border-sky-400/20 bg-sky-950/35"
+          }`}
+        >
+          <p
+            className={`text-[11px] leading-snug ${
+              isEconomy ? "text-emerald-100/80" : "text-sky-100/80"
+            }`}
+          >
+            {trustIntroLine(trustLang)}
+          </p>
+          {onOpenTrust ? (
+            <button
+              type="button"
+              onClick={openTrust}
+              className={`mt-2 text-[11px] font-semibold underline-offset-2 transition hover:underline ${
+                isEconomy ? "text-emerald-200" : "text-sky-200"
+              }`}
+            >
+              {trustLang === "en" ? "View grades →" : "등급 보기 →"}
+            </button>
+          ) : null}
+        </div>
 
         <div className="mt-4 flex justify-end">
           <button

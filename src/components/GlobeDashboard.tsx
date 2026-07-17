@@ -9,6 +9,8 @@ import { UkraineFrontLegend, UkraineFrontLegendContent } from "@/components/Ukra
 import { LegendReopenButton } from "@/components/MapOverlayLegendPanel";
 import { FeatureGuideButton, FeatureGuidePanel } from "@/components/FeatureGuidePanel";
 import { MethodologySourcesPanel, SourcesLinkButton } from "@/components/MethodologySourcesPanel";
+import { NewsTrustTierPanel } from "@/components/NewsTrustTierPanel";
+import { TrustBadgeChip } from "@/components/TrustBadgeChip";
 import { ShareViewButton } from "@/components/ShareViewButton";
 import { GdeltAlertPanel } from "@/components/GdeltAlertPanel";
 import { TelegramOsintPanel } from "@/components/TelegramOsintPanel";
@@ -1517,6 +1519,7 @@ export function GlobeDashboard({
   const [showFeatureGuide, setShowFeatureGuide] = useState(false);
   const [showQuickStart, setShowQuickStart] = useState(false);
   const [showSourcesPanel, setShowSourcesPanel] = useState(false);
+  const [showTrustPanel, setShowTrustPanel] = useState(false);
   const [showLocalAlertPanel, setShowLocalAlertPanel] = useState(false);
   const [showGdeltAlertPanel, setShowGdeltAlertPanel] = useState(false);
   const [showDisputeLegendPanel, setShowDisputeLegendPanel] = useState(false);
@@ -8691,6 +8694,7 @@ export function GlobeDashboard({
           onViinaFlyTo={handleViinaEventFlyTo}
           initialIntelTab={viewUi.defaultIntelTab}
           autoOpenOnMount={!viewUi.autoEnterTheaterNavId && viewUi.autoOpenIntelSheet}
+          onOpenTrust={() => setShowTrustPanel(true)}
         />
 
       {showIntroHint && (
@@ -8728,6 +8732,8 @@ export function GlobeDashboard({
         }
         viewerMode={viewerMode}
         onDismiss={() => setShowViewerIntro(false)}
+        onOpenTrust={() => setShowTrustPanel(true)}
+        trustLang={labelLanguage === "en" ? "en" : "ko"}
       />
 
       {showLeftPanel ? (
@@ -8864,6 +8870,7 @@ export function GlobeDashboard({
         ) : null}
         {!isCompactUi ? (
           <div className="cv-desktop-only pointer-events-auto flex shrink-0 items-center gap-2">
+            <TrustBadgeChip lang={labelLanguage} onClick={() => setShowTrustPanel(true)} />
             {!isEconomyViewer ? (
               <SourcesLinkButton onClick={() => setShowSourcesPanel(true)} />
             ) : null}
@@ -8873,7 +8880,15 @@ export function GlobeDashboard({
             <ShareViewButton getCanvas={() => globeRef.current?.renderer().domElement ?? null} />
             <FeatureGuideButton viewerMode={viewerMode} onClick={() => setShowFeatureGuide(true)} />
           </div>
-        ) : null}
+        ) : (
+          <div className="cv-compact-only pointer-events-auto">
+            <TrustBadgeChip
+              lang={labelLanguage}
+              compact
+              onClick={() => setShowTrustPanel(true)}
+            />
+          </div>
+        )}
       </div>
 
       {/* 모바일: 공습 경보는 하단 아이콘 — 상단 허브·주요전장 메뉴를 가리지 않음 */}
@@ -8934,8 +8949,20 @@ export function GlobeDashboard({
         viewerMode={viewerMode}
         onClose={() => setShowFeatureGuide(false)}
       />
+      <NewsTrustTierPanel
+        open={showTrustPanel}
+        lang={labelLanguage}
+        onClose={() => setShowTrustPanel(false)}
+      />
       {!isEconomyViewer ? (
-        <MethodologySourcesPanel open={showSourcesPanel} onClose={() => setShowSourcesPanel(false)} />
+        <MethodologySourcesPanel
+          open={showSourcesPanel}
+          onClose={() => setShowSourcesPanel(false)}
+          onOpenTrust={() => {
+            setShowSourcesPanel(false);
+            setShowTrustPanel(true);
+          }}
+        />
       ) : null}
 
       {showLeftPanel ? (

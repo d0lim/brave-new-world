@@ -6119,28 +6119,30 @@ export function GlobeDashboard({
   const dismissLayerPanel = useCallback(
     (closePanel = true) => {
       deferLayerMapApplyRef.current = false;
-      applyPanelDraft();
+      // 패널을 먼저 내려 UI가 막히지 않게 함 — draft flush는 그 다음 프레임
       if (closePanel) {
-        startTransition(() => setShowLeftPanel(false));
+        setShowLeftPanel(false);
+      }
+      const flush = () => applyPanelDraft();
+      if (closePanel && typeof window !== "undefined") {
+        window.requestAnimationFrame(flush);
+      } else {
+        flush();
       }
     },
     [applyPanelDraft],
   );
 
   const toggleLeftPanel = useCallback(() => {
-    startTransition(() => {
-      setShowLeftPanel((open) => {
-        if (open) {
-          dismissLayerPanel(true);
-          return false;
-        }
-        setIntelSheetOpen(false);
-        if (!historyImmersionRef.current) setRegionNavSelection(null);
-        setEconNavSelection(null);
-        return true;
-      });
-    });
-  }, [dismissLayerPanel]);
+    if (showLeftPanel) {
+      dismissLayerPanel(true);
+      return;
+    }
+    setIntelSheetOpen(false);
+    if (!historyImmersionRef.current) setRegionNavSelection(null);
+    setEconNavSelection(null);
+    setShowLeftPanel(true);
+  }, [dismissLayerPanel, showLeftPanel]);
 
   const closeLeftPanel = useCallback(() => {
     dismissLayerPanel(true);

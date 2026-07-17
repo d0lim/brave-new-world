@@ -205,9 +205,13 @@ import {
   AIR_RAID_FLY_ALTITUDE,
   AIR_RAID_FLY_MS,
   AIR_RAID_FOCUS_HATCH_MS,
+  AIR_RAID_SIREN_DELAY_MS,
+  buildAirRaidFocusBox,
   buildAirRaidFocusHatchPaths,
+  airRaidFocusBoxPolygon,
   isAirRaidFocusPath,
   playAirRaidSirenAfterFly,
+  type AirRaidFocusBox,
   type AirRaidSirenKind,
 } from "@/lib/airRaidFocus";
 import {
@@ -1600,6 +1604,7 @@ export function GlobeDashboard({
   const [newfeedsStatus, setNewfeedsStatus] = useState<"idle" | "loading" | "ok" | "error">("idle");
   /** 공습사이렌 포커스 — 사각 틀 없이 해당 지역 빗금만 */
   const [airRaidFocusPaths, setAirRaidFocusPaths] = useState<TransportPath[]>([]);
+  const [airRaidFocusBox, setAirRaidFocusBox] = useState<AirRaidFocusBox | null>(null);
   const airRaidFocusClearRef = useRef<number | null>(null);
 
   const parseEastAsiaAdiz = useCallback(
@@ -1616,6 +1621,7 @@ export function GlobeDashboard({
     if (!isEconomyViewer) return;
     setShowSourcesPanel(false);
     setAirRaidFocusPaths([]);
+    setAirRaidFocusBox(null);
     if (airRaidFocusClearRef.current != null) {
       window.clearTimeout(airRaidFocusClearRef.current);
       airRaidFocusClearRef.current = null;
@@ -4140,6 +4146,37 @@ export function GlobeDashboard({
       usCarrierHtmlMarkers,
   ]);
 
+  /**
+   * MapLibre 렌더러는 react-globe.gl 시절의 htmlElementVisibilityModifier를 호출하지 않는다.
+   * 그래서 사상자·핵탄두 배지는 마운트 시점(대개 줌아웃된 초기 지구본, 스케일 하한 0.12)에
+   * 만들어진 크기로 고정되어, 우크라이나·가자로 줌인해도 커지지 않아 사실상 안 보였다.
+   * 고도(layerAltitude)나 마커 목록이 바뀔 때 DOM 배지를 직접 재스케일해 가시성을 회복한다.
+   */
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const rescale = () => {
+      document
+        .querySelectorAll<HTMLElement>(".casualty-skull-marker")
+        .forEach((el) => {
+          const span = Number(el.dataset.territorySpan || 10);
+          const scale = getCasualtyOverlayScale(
+            layerAltitude,
+            Number.isFinite(span) ? span : 10,
+          );
+          applyCasualtyOverlayMetrics(el, scale, true);
+        });
+      document
+        .querySelectorAll<HTMLElement>(".nuclear-icbm-marker")
+        .forEach((el) => {
+          applyNuclearOverlayScale(el, getNuclearOverlayScale(layerAltitude), true);
+        });
+    };
+    // 마커 DOM은 커밋 직후 ref 콜백에서 붙으므로 한 프레임 뒤 재적용해 초기 크기까지 보정
+    rescale();
+    const raf = window.requestAnimationFrame(rescale);
+    return () => window.cancelAnimationFrame(raf);
+  }, [layerAltitude, casualtySkullMarkers, nuclearStockpileMarkers]);
+
   const [tensionHeatmaps, setTensionHeatmaps] = useState(rawTensionHeatmaps);
   const [globeLabels, setGlobeLabels] = useState(rawGlobeLabels);
   const [globePaths, setGlobePaths] = useState(rawGlobePaths);
@@ -4211,10 +4248,19 @@ export function GlobeDashboard({
     if (isCameraMoving && !bypass) return;
     const now = Date.now();
     const count = dynamicGlobePaths.length;
-    const signature = dynamicGlobePaths
+    const hatchCount = dynamicGlobePaths.reduce(
+      (sum, item) =>
+        item.kind === "dispute-hatch" ||
+        item.kind === "conflict-hatch" ||
+        item.kind === "dispute-zone"
+          ? sum + 1
+          : sum,
+      0,
+    );
+    const signature = `${hatchCount}|${dynamicGlobePaths
       .slice(0, 96)
       .map((item) => `${item.kind}:${item.id}`)
-      .join("|");
+      .join("|")}`;
     const prev = pathStabilityRef.current;
     const elapsed = now - prev.updatedAt;
     const meaningfulChange = Math.abs(count - prev.count) >= PATH_MEANINGFUL_DELTA;
@@ -7227,16 +7273,25 @@ export function GlobeDashboard({
   const handleAirRaidFocus = useCallback(
     (target: AirRaidFocusTarget, kind: AirRaidSirenKind) => {
       flyTo(target.lat, target.lng, AIR_RAID_FLY_ALTITUDE, AIR_RAID_FLY_MS);
-      playAirRaidSirenAfterFly(kind);
+      // 공습경보 레이어 OFF면 사이렌 없음 (시각 포커스·빗금만)
+      playAirRaidSirenAfterFly(kind, AIR_RAID_SIREN_DELAY_MS, () => {
+        const prefs = layerPrefsLiveRef.current;
+        if (kind === "tzeva") return prefs.showTzevaAdom;
+        if (kind === "neptun") return prefs.showNeptun;
+        return false;
+      });
       if (airRaidFocusClearRef.current != null) {
         window.clearTimeout(airRaidFocusClearRef.current);
         airRaidFocusClearRef.current = null;
       }
+      const box = buildAirRaidFocusBox(target.lat, target.lng, kind);
+      setAirRaidFocusBox(box);
       setAirRaidFocusPaths(
         buildAirRaidFocusHatchPaths(target.lat, target.lng, kind, target.label),
       );
       airRaidFocusClearRef.current = window.setTimeout(() => {
         setAirRaidFocusPaths([]);
+        setAirRaidFocusBox(null);
         airRaidFocusClearRef.current = null;
       }, AIR_RAID_FOCUS_HATCH_MS);
     },
@@ -8208,10 +8263,24 @@ export function GlobeDashboard({
                 setHoveredPolygon(feature);
                     }
               }
-              pathsData={
-                airRaidFocusPaths.length > 0
-                  ? [...globePaths, ...airRaidFocusPaths]
-                  : globePaths
+              pathsData={globePaths}
+              priorityPathsData={airRaidFocusPaths}
+              focusFillGeoJson={
+                airRaidFocusBox
+                  ? {
+                      type: "FeatureCollection",
+                      features: [
+                        {
+                          type: "Feature",
+                          properties: {
+                            fill: "rgba(185, 28, 28, 0.34)",
+                            fillOpacity: 0.34,
+                          },
+                          geometry: airRaidFocusBoxPolygon(airRaidFocusBox),
+                        },
+                      ],
+                    }
+                  : null
               }
               ukraineMacroGeoJson={ukraineMacroGeoJson}
               ukraineMicroGeoJson={ukraineMicroGeoJson}
@@ -8308,8 +8377,8 @@ export function GlobeDashboard({
               }}
               pathStroke={(path: TransportPath) => {
                 if (isAirRaidFocusPath(path)) {
-                  if (path.kind === "dispute-zone") return 3.2;
-                  if (path.kind === "conflict-hatch") return 0.55;
+                  if (path.kind === "dispute-zone") return 4.2;
+                  if (path.kind === "conflict-hatch") return 1.15;
                 }
                 if (path.kind === "neptun-trail") return 1.55;
                 if (path.kind === "neptun-trail-archived") return 1.2;
@@ -8324,9 +8393,9 @@ export function GlobeDashboard({
                     : 1.05;
                 }
                 if (path.kind === "dispute-boundary") return 0.52;
-                if (path.kind === "dispute-zone") return 0.95;
-                if (path.kind === "dispute-hatch") return 0.28;
-                if (path.kind === "conflict-hatch") return 0.3;
+                if (path.kind === "dispute-zone") return 1.35;
+                if (path.kind === "dispute-hatch") return 0.55;
+                if (path.kind === "conflict-hatch") return 0.62;
                 if (path.kind === "shipping-lane") return 0.48;
                 if (path.kind === "submarine-cable") return 0.55;
                 if (path.kind === "oil-pipeline") return 0.52;

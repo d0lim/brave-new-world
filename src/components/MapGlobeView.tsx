@@ -2,7 +2,6 @@
 
 import {
   forwardRef,
-  startTransition,
   useCallback,
   useEffect,
   useImperativeHandle,
@@ -12,6 +11,7 @@ import {
 } from "react";
 import Map, { Layer, Marker, Source, type MapRef } from "react-map-gl/maplibre";
 import "maplibre-gl/dist/maplibre-gl.css";
+import type { FeatureCollection } from "geojson";
 import { globeViewToMapLibre, mapLibreZoomToAltitude } from "@/lib/mapLibreBasemap";
 import { createMapGlobeMethods, type MapGlobeMethods } from "@/lib/mapGlobeRef";
 import {
@@ -96,7 +96,20 @@ export const MapGlobeView = forwardRef<MapGlobeMethods, MapGlobeViewProps>(funct
 
   const pointsData = useMemo(() => (props.pointsData as unknown[]) ?? [], [props.pointsData]);
   const pathsData = useMemo(() => (props.pathsData as unknown[]) ?? [], [props.pathsData]);
+  /** 공습 포커스 등 — 지연 없이 즉시 그려야 하는 경로 (정면에서도 보이게) */
+  const priorityPathsData = useMemo(
+    () => (props.priorityPathsData as unknown[]) ?? [],
+    [props.priorityPathsData],
+  );
+  const focusFillGeoJson = props.focusFillGeoJson as FeatureCollection | null | undefined;
   const [deferredPathsData, setDeferredPathsData] = useState(pathsData);
+  const pathsContentKey = useMemo(() => {
+    if (pathsData.length === 0) return "0";
+    const head = pathsData[0] as { id?: string } | undefined;
+    const mid = pathsData[Math.floor(pathsData.length / 2)] as { id?: string } | undefined;
+    const tail = pathsData[pathsData.length - 1] as { id?: string } | undefined;
+    return `${pathsData.length}:${head?.id ?? ""}:${mid?.id ?? ""}:${tail?.id ?? ""}`;
+  }, [pathsData]);
 
   useEffect(() => {
     if (pathsData.length < 64) {
@@ -106,15 +119,14 @@ export const MapGlobeView = forwardRef<MapGlobeMethods, MapGlobeViewProps>(funct
     let cancelled = false;
     const raf = window.requestAnimationFrame(() => {
       if (cancelled) return;
-      startTransition(() => {
-        if (!cancelled) setDeferredPathsData(pathsData);
-      });
+      // startTransition 없이 적용 — 카메라 이동 중에도 빗금이 한 프레임에 반영되게
+      if (!cancelled) setDeferredPathsData(pathsData);
     });
     return () => {
       cancelled = true;
       window.cancelAnimationFrame(raf);
     };
-  }, [pathsData]);
+  }, [pathsContentKey, pathsData]);
 
   const polygonsData = useMemo(
     () => (props.polygonsData as { geometry: unknown }[]) ?? [],
@@ -313,6 +325,24 @@ export const MapGlobeView = forwardRef<MapGlobeMethods, MapGlobeViewProps>(funct
       mapZoom,
     );
   }, [mapZoom, deferredPathsData]);
+
+  const priorityPathsGeoJson = useMemo(() => {
+    if (priorityPathsData.length === 0) {
+      return { type: "FeatureCollection" as const, features: [] };
+    }
+    const a = accessorsRef.current;
+    return buildPathsGeoJson(
+      priorityPathsData,
+      {
+        points: a.pathPoints,
+        color: a.pathColor,
+        stroke: a.pathStroke,
+        dashLength: a.pathDashLength,
+        dashGap: a.pathDashGap,
+      },
+      mapZoom,
+    );
+  }, [mapZoom, priorityPathsData]);
 
   const polygonsGeoJson = useMemo(() => {
     const a = accessorsRef.current;
@@ -696,6 +726,33 @@ export const MapGlobeView = forwardRef<MapGlobeMethods, MapGlobeViewProps>(funct
                   ["literal", [2, 1.2]],
                   ["literal", [1, 0]],
                 ],
+              }}
+            />
+          </Source>
+        ) : null}
+
+        {focusFillGeoJson && focusFillGeoJson.features.length > 0 ? (
+          <Source id="air-raid-focus-fill-source" type="geojson" data={focusFillGeoJson}>
+            <Layer
+              id="air-raid-focus-fill"
+              type="fill"
+              paint={{
+                "fill-color": ["coalesce", ["get", "fill"], "rgba(185, 28, 28, 0.28)"],
+                "fill-opacity": ["coalesce", ["get", "fillOpacity"], 0.32],
+              }}
+            />
+          </Source>
+        ) : null}
+
+        {priorityPathsGeoJson.features.length > 0 ? (
+          <Source id="map-priority-paths-source" type="geojson" data={priorityPathsGeoJson}>
+            <Layer
+              id="map-priority-paths"
+              type="line"
+              paint={{
+                "line-color": ["get", "color"],
+                "line-width": ["get", "width"],
+                "line-opacity": 1,
               }}
             />
           </Source>

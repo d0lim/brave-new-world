@@ -139,6 +139,8 @@ export function filterHatchPathsByView(
   radiusDeg: number,
   maxPaths: number,
 ): TransportPath[] {
+  // 근접 줌에서 큰 분쟁 박스(이란 등) 가장자리 빗금이 잘리지 않게 여유
+  const effectiveRadius = Math.max(radiusDeg, 12);
   const scored = paths
     .map((path) => {
       // 중심점만 보면 큰 Iran/ME 박스가 가장자리 줌에서 통째로 탈락함 → bbox 최근접점
@@ -162,7 +164,7 @@ export function filterHatchPathsByView(
       const dist = Math.sqrt(dLat * dLat + dLng * dLng);
       return { path, dist };
     })
-    .filter((item) => item.dist <= radiusDeg)
+    .filter((item) => item.dist <= effectiveRadius)
     .sort((a, b) => a.dist - b.dist);
 
   return scored.slice(0, maxPaths).map((item) => item.path);

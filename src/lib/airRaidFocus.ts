@@ -2,6 +2,7 @@ import { emitDashboardSound } from "@/components/SoundEffectsBridge";
 import type { AudioEventId } from "@/data/audioManifest";
 import type { TransportPath } from "@/data/geoTypes";
 import { geometryHatchPathsOnly, TENSION_GRADE_STYLES } from "@/lib/disputeHatch";
+import type { Polygon } from "geojson";
 
 export const AIR_RAID_SIREN_MS = 10000;
 export const AIR_RAID_SIREN_VOLUME_SCALE = 1.45;
@@ -43,11 +44,20 @@ export function isAirRaidFocusPath(path: TransportPath): boolean {
   return path.id.startsWith("air-raid-focus-");
 }
 
-/** 지역 이동 직후 짧게·약간 크게 공습경보음 (음소거 시 무시). NewFeeds는 시각만. */
-export function playAirRaidSirenAfterFly(kind: AirRaidSirenKind, delayMs = AIR_RAID_SIREN_DELAY_MS) {
+/**
+ * 지역 이동 직후 짧게·약간 크게 공습경보음 (음소거 시 무시). NewFeeds는 시각만.
+ * `isLayerActive`가 false면 재생하지 않음 — 레이어 OFF면 사이렌 없음.
+ */
+export function playAirRaidSirenAfterFly(
+  kind: AirRaidSirenKind,
+  delayMs = AIR_RAID_SIREN_DELAY_MS,
+  isLayerActive?: () => boolean,
+) {
   const eventId = SIREN_EVENT[kind];
   if (!eventId) return;
+  if (isLayerActive && !isLayerActive()) return;
   window.setTimeout(() => {
+    if (isLayerActive && !isLayerActive()) return;
     emitDashboardSound(eventId, {
       durationMs: AIR_RAID_SIREN_MS,
       volumeScale: AIR_RAID_SIREN_VOLUME_SCALE,
@@ -60,23 +70,55 @@ export function playAirRaidSirenAfterFly(kind: AirRaidSirenKind, delayMs = AIR_R
  * 공습경보 포커스 — 경보 지역 중심 진한 사각 테두리 + 빗금.
  * 우크라·이스라엘·이란(NewFeeds) 동일 스타일.
  */
+export type AirRaidFocusBox = {
+  minLat: number;
+  maxLat: number;
+  minLng: number;
+  maxLng: number;
+};
+
+export function buildAirRaidFocusBox(
+  lat: number,
+  lng: number,
+  kind: AirRaidSirenKind,
+): AirRaidFocusBox | null {
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+  const half = HATCH_HALF_SPAN_DEG[kind];
+  return {
+    minLat: lat - half,
+    maxLat: lat + half,
+    minLng: lng - half,
+    maxLng: lng + half,
+  };
+}
+
+/** MapLibre fill용 — 정면에서도 빗금만으로 안 묻히게 면 채움 */
+export function airRaidFocusBoxPolygon(box: AirRaidFocusBox): Polygon {
+  return {
+    type: "Polygon",
+    coordinates: [
+      [
+        [box.minLng, box.minLat],
+        [box.maxLng, box.minLat],
+        [box.maxLng, box.maxLat],
+        [box.minLng, box.maxLat],
+        [box.minLng, box.minLat],
+      ],
+    ],
+  };
+}
+
 export function buildAirRaidFocusHatchPaths(
   lat: number,
   lng: number,
   kind: AirRaidSirenKind,
   label?: string,
 ): TransportPath[] {
-  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return [];
-  const half = HATCH_HALF_SPAN_DEG[kind];
+  const box = buildAirRaidFocusBox(lat, lng, kind);
+  if (!box) return [];
   const combat = TENSION_GRADE_STYLES.combat;
   const stamp = Date.now().toString(36);
   const idBase = `air-raid-focus-${kind}-${stamp}`;
-  const box = {
-    minLat: lat - half,
-    maxLat: lat + half,
-    minLng: lng - half,
-    maxLng: lng + half,
-  };
 
   const outline: TransportPath = {
     id: `${idBase}-outline`,

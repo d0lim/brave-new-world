@@ -34,20 +34,20 @@ npm run cf:app:deploy
 
 ### Workers Builds (대시보드)
 
-Cloudflare는 `WORKERS_CI=1`을 주입합니다. 저장소의 `npm run build`(`scripts/ci-build.js`)가
-이를 감지해 **자동으로** `opennextjs-cloudflare build`를 실행하므로, 대시보드 Build command를
-`npm run build`로 둬도 됩니다. Deploy는 `npx wrangler deploy`(또는 `npx opennextjs-cloudflare deploy`)면 충분합니다.
+**중요:** Cloudflare가 바라보는 브랜치(`main` 또는 `dev`)에 이 스크립트가 **머지되어 있어야** 합니다.
+피처 브랜치에만 있으면 배포는 계속 예전 `next build`로 실패합니다.
 
-명시적으로 나누고 싶다면:
+권장 Deploy command (막판 실패 방지):
 
 | 항목 | 값 |
 |------|-----|
-| Build command | `npx opennextjs-cloudflare build` 또는 `npm run build:cf` |
-| Deploy command | `npx opennextjs-cloudflare deploy` |
+| Build command | `npm run build` (ci-build.js가 Workers에서 OpenNext 실행) |
+| Deploy command | `npm run cf:ci-deploy` |
 
-**Vercel은 `VERCEL=1`이라 계속 `next build`만 돕니다.** Cloudflare와 충돌하지 않습니다.
+`cf:ci-deploy`는 `.open-next/.build/open-next.config.edge.mjs`가 없으면 배포 직전에 OpenNext 빌드를 다시 돌립니다.
 
-이전 실패 원인: Build가 `next build`만 해서 `.open-next/`가 없는데 Deploy가 OpenNext를 기대한 경우.
+Cloudflare는 `WORKERS_CI=1`을 주입합니다. `npm run build`(`scripts/ci-build.js`)가
+이를 감지해 OpenNext를 실행하고, Vercel(`VERCEL=1`)은 `next build`만 둡니다.
 
 ### 주의
 

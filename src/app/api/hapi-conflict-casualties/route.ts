@@ -1,10 +1,13 @@
 import { NextResponse } from "next/server";
 import {
   aggregateActiveFronts,
+  ACLED_HOME_URL,
   HAPI_ACTIVE_WAR_LOCATION_CODES,
+  HAPI_ATTRIBUTION,
   HAPI_CASUALTY_CAVEAT,
   HAPI_CASUALTY_SEED,
   HAPI_CONFLICT_EVENTS_URL,
+  HAPI_HDX_DATASET_URL,
   hapiLookbackWindow,
   resolveHapiAppIdentifier,
   type HapiConflictCasualtiesPayload,
@@ -80,8 +83,14 @@ export async function GET() {
       fetchedAt: new Date().toISOString(),
       windowStart: start,
       windowEnd: end,
-      source: "HDX HAPI · ACLED conflict-events (political_violence)",
-      cite: ["HDX HAPI", "ACLED", "OCHA HDX"],
+      source: HAPI_ATTRIBUTION,
+      cite: [
+        "Armed Conflict Location & Event Data Project (ACLED)",
+        ACLED_HOME_URL,
+        "HDX HAPI · OCHA",
+        HAPI_CONFLICT_EVENTS_URL,
+        HAPI_HDX_DATASET_URL,
+      ],
       caveat: HAPI_CASUALTY_CAVEAT,
     };
 

@@ -170,6 +170,11 @@ import {
   type NewfeedsAttacksPayload,
 } from "@/lib/newfeeds";
 import {
+  UCDP_ATTRIBUTION,
+  UCDP_ATTRIBUTION_SHORT,
+  UCDP_SOURCE_URL,
+} from "@/lib/ucdp";
+import {
   formatNeptunLocation,
   getNeptunTypeLabel,
   type NeptunLiveThreat,
@@ -428,7 +433,11 @@ import {
   resolveCombatTheaterAt,
 } from "@/lib/theaterCombat";
 import {
+  ACLED_HOME_URL,
+  HAPI_ATTRIBUTION,
+  HAPI_ATTRIBUTION_SHORT,
   HAPI_CASUALTY_SEED,
+  HAPI_SOURCE_LINE,
   type HapiConflictCasualtiesPayload,
 } from "@/lib/hapiConflictCasualties";
 import {
@@ -700,6 +709,9 @@ type CasualtySkullHtmlMarker = {
   woundedNote?: string;
   hideWounded?: boolean;
   territorySpanDeg: number;
+  /** 마커에 항상 보이는 출처 한 줄 (ACLED 표기 정책) */
+  sourceAttribution?: string;
+  admin1Name?: string;
 };
 
 type NuclearStockpileHtmlMarker = {
@@ -1045,6 +1057,7 @@ function createCasualtySkullBadge(
     hideWounded: marker.hideWounded,
     territorySpanDeg: marker.territorySpanDeg,
     altitude,
+    sourceAttribution: marker.sourceAttribution,
   });
 }
 
@@ -4000,11 +4013,13 @@ export function GlobeDashboard({
       woundedLabel: en ? "WIA" : "부상",
       asOf: front.periodEnd || hapiCasualties.windowEnd || "",
       sourceHint: en
-        ? `HAPI/ACLED · ${front.admin1Name} · ${front.periodStart}–${front.periodEnd}`
-        : `HAPI/ACLED · ${front.admin1Name} · ${front.periodStart}–${front.periodEnd}`,
+        ? `${HAPI_ATTRIBUTION_SHORT} · ${front.admin1Name} · ${front.periodStart}–${front.periodEnd} · ${ACLED_HOME_URL}`
+        : `${HAPI_ATTRIBUTION_SHORT} · ${front.admin1Name} · ${front.periodStart}–${front.periodEnd} · ${ACLED_HOME_URL}`,
       elegyLines: en ? CASUALTY_ELEGY_LINES.en : CASUALTY_ELEGY_LINES.ko,
       hideWounded: true,
       territorySpanDeg: front.territorySpanDeg,
+      sourceAttribution: HAPI_SOURCE_LINE,
+      admin1Name: front.admin1Name,
     }));
   }, [hapiCasualties, isCompactUi, isEconomyViewer, labelLanguage]);
 
@@ -4410,6 +4425,46 @@ export function GlobeDashboard({
             hint: HOVER.hintFlyZone(lang),
           };
         }
+        if (hoveredPoint.kind === "ucdp-event") {
+          const m = hoveredPoint.meta ?? {};
+          const deaths =
+            typeof m.fatalities_best === "number"
+              ? m.fatalities_best
+              : typeof m.deaths === "number"
+                ? m.deaths
+                : null;
+          const year = typeof m.year === "number" ? m.year : null;
+          const vType =
+            typeof m.violenceType === "string"
+              ? m.violenceType
+              : typeof m.type === "string"
+                ? m.type
+                : null;
+          const country = typeof m.country === "string" ? m.country : null;
+          const date = typeof m.date === "string" ? m.date : null;
+          const version =
+            typeof m.sourceDatasetVersion === "string" ? m.sourceDatasetVersion : null;
+          return {
+            kind: "static",
+            title: hoveredPoint.name,
+            detail: staticKindLabelLocal(hoveredPoint.kind, lang),
+            body:
+              [
+                country,
+                date || (year != null ? String(year) : null),
+                vType,
+                deaths != null
+                  ? lang === "en"
+                    ? `fatalities (best) ${deaths}`
+                    : `사망(추정) ${deaths}`
+                  : null,
+              ]
+                .filter(Boolean)
+                .join(" · ") || undefined,
+            meta: `${UCDP_ATTRIBUTION_SHORT}${version ? ` ${version}` : ""} · ${UCDP_ATTRIBUTION}`,
+            hint: lang === "en" ? `Source: ${UCDP_SOURCE_URL}` : `출처: ${UCDP_SOURCE_URL}`,
+          };
+        }
         const firstMeta = hoveredPoint.meta
           ? Object.entries(hoveredPoint.meta).find(([, value]) => value != null && value !== "")
           : null;
@@ -4533,6 +4588,17 @@ export function GlobeDashboard({
           body: hoveredPoint.summary?.trim() || undefined,
           meta: `${hoveredPoint.sourceName} · ${NEWFEEDS_ATTRIBUTION_SHORT}`,
           hint: lang === "en" ? "Click to fly to location" : "클릭하면 해당 위치로 이동",
+        };
+      }
+      if (hoveredPoint.displayKind === "casualty-skull") {
+        const place = hoveredPoint.admin1Name || hoveredPoint.id;
+        return {
+          kind: "static",
+          title: lang === "en" ? `Active front · ${place}` : `열린 전선 · ${place}`,
+          detail: HAPI_ATTRIBUTION,
+          body: hoveredPoint.sourceHint,
+          meta: HAPI_SOURCE_LINE,
+          hint: lang === "en" ? `Cite ACLED · ${ACLED_HOME_URL}` : `출처 ACLED · ${ACLED_HOME_URL}`,
         };
       }
       if (hoveredPoint.displayKind === "gdelt-tag-html") {
@@ -5397,7 +5463,9 @@ export function GlobeDashboard({
           {
             id: "ucdp",
             label: "분쟁 사건",
-            detail: showUcdpEvents ? "세계 분쟁·전쟁 기록" : "꺼짐",
+            detail: showUcdpEvents
+              ? `세계 분쟁·전쟁 기록 · ${UCDP_ATTRIBUTION_SHORT}`
+              : "꺼짐",
             checked: layerPrefs.showUcdpEvents,
             onChange: setShowUcdpEvents,
             accent: "red",

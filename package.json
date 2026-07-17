@@ -29,6 +29,7 @@
     "gem:build:all": "node scripts/build-data-profile.js lite && node scripts/build-gem-layers.js && node scripts/build-data-profile.js full && node scripts/build-gem-layers.js",
     "sigint:fetch": "node scripts/fetch-sigint-layers.js",
     "sigint:convert": "node scripts/convert-sigint-layers.js",
+    "data:ucdp": "node scripts/fetch-ucdp-events.js",
     "sigint:build": "node scripts/fetch-sigint-layers.js && node scripts/convert-sigint-layers.js && node scripts/build-static-extras.js full",
     "data:sync": "node scripts/sync-live-data.js",
     "data:sync:force": "node scripts/sync-live-data.js --force",

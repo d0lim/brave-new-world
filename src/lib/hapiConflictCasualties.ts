@@ -2,12 +2,36 @@
  * HDX HAPI · ACLED conflict-events → 실제 교전 전선별 사망(fatalities) 집계.
  * event_type=political_violence 만 사용 (civilian_targeting과 비상호배타).
  * 부상은 HAPI에 없음.
+ *
+ * 원데이터 경로:
+ *   ACLED (Armed Conflict Location & Event Data Project)
+ *     → OCHA HDX 데이터셋
+ *     → HDX HAPI `/coordination-context/conflict-events`
+ * 표기 시 ACLED를 반드시 명시 (https://acleddata.com/attributionpolicy).
  */
 
 import type { CombatTheaterId } from "@/lib/theaterCombat";
 
+/** HDX HAPI 엔드포인트 — 집계된 conflict-events */
 export const HAPI_CONFLICT_EVENTS_URL =
   "https://hapi.humdata.org/api/v2/coordination-context/conflict-events";
+
+/** HDX HAPI 문서 */
+export const HAPI_DOCS_URL = "https://hapi.humdata.org/docs";
+
+/** HDX 데이터셋(메타) — Conflict Events */
+export const HAPI_HDX_DATASET_URL =
+  "https://data.humdata.org/dataset/hdx-hapi-conflict-event";
+
+/** 원천 데이터 제공자 (ACLED 표기 필수) */
+export const ACLED_HOME_URL = "https://acleddata.com";
+export const ACLED_ATTRIBUTION_POLICY_URL = "https://acleddata.com/attributionpolicy";
+
+export const HAPI_ATTRIBUTION_SHORT = "HDX HAPI · ACLED";
+export const HAPI_ATTRIBUTION =
+  "HDX HAPI · Armed Conflict Location & Event Data Project (ACLED) · OCHA HDX";
+export const HAPI_SOURCE_LINE =
+  "Source: ACLED via HDX HAPI (OCHA). www.acleddata.com";
 
 /** 사용자 제공 앱 식별자 (MyConflictMap:kangps7675@gmail.com) — env로 덮어쓰기 가능 */
 export const HAPI_APP_IDENTIFIER_DEFAULT =
@@ -228,14 +252,20 @@ export function aggregateActiveFronts(
 }
 
 export const HAPI_CASUALTY_CAVEAT =
-  "HDX HAPI · ACLED political_violence fatalities (monthly admin aggregates). All parties · not Mediazona named RU KIA. No wounded field.";
+  "HDX HAPI · ACLED political_violence fatalities (monthly admin aggregates). All parties · not Mediazona named RU KIA. No wounded field. Cite ACLED: www.acleddata.com";
 
 export const HAPI_CASUALTY_SEED: HapiConflictCasualtiesPayload = {
   fronts: [],
   fetchedAt: "",
   windowStart: "",
   windowEnd: "",
-  source: "HDX HAPI · ACLED conflict-events",
-  cite: ["HDX HAPI", "ACLED"],
+  source: HAPI_ATTRIBUTION,
+  cite: [
+    "Armed Conflict Location & Event Data Project (ACLED)",
+    ACLED_HOME_URL,
+    "HDX HAPI · OCHA",
+    HAPI_CONFLICT_EVENTS_URL,
+    HAPI_HDX_DATASET_URL,
+  ],
   caveat: HAPI_CASUALTY_CAVEAT,
 };

@@ -19,6 +19,8 @@ export type WarCasualtyOverlayInput = {
   altitude?: number;
   /** 전장 박스 스팬(°) — 영토 대비 글자 크기 */
   territorySpanDeg?: number;
+  /** 마커 하단 상시 출처 한 줄 (ACLED 표기 정책) */
+  sourceAttribution?: string;
 };
 
 /** 우크라 부상(CSIS)용 기본 짧은 안내 */
@@ -138,6 +140,13 @@ export function applyCasualtyOverlayMetrics(
     note.style.fontSize = `${m.notePx}px`;
     note.style.padding = `${Math.max(3, Math.round(m.notePx * 0.55))}px ${Math.max(5, Math.round(m.notePx * 0.85))}px`;
     note.style.maxWidth = `${Math.round(m.notePx * 14)}px`;
+  }
+
+  const src = el.querySelector<HTMLElement>(".casualty-source-attribution");
+  if (src) {
+    src.style.fontSize = `${Math.max(5, Math.round(m.notePx * 0.85))}px`;
+    src.style.marginTop = `${Math.max(3, Math.round(m.blockGapPx * 0.5))}px`;
+    src.style.maxWidth = `${Math.round(m.elegyPx * 16)}px`;
   }
 
   el.querySelectorAll<SVGElement>(".casualty-row svg").forEach((svg) => {
@@ -307,6 +316,24 @@ export function createWarCasualtyOverlayElement(
 
   sidePane.append(elegy, noteTip);
   el.append(counts, sidePane);
+
+  const sourceAttribution = input.sourceAttribution?.trim() || "";
+  if (sourceAttribution) {
+    const src = document.createElement("div");
+    src.className = "casualty-source-attribution";
+    src.style.marginTop = `${Math.max(3, Math.round(metrics.blockGapPx * 0.5))}px`;
+    src.style.color = "rgba(255,255,255,0.72)";
+    src.style.fontFamily = elegyFont;
+    src.style.fontWeight = "600";
+    src.style.fontSize = `${Math.max(5, Math.round(metrics.notePx * 0.85))}px`;
+    src.style.letterSpacing = "0.02em";
+    src.style.lineHeight = "1.35";
+    src.style.textShadow = "0 1px 3px rgba(0,0,0,0.85)";
+    src.style.maxWidth = `${Math.round(metrics.elegyPx * 16)}px`;
+    src.style.whiteSpace = "normal";
+    src.textContent = sourceAttribution;
+    el.append(src);
+  }
 
   applyCasualtyOverlayMetrics(el, scale, true);
 

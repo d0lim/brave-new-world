@@ -172,12 +172,12 @@ export const NEWS_LAYER_SOURCE_CATALOG: NewsLayerSourceNote[] = [
   },
   {
     layerId: "ucdp-events",
-    source: "UCDP GED",
-    url: "/data/{profile}/ucdp-events.json",
-    cadence: "Annual / point releases",
-    attribution: "Uppsala Conflict Data Program (UCDP)",
+    source: "UCDP GED 26.1",
+    url: "https://ucdpapi.pcr.uu.se/api/gedevents/26.1 → /data/{profile}/ucdp-events.json",
+    cadence: "Build-time fetch (npm run data:ucdp) · annual GED releases",
+    attribution: "Uppsala Conflict Data Program (UCDP) · GED API",
     notes:
-      "Verified (fatality-coded) organized violence events. Research-grade data from the UCDP Georeferenced Event Dataset (GED). Each event requires at least one recorded fatality.",
+      "Verified fatality-coded organized violence events from the UCDP Georeferenced Event Dataset. Fetched at build time with x-ucdp-access-token; each event requires ≥1 recorded fatality. Source: https://ucdp.uu.se/downloads/index.html · API: https://ucdpapi.pcr.uu.se",
     status: "shipped",
     ingest: "static-build",
   },
@@ -438,12 +438,13 @@ export const NEWS_LAYER_SOURCE_CATALOG: NewsLayerSourceNote[] = [
   },
   {
     layerId: "hapi-conflict-casualties",
-    source: "HDX HAPI · ACLED conflict-events (political_violence fatalities)",
-    url: "/api/hapi-conflict-casualties",
+    source: "ACLED via HDX HAPI · conflict-events (political_violence fatalities)",
+    url: "https://hapi.humdata.org/api/v2/coordination-context/conflict-events → /api/hapi-conflict-casualties",
     cadence: "Live HAPI fetch · ~30m cache · 4-month lookback",
-    attribution: "HDX HAPI · ACLED · OCHA HDX",
+    attribution:
+      "Armed Conflict Location & Event Data Project (ACLED) · HDX HAPI · OCHA HDX · www.acleddata.com",
     notes:
-      "Geopolitics-only: one skull marker per active front admin1 (Ukraine frontline oblasts + Gaza/south Lebanon). Tension theaters excluded. No wounded field from ACLED. Not comparable 1:1 with Mediazona named RU KIA.",
+      "원천: ACLED. 배포/질의: OCHA HDX HAPI conflict-events. Geopolitics-only: one skull marker per active front admin1 (Ukraine frontline oblasts + Gaza/south Lebanon). Tension theaters excluded. No wounded field. Docs: https://hapi.humdata.org/docs · Dataset: https://data.humdata.org/dataset/hdx-hapi-conflict-event · ACLED attribution: https://acleddata.com/attributionpolicy",
     status: "shipped",
     ingest: "cached-api",
   },

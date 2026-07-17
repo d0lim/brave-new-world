@@ -32,21 +32,22 @@ npm run cf:app:deploy
 - 정적 청크 캐시: `public/_headers`
 - 프로젝트가 OneDrive 아래에 있으면 `npm install`이 깨질 수 있습니다. 동기화 일시 중지 후 재설치하세요.
 
-### Workers Builds (대시보드) — 필수
+### Workers Builds (대시보드)
 
-Git 연동 빌드에서 **`npm run build`(= `next build`)만 쓰면 실패**합니다.
-`wrangler deploy`는 `.open-next/`(OpenNext 산출물)가 있어야 하고, 그건 `opennextjs-cloudflare build`가 만듭니다.
+Cloudflare는 `WORKERS_CI=1`을 주입합니다. 저장소의 `npm run build`(`scripts/ci-build.js`)가
+이를 감지해 **자동으로** `opennextjs-cloudflare build`를 실행하므로, 대시보드 Build command를
+`npm run build`로 둬도 됩니다. Deploy는 `npx wrangler deploy`(또는 `npx opennextjs-cloudflare deploy`)면 충분합니다.
 
-Cloudflare Dashboard → Workers & Pages → 해당 프로젝트 → **Settings → Builds** 에서:
+명시적으로 나누고 싶다면:
 
-| 항목 | 잘못된 값 (지금) | 올바른 값 |
-|------|------------------|-----------|
-| Build command | `npm run build` | `npx opennextjs-cloudflare build` |
-| Deploy command | `npx wrangler deploy` | `npx opennextjs-cloudflare deploy` |
+| 항목 | 값 |
+|------|-----|
+| Build command | `npx opennextjs-cloudflare build` 또는 `npm run build:cf` |
+| Deploy command | `npx opennextjs-cloudflare deploy` |
 
-한 줄로 쓰려면 Build command만 `npm run cf:app:deploy` 로 두고 Deploy command는 비워도 됩니다.
+**Vercel은 `VERCEL=1`이라 계속 `next build`만 돕니다.** Cloudflare와 충돌하지 않습니다.
 
-**Vercel은 그대로 `npm run build`(`next build`)를 쓰세요.** Cloudflare만 OpenNext 경로가 필요합니다.
+이전 실패 원인: Build가 `next build`만 해서 `.open-next/`가 없는데 Deploy가 OpenNext를 기대한 경우.
 
 ### 주의
 

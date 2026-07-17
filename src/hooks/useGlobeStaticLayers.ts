@@ -10,7 +10,7 @@ import type {
   TransportPath,
 } from "@/data/geoTypes";
 import { dataPath } from "@/lib/dataProfile";
-import { expandStaticPoints, expandTransportPaths } from "@/lib/compactData";
+import { expandStaticPoints } from "@/lib/compactData";
 import type { GlobeLodTier } from "@/lib/globeLod";
 import {
   bboxNearView as isBboxNearView,
@@ -87,30 +87,14 @@ function filterMilitaryBaseAreas(
   return visible;
 }
 
-async function fetchJsonArray(relativePath: string) {
-  const response = await fetch(dataPath(relativePath), { cache: "no-store" });
-  if (!response.ok) throw new Error(`${relativePath}: ${response.status}`);
-  return response.json();
-}
-
 async function fetchApiJson(apiPath: string): Promise<ApiPointsPayload> {
   const response = await fetch(apiPath, { cache: "no-store" });
   if (!response.ok) throw new Error(`${apiPath}: ${response.status}`);
   return response.json();
 }
 
-function expandPathsFromJson(raw: unknown[]) {
-  return expandTransportPaths(raw as Parameters<typeof expandTransportPaths>[0]);
-}
-
 function expandPointsFromJson(raw: unknown[]) {
   return expandStaticPoints(raw as Parameters<typeof expandStaticPoints>[0]);
-}
-
-function expandMilitaryAreasFromJson(raw: unknown[]) {
-  return (raw as MilitaryBaseArea[]).filter(
-    (item) => item && item.geometry && item.center && typeof item.name === "string",
-  );
 }
 
 function expandZonesFromJson<T extends { id: string; center: { lat: number; lng: number } }>(
@@ -191,25 +175,6 @@ export function useGlobeStaticLayers(options: {
     if (reloadToken <= 0) return;
     loadedRef.current = {};
   }, [reloadToken]);
-
-  const loadOnce = useCallback(
-    async <T>(
-      key: string,
-      relativePath: string,
-      setter: (value: T) => void,
-      expand: (raw: unknown[]) => T,
-    ) => {
-      if (loadedRef.current[key]) return;
-      try {
-        const raw = await fetchJsonArray(relativePath);
-        setter(expand(raw));
-        loadedRef.current[key] = true;
-      } catch {
-        // optional layer
-      }
-    },
-    [],
-  );
 
   const fetchViewportLayer = useCallback(
     async (layer: string, setter: (value: TransportPath[]) => void) => {

@@ -177,14 +177,6 @@ export function anyDisputeOverlay(prefs: Pick<LayerPrefs, "showWarZones" | "show
   return prefs.showWarZones || prefs.showDiplomaticTension;
 }
 
-/** v19 이전 저장값 — 도시명 언어만 이전, 레이어는 전부 OFF */
-function migrateLegacyLayerPrefs(parsed: SavedLayerPrefs): LayerPrefs {
-  return {
-    ...DEFAULT_LAYER_PREFS,
-    labelLanguage: parseLabelLanguage(parsed.labelLanguage),
-  };
-}
-
 function mergeSavedPrefs(parsed: SavedLayerPrefs): LayerPrefs {
   const { showRoadCityGlow, showDisputes, ...rest } = parsed;
   delete rest.showCoastlines;

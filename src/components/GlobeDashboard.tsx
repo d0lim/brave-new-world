@@ -10,7 +10,6 @@ import { LegendReopenButton } from "@/components/MapOverlayLegendPanel";
 import { FeatureGuideButton, FeatureGuidePanel } from "@/components/FeatureGuidePanel";
 import { MethodologySourcesPanel, SourcesLinkButton } from "@/components/MethodologySourcesPanel";
 import { ShareViewButton } from "@/components/ShareViewButton";
-import { trackEvent } from "@/lib/trackClient";
 import { GdeltAlertPanel } from "@/components/GdeltAlertPanel";
 import { TelegramOsintPanel } from "@/components/TelegramOsintPanel";
 import { TzevaAdomPanel, type AirRaidFocusTarget } from "@/components/TzevaAdomPanel";
@@ -80,7 +79,7 @@ import { useLocalCalendarDayKey } from "@/hooks/useLocalCalendarDayKey";
 import { EntryCautionOverlay } from "@/components/EntryCautionOverlay";
 import { SoundMuteControl } from "@/components/SoundMuteControl";
 import { DomainGateOverlay } from "@/components/DomainGateOverlay";
-import { LocaleProvider, useLocale } from "@/contexts/LocaleContext";
+import { LocaleProvider } from "@/contexts/LocaleContext";
 import {
   HOVER,
   carrierStatusLabel,
@@ -162,7 +161,6 @@ import {
 import type { TzevaAdomAlert, TzevaAdomPayload } from "@/lib/tzevaAdom";
 import {
   NEWFEEDS_ATTRIBUTION_SHORT,
-  NEWFEEDS_REPO_URL,
   severityColor,
   severityHint,
   severityLabel,
@@ -329,7 +327,6 @@ import {
   STATIC_MARKER_PALETTE,
   STATIC_POINT_COLORS,
   STATIC_POINT_EMOJI,
-  isEmojiStaticKind,
   staticPointRadius,
 } from "@/lib/staticGlobe";
 import { createInfraStaticBadge, isHtmlStaticKind } from "@/lib/infraStaticMarkers";
@@ -413,7 +410,6 @@ import {
   createUkraineSettlementLabelElement,
   getUkraineSettlementTier,
   isInUkraineTheater,
-  ukraineControlStatusLabel,
 } from "@/lib/ukraineSettlementLabels";
 import {
   UKRAINE_SITUATION_CALLOUTS_SHARED,
@@ -459,7 +455,6 @@ import type {
   ConflictZoneFeature,
   CountryFeature,
   DisputeArea,
-  DisputeOverview,
   FirmsFire,
   GeoJsonGeometry,
   MilitaryAircraft,
@@ -516,9 +511,8 @@ import {
   aisVesselHeadingDeg,
   createAisVesselBadge,
 } from "@/lib/aisVesselMarkers";
-import { milAircraftIconSvg } from "@/lib/milAircraftIcon";
 import { AnalysisPanel } from "@/components/globe/AnalysisPanel";
-import type { AnalysisSelection, Selection } from "@/components/globe/types";
+import type { Selection } from "@/components/globe/types";
 import {
   US_BASE_FILL,
   UKRAINE_RU_OCCUPIED_LINE,
@@ -655,7 +649,8 @@ type GlobeDisplayPoint =
   | FirmsFireGlobePoint
   | ConflictClusterPoint
   | TzevaAdomGlobePoint
-  | NewfeedsAttackGlobePoint;
+  | NewfeedsAttackGlobePoint
+  | CasualtySkullHtmlMarker;
 
 type GlobeLabel =
   | (SearchPlace & { labelKind: "place" });
@@ -766,11 +761,6 @@ const ARMS_EMBARGO_STROKE_WIDTH = 0.72;
 const INTEL_MISSILE_ARC = CYBER_WAR_ROOM_THEME.intel.missileArc;
 const INTEL_NASA_FIRE = CYBER_WAR_ROOM_THEME.intel.nasaFire;
 const TZEVA_ADOM_MARKER = "#ff1744";
-
-function formatViinaDate(value: string | null | undefined) {
-  if (!value || !/^\d{8}$/.test(value)) return value || "N/A";
-  return `${value.slice(0, 4)}-${value.slice(4, 6)}-${value.slice(6, 8)}`;
-}
 
 /** Polygon / MultiPolygon 외곽을 닫힌 path 링으로 변환 (면 없이 테두리만) */
 function geometryToBorderPaths(
@@ -1143,13 +1133,6 @@ function ukraineCombatZoneStroke(tier: GlobeLodTier): number {
   }
 }
 
-function pathsEqual(a: TransportPath[], b: TransportPath[]) {
-  if (a === b) return true;
-  if (a.length !== b.length) return false;
-  return a.map((path) => `${path.id}:${path.kind}`).join("|") ===
-    b.map((path) => `${path.id}:${path.kind}`).join("|");
-}
-
 function neptunPathsGeometryEqual(a: TransportPath[], b: TransportPath[]) {
   if (a.length !== b.length) return false;
   for (let i = 0; i < a.length; i += 1) {
@@ -1401,48 +1384,6 @@ function longitudeDistance(a: number, b: number) {
   return Math.min(diff, 360 - diff);
 }
 
-function bboxNearView(path: TransportPath, view: ViewState, radiusDeg: number) {
-  if (radiusDeg <= 0) return false;
-
-  const latDistance =
-    view.lat < path.bbox.minLat
-      ? path.bbox.minLat - view.lat
-      : view.lat > path.bbox.maxLat
-        ? view.lat - path.bbox.maxLat
-        : 0;
-
-  const lngCenter = (path.bbox.minLng + path.bbox.maxLng) / 2;
-  const lngHalfWidth = Math.max(0.5, longitudeDistance(path.bbox.minLng, path.bbox.maxLng) / 2);
-  const lngDistance = Math.max(0, longitudeDistance(view.lng, lngCenter) - lngHalfWidth);
-
-  return Math.sqrt(latDistance ** 2 + lngDistance ** 2) <= radiusDeg;
-}
-
-function filterTransportPaths(
-  paths: TransportPath[],
-  view: ViewState,
-  radiusDeg: number,
-  maxScalerank: number,
-  maxCount: number,
-  arterialMaxRank: number,
-) {
-  if (maxCount <= 0) return [];
-
-  const visible = [];
-
-  for (const path of paths) {
-    if (path.scalerank > maxScalerank) continue;
-
-    const isArterial = path.scalerank <= arterialMaxRank;
-    if (!isArterial && radiusDeg > 0 && !bboxNearView(path, view, radiusDeg)) continue;
-
-    visible.push(path);
-    if (visible.length >= maxCount) break;
-  }
-
-  return visible;
-}
-
 export type GlobeDashboardProps = {
   viinaMeta?: ViinaRenderMeta | null;
   initialViewConfig?: MergedViewConfig | null;
@@ -1459,9 +1400,10 @@ type PausedMapGlobeProps = React.ComponentProps<typeof MapGlobeView> & {
 /** 레이어 패널 열림 동안 지도 GeoJSON 재빌드 차단 — 메인 스레드 UI 멈춤 방지 */
 const PausedMapGlobeView = memo(
   forwardRef<MapGlobeMethods, PausedMapGlobeProps>(function PausedMapGlobeView(
-    { interactionPaused: _interactionPaused, ...mapProps },
+    { interactionPaused, ...mapProps },
     ref,
   ) {
+    void interactionPaused;
     return <MapGlobeView ref={ref} {...mapProps} />;
   }),
   (prev, next) => {
@@ -2005,10 +1947,6 @@ export function GlobeDashboard({
       showNeptun: false,
       showNeptunPreviousTrails: false,
     });
-  };
-  const setShowNeptunPreviousTrails = (v: boolean) => {
-    if (v && !showNeptun) return;
-    togglePref("showNeptunPreviousTrails", v);
   };
   const setShowEastAsiaAdiz = (v: boolean) => togglePref("showEastAsiaAdiz", v);
   const setShowAxisNetwork = (v: boolean) => togglePref("showAxisNetwork", v);
@@ -7374,10 +7312,10 @@ export function GlobeDashboard({
     };
   }, []);
 
-  function openSelection(next: Selection) {
+  const openSelection = useCallback((next: Selection) => {
     dismissLayerPanel(true);
     setSelected(next);
-  }
+  }, [dismissLayerPanel]);
 
   function handlePointClick(event: ConflictEvent) {
     openIntelFromCoords(event.lat, event.lng, 0.92);
@@ -7386,17 +7324,17 @@ export function GlobeDashboard({
   const handleCarrierSelect = useCallback((carrier: UsCarrier) => {
     openSelection({ kind: "us-carrier", item: carrier });
     flyTo(carrier.lat, carrier.lng, 0.75);
-  }, [flyTo]);
+  }, [flyTo, openSelection]);
 
   const handleMilAircraftSelect = useCallback((aircraft: MilitaryAircraft) => {
     openSelection({ kind: "mil", item: aircraft, traffic: "military" });
     flyTo(aircraft.lat, aircraft.lng, 0.55);
-  }, [flyTo]);
+  }, [flyTo, openSelection]);
 
   const handleCivAircraftSelect = useCallback((aircraft: MilitaryAircraft) => {
     openSelection({ kind: "mil", item: aircraft, traffic: "civil" });
     flyTo(aircraft.lat, aircraft.lng, 0.55);
-  }, [flyTo]);
+  }, [flyTo, openSelection]);
 
   const createHtmlOverlayElement = useCallback(
     (point: object) => {
@@ -7525,6 +7463,7 @@ export function GlobeDashboard({
       return createAirportPortBadge(item as StaticGlobePoint, handleHtmlMarkerHover, alt);
     },
     [
+      activeFrictionEpisode?.id,
       flyTo,
       handleCarrierSelect,
       handleCivAircraftSelect,
@@ -7534,6 +7473,7 @@ export function GlobeDashboard({
       labelLanguage,
       openIntelFromCoords,
       openSelection,
+      selectFrictionStage,
       usCarrierLabelOffsets,
     ],
   );
@@ -7548,15 +7488,13 @@ export function GlobeDashboard({
     ) {
       if (point.displayKind === "mil") {
         skipNextGlobeClickRef.current = true;
-        const { markerId: _markerId, displayKind: _dk, ...aircraft } = point;
-        openSelection({ kind: "mil", item: aircraft, traffic: "military" });
+        openSelection({ kind: "mil", item: point, traffic: "military" });
         flyTo(point.lat, point.lng, 0.55);
         return;
       }
       if (point.displayKind === "ais") {
         skipNextGlobeClickRef.current = true;
-        const { markerId: _markerId, displayKind: _dk, ...vessel } = point;
-        openSelection({ kind: "ais", item: vessel });
+        openSelection({ kind: "ais", item: point });
         flyTo(point.lat, point.lng, 0.45);
         return;
       }

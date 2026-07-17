@@ -41,7 +41,8 @@ export async function fetchJsonPreferGzip<T>(
   init?: FetchJsonGzOptions,
 ): Promise<{ data: T; fromGzip: boolean; response: Response }> {
   const preferGzip = init?.preferGzip !== false;
-  const { preferGzip: _omit, ...fetchInit } = init ?? {};
+  const fetchInit: RequestInit = { ...(init ?? {}) };
+  delete (fetchInit as { preferGzip?: boolean }).preferGzip;
 
   if (preferGzip && !looksLikeGzipUrl(url)) {
     const gzUrl = `${url}.gz`;

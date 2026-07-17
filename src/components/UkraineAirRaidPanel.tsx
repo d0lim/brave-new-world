@@ -248,6 +248,7 @@ export function UkraineAirRaidPanel({
                     <button
                       type="button"
                       role="option"
+                      aria-selected={false}
                       onClick={() => focusRegion(alert)}
                       className="w-full px-2.5 py-2 text-left transition hover:bg-red-500/10"
                     >

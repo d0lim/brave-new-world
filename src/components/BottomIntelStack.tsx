@@ -555,7 +555,7 @@ export function DynamicIntelStack({
     if (lastBreakingHeroIdRef.current === hero.id) return;
     lastBreakingHeroIdRef.current = hero.id;
     emitBreakingDispatchSound();
-  }, [isAlert, hero?.id, hero?.breakingRank]);
+  }, [isAlert, hero, hero?.id, hero?.breakingRank]);
 
   useEffect(() => {
     setTodayHidden(isTodayBriefingDismissed());

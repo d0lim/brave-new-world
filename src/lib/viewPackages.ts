@@ -4,7 +4,6 @@ import type { EconomyHubChoice } from "@/lib/autoFlyTarget";
 import { economyHubLabel } from "@/lib/autoFlyTarget";
 import {
   DEFAULT_LAYER_PREFS,
-  LAYER_PREFS_KEY,
   loadLayerPrefs,
   saveLayerPrefs,
   type LayerPrefs,

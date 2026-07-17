@@ -80,6 +80,8 @@ function formatSignedPct(value: number | null | undefined, digits = 1): string |
   return `${sign}${value.toFixed(digits)}%`;
 }
 
+/** 정기·허브 요약은 즉시 전문 표시. 서사형 분쟁사 양피지만 타자 연출 유지. */
+const TYPEWRITER_ENABLED = false;
 const TYPE_MS_PER_CHAR = 26;
 
 const PARCHMENT_STACK =
@@ -131,7 +133,7 @@ export function EconInsightParchment({
     const reduced =
       typeof window !== "undefined" &&
       window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (reduced || totalChars === 0) {
+    if (!TYPEWRITER_ENABLED || reduced || totalChars === 0) {
       typingSkipRef.current = true;
       setTypedChars(totalChars);
       return;

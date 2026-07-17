@@ -55,16 +55,16 @@ type WorldStatsMacro = {
 };
 
 function arrowFor(dir: MarketLinkDirection): string {
-  if (dir === "up") return "?";
-  if (dir === "down") return "?";
-  return "�";
+  if (dir === "up") return "↑";
+  if (dir === "down") return "↓";
+  return "·";
 }
 
 function riskLabel(level: EconInsightBrief["riskLevel"], lang: LabelLanguage): string {
-  if (lang === "en") return `RISK � ${level}`;
-  if (level === "CRITICAL") return "??? � ??";
-  if (level === "HIGH") return "??? � ??";
-  return "??? � ??";
+  if (lang === "en") return `RISK · ${level}`;
+  if (level === "CRITICAL") return "위험도 · 치명";
+  if (level === "HIGH") return "위험도 · 높음";
+  return "위험도 · 안정";
 }
 
 function formatUsdBn(value: number | null | undefined): string | null {
@@ -80,7 +80,7 @@ function formatSignedPct(value: number | null | undefined, digits = 1): string |
   return `${sign}${value.toFixed(digits)}%`;
 }
 
-/** ????? ??? ?? ?? ??. ??? ??? ???? ?? ?? ??. */
+/** 정기·허브 요약은 즉시 전문 표시. 서사형 분쟁사 양피지만 타자 연출 유지. */
 const TYPEWRITER_ENABLED = false;
 const TYPE_MS_PER_CHAR = 26;
 
@@ -312,8 +312,8 @@ export function EconInsightParchment({
                 <div className="mt-4 rounded-sm border border-[#8b6914]/28 bg-[#f6ebcf]/55 px-3 py-2.5 text-center text-[0.82rem] leading-relaxed text-[#4a3724]">
                   <div className="font-medium tracking-[0.04em]" style={{ fontFamily: PARCHMENT_STACK }}>
                     {worldStats.name ?? displayBrief.countryHint}
-                    {worldStats.incomeLevel ? ` � ${worldStats.incomeLevel}` : ""} �{" "}
-                    {lang === "en" ? "Macro pulse" : "?? ??"}
+                    {worldStats.incomeLevel ? ` · ${worldStats.incomeLevel}` : ""} ·{" "}
+                    {lang === "en" ? "Macro pulse" : "거시 펄스"}
                   </div>
                   <div
                     className="mt-1.5 flex flex-wrap justify-center gap-x-3 gap-y-1 text-[0.75rem]"
@@ -322,45 +322,45 @@ export function EconInsightParchment({
                     {gdp ? <span>GDP {gdp}</span> : null}
                     {gdpPc ? (
                       <span>
-                        {lang === "en" ? "GDP/cap" : "1??"} {gdpPc}
+                        {lang === "en" ? "GDP/cap" : "1인당"} {gdpPc}
                       </span>
                     ) : null}
                     {growth ? (
                       <span>
-                        {lang === "en" ? "Growth" : "??"} {growth}
+                        {lang === "en" ? "Growth" : "성장"} {growth}
                       </span>
                     ) : null}
                     {inflation ? (
                       <span>
-                        {lang === "en" ? "CPI" : "???"} {inflation}
+                        {lang === "en" ? "CPI" : "인플레"} {inflation}
                       </span>
                     ) : null}
                     {unemp ? (
                       <span>
-                        {lang === "en" ? "Unemp" : "??"} {unemp}
+                        {lang === "en" ? "Unemp" : "실업"} {unemp}
                       </span>
                     ) : null}
                     {worldStats.population != null ? (
                       <span>
-                        {lang === "en" ? "Pop" : "??"}{" "}
+                        {lang === "en" ? "Pop" : "인구"}{" "}
                         {(worldStats.population / 1e6).toFixed(1)}M
                       </span>
                     ) : null}
                     {worldStats.tradePctGdp != null ? (
                       <span>
-                        {lang === "en" ? "Trade" : "??"}{" "}
+                        {lang === "en" ? "Trade" : "무역"}{" "}
                         {worldStats.tradePctGdp.toFixed(0)}% GDP
                       </span>
                     ) : null}
                     {worldStats.milSpendPctGdp != null ? (
                       <span>
-                        {lang === "en" ? "Defense" : "??"}{" "}
+                        {lang === "en" ? "Defense" : "국방"}{" "}
                         {worldStats.milSpendPctGdp.toFixed(1)}% GDP
                       </span>
                     ) : null}
                     {worldStats.govDebtPctGdp != null ? (
                       <span>
-                        {lang === "en" ? "Debt" : "??"}{" "}
+                        {lang === "en" ? "Debt" : "부채"}{" "}
                         {worldStats.govDebtPctGdp.toFixed(0)}% GDP
                       </span>
                     ) : null}
@@ -373,14 +373,14 @@ export function EconInsightParchment({
                       {inflShock?.rangePp != null ? (
                         <p>
                           {lang === "en"
-                            ? `Inflation window: ${inflShock.min?.toFixed(1)}?${inflShock.max?.toFixed(1)}% (range ${inflShock.rangePp.toFixed(1)}pp)${
+                            ? `Inflation window: ${inflShock.min?.toFixed(1)}→${inflShock.max?.toFixed(1)}% (range ${inflShock.rangePp.toFixed(1)}pp)${
                                 inflShock.deltaPp != null
-                                  ? ` � YoY ${formatSignedPct(inflShock.deltaPp)}p`
+                                  ? ` · YoY ${formatSignedPct(inflShock.deltaPp)}p`
                                   : ""
                               }`
-                            : `??? ?: ${inflShock.min?.toFixed(1)}?${inflShock.max?.toFixed(1)}% (?? ${inflShock.rangePp.toFixed(1)}%p)${
+                            : `인플레 창: ${inflShock.min?.toFixed(1)}→${inflShock.max?.toFixed(1)}% (범위 ${inflShock.rangePp.toFixed(1)}%p)${
                                 inflShock.deltaPp != null
-                                  ? ` � ??? ${formatSignedPct(inflShock.deltaPp)}p`
+                                  ? ` · 전년비 ${formatSignedPct(inflShock.deltaPp)}p`
                                   : ""
                               }`}
                         </p>
@@ -388,14 +388,14 @@ export function EconInsightParchment({
                       {growthShock?.rangePp != null ? (
                         <p>
                           {lang === "en"
-                            ? `Growth window: ${growthShock.min?.toFixed(1)}?${growthShock.max?.toFixed(1)}% (range ${growthShock.rangePp.toFixed(1)}pp)${
+                            ? `Growth window: ${growthShock.min?.toFixed(1)}→${growthShock.max?.toFixed(1)}% (range ${growthShock.rangePp.toFixed(1)}pp)${
                                 growthShock.deltaPp != null
-                                  ? ` � YoY ${formatSignedPct(growthShock.deltaPp)}p`
+                                  ? ` · YoY ${formatSignedPct(growthShock.deltaPp)}p`
                                   : ""
                               }`
-                            : `?? ?: ${growthShock.min?.toFixed(1)}?${growthShock.max?.toFixed(1)}% (?? ${growthShock.rangePp.toFixed(1)}%p)${
+                            : `성장 창: ${growthShock.min?.toFixed(1)}→${growthShock.max?.toFixed(1)}% (범위 ${growthShock.rangePp.toFixed(1)}%p)${
                                 growthShock.deltaPp != null
-                                  ? ` � ??? ${formatSignedPct(growthShock.deltaPp)}p`
+                                  ? ` · 전년비 ${formatSignedPct(growthShock.deltaPp)}p`
                                   : ""
                               }`}
                         </p>
@@ -412,8 +412,8 @@ export function EconInsightParchment({
                           key={p.id ?? p.name}
                           className="rounded-sm border border-[#8b6914]/25 bg-[#efe0b8]/55 px-1.5 py-0.5"
                         >
-                          {p.name} {formatSignedPct(p.gdpGrowthPct) ?? "?"} /{" "}
-                          {formatSignedPct(p.inflationPct) ?? "?"}
+                          {p.name} {formatSignedPct(p.gdpGrowthPct) ?? "—"} /{" "}
+                          {formatSignedPct(p.inflationPct) ?? "—"}
                         </span>
                       ))}
                     </div>
@@ -437,7 +437,7 @@ export function EconInsightParchment({
                     {p}
                     {!typingDone && i === visibleParagraphs.length - 1 ? (
                       <span className="parchment-type-caret" aria-hidden>
-                        ?
+                        ▍
                       </span>
                     ) : null}
                   </p>
@@ -448,7 +448,7 @@ export function EconInsightParchment({
                       className="text-[0.72rem] uppercase tracking-[0.18em] text-[#7a6348]"
                       style={{ fontFamily: PARCHMENT_STACK, fontWeight: 500 }}
                     >
-                      {lang === "en" ? "Country macro � live" : "?? ?? � ???"}
+                      {lang === "en" ? "Country macro · live" : "국가 거시 · 라이브"}
                     </p>
                     {macroNarrative.map((line, i) => (
                       <p
@@ -479,10 +479,10 @@ export function EconInsightParchment({
                 {!typingDone
                   ? lang === "en"
                     ? "Skip typing"
-                    : "?? ????"
+                    : "타자 건너뛰기"
                   : lang === "en"
-                    ? "Fold ? news panel"
-                    : "?? ?? ???"}
+                    ? "Fold → news panel"
+                    : "접고 뉴스 패널로"}
               </button>
               <button
                 type="button"
@@ -494,10 +494,10 @@ export function EconInsightParchment({
                 {!typingDone
                   ? lang === "en"
                     ? "Skip typing"
-                    : "?? ????"
+                    : "타자 건너뛰기"
                   : lang === "en"
                     ? "Map only"
-                    : "??? ???"}
+                    : "지도만 남기기"}
               </button>
             </div>
           </div>

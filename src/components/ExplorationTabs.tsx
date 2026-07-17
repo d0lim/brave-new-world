@@ -12,6 +12,8 @@ type ExplorationTabsProps = {
   hint?: string;
   /** hubs = emerald styling (economy); fronts = sky (conflict) */
   variant?: "fronts" | "hubs";
+  /** 메뉴 안 임베드 시 stretch */
+  align?: "end" | "stretch";
 };
 
 export function ExplorationTabs({
@@ -21,6 +23,7 @@ export function ExplorationTabs({
   label = "주요전장",
   hint = "대만·한반도·우크라이나·중동 등 지정학적 충돌지로 바로 이동합니다.",
   variant = "fronts",
+  align = "end",
 }: ExplorationTabsProps) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -40,14 +43,16 @@ export function ExplorationTabs({
     setOpen(false);
   }
 
+  const stretch = align === "stretch";
+
   return (
     <div
       ref={rootRef}
-      className="pointer-events-auto relative z-[55]"
+      className={`pointer-events-auto relative z-[55] ${stretch ? "w-full" : ""}`}
       onMouseEnter={() => setOpen(true)}
       onMouseLeave={() => setOpen(false)}
     >
-      <div className="relative flex flex-col items-end">
+      <div className={`relative flex flex-col ${stretch ? "items-stretch" : "items-end"}`}>
         <HoverHint placement="bottom" title={label} detail={hint}>
           <button
             id="exploration-theater-dropdown"
@@ -56,6 +61,8 @@ export function ExplorationTabs({
             aria-haspopup="listbox"
             onClick={() => setOpen((value) => !value)}
             className={`flex items-center gap-2 border px-3 py-2 text-xs shadow-lg backdrop-blur-md transition-all duration-200 ${
+              stretch ? "w-full justify-between" : ""
+            } ${
               variant === "hubs"
                 ? "border-emerald-300/25 bg-[#071018]/88 text-emerald-100/90 hover:border-emerald-200/35"
                 : "border-sky-300/25 bg-[#0a1830]/88 text-sky-100/90 hover:border-sky-200/35"
@@ -73,7 +80,9 @@ export function ExplorationTabs({
         </HoverHint>
 
         <div
-          className={`absolute right-0 top-full z-[70] w-[min(92vw,240px)] origin-top transition-all duration-200 ease-out ${
+          className={`absolute top-full z-[70] origin-top transition-all duration-200 ease-out ${
+            stretch ? "left-0 right-0 w-full" : "right-0 w-[min(92vw,240px)]"
+          } ${
             open
               ? "pointer-events-auto scale-100 opacity-100"
               : "pointer-events-none scale-[0.98] opacity-0"

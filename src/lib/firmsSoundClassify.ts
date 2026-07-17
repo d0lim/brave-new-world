@@ -173,11 +173,76 @@ export function firmsFireSoundLabel(
   if (lang === "en") {
     if (kind === "exercise") return "Thermal · exercise / range";
     if (kind === "combat") return "Likely strike / fire · war-news cross";
-    return "Thermal · unclassified";
+    return "Thermal · possible wildfire / other";
   }
   if (kind === "exercise") return "열감지 · 훈련/사격장 구역";
   if (kind === "combat") return "폭격·화재 추정 · 전쟁뉴스 교차";
-  return "열감지 · 원인 미분류";
+  return "열감지 · 산불·기타 가능";
+}
+
+/** 호버 카드 제목 — 전쟁 구역이 아니면 산불·기타로 안내 */
+export function firmsCauseTitle(
+  kind: FirmsSoundKind,
+  lang: "ko" | "en" = "ko",
+): string {
+  if (lang === "en") {
+    if (kind === "combat") return "Likely conflict-related fire";
+    if (kind === "exercise") return "Likely training / range thermal";
+    return "Possible wildfire or other heat";
+  }
+  if (kind === "combat") return "분쟁 관련 화재 가능성";
+  if (kind === "exercise") return "훈련·사격장 열원 가능성";
+  return "산불·기타 열원 가능성";
+}
+
+/** 호버 본문 — NASA는 원인을 직접 식별하지 않음을 명시 */
+export function firmsCauseBody(
+  kind: FirmsSoundKind,
+  lang: "ko" | "en" = "ko",
+): string {
+  if (lang === "en") {
+    if (kind === "combat") {
+      return "Near an active dispute front or war-news pin. Could be strike damage, secondary fire, or coincidence — not confirmed.";
+    }
+    if (kind === "exercise") {
+      return "Inside a known training / range zone. Live fire or flares are possible.";
+    }
+    return "Outside mapped war zones. Often wildfire, crop burn, or industrial flare — NASA FIRMS detects heat, not the cause.";
+  }
+  if (kind === "combat") {
+    return "활성 분쟁·전쟁 뉴스 인근입니다. 폭격·2차 화재일 수 있으나 확정이 아닙니다.";
+  }
+  if (kind === "exercise") {
+    return "알려진 훈련·사격장 구역입니다. 실탄·플레어 열원일 수 있습니다.";
+  }
+  return "전쟁 구역과 겹치지 않습니다. 산불·농지 소각·산업 플레어일 수 있으며, NASA는 원인을 구분하지 않습니다.";
+}
+
+export function firmsCauseHint(
+  kind: FirmsSoundKind,
+  lang: "ko" | "en" = "ko",
+): string {
+  if (lang === "en") {
+    if (kind === "combat") return "Proximity estimate · not proof of a strike";
+    return "Satellite thermal detection only";
+  }
+  if (kind === "combat") return "근접 추정 · 폭격 증거가 아닙니다";
+  return "위성 열감지일 뿐 · 원인 확정 아님";
+}
+
+/** 지도 불꽃 팔레트 (core / ember / glow) */
+export function firmsFlameColors(kind: FirmsSoundKind): {
+  core: string;
+  ember: string;
+  glow: string;
+} {
+  if (kind === "combat") {
+    return { core: "#ffe8c8", ember: "#ff3b2f", glow: "rgba(255, 40, 10, 0.55)" };
+  }
+  if (kind === "exercise") {
+    return { core: "#fff4c2", ember: "#f59e0b", glow: "rgba(217, 119, 6, 0.5)" };
+  }
+  return { core: "#fff1a8", ember: "#ff8a1a", glow: "rgba(255, 90, 0, 0.52)" };
 }
 
 /** 자동 재생에 쓸 매니페스트 eventId — exercise/none은 기본 무음 */

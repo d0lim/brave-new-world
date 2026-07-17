@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { markTheaterCoachmarkDone, readTheaterCoachmarkDone } from "@/lib/battlefieldPresets";
+import { placeNearAnchor, VIEWPORT_EDGE_PAD } from "@/lib/viewportClamp";
 
 type TheaterDropdownCoachmarkProps = {
   open: boolean;
@@ -12,6 +13,7 @@ type TheaterDropdownCoachmarkProps = {
 
 /**
  * 상단 「주요전선」드롭다운을 가리키는 1회성 코치마크.
+ * 말풍선은 뷰포트 밖으로 나가지 않도록 clamp 합니다.
  */
 export function TheaterDropdownCoachmark({
   open,
@@ -19,27 +21,63 @@ export function TheaterDropdownCoachmark({
   targetSelector = "#exploration-theater-dropdown",
   onDismiss,
 }: TheaterDropdownCoachmarkProps) {
+  const bubbleRef = useRef<HTMLDivElement>(null);
   const [anchor, setAnchor] = useState<DOMRect | null>(null);
+  const [bubblePos, setBubblePos] = useState<{ left: number; top: number; placement: "above" | "below" } | null>(
+    null,
+  );
 
-  useEffect(() => {
-    if (!open) return;
+  useLayoutEffect(() => {
+    if (!open) {
+      setAnchor(null);
+      setBubblePos(null);
+      return;
+    }
+
     function measure() {
       const el = document.querySelector(targetSelector);
-      if (el) setAnchor(el.getBoundingClientRect());
+      if (!el) return;
+      const nextAnchor = el.getBoundingClientRect();
+      setAnchor(nextAnchor);
+      const bubble = bubbleRef.current;
+      const width = bubble?.offsetWidth || Math.min(280, window.innerWidth - VIEWPORT_EDGE_PAD * 2);
+      const height = bubble?.offsetHeight || 120;
+      setBubblePos(
+        placeNearAnchor({
+          anchor: nextAnchor,
+          width,
+          height,
+          preferred: "below",
+          gap: 14,
+        }),
+      );
     }
+
     measure();
+    const raf = window.requestAnimationFrame(measure);
     window.addEventListener("resize", measure);
+    window.addEventListener("scroll", measure, true);
     const timer = window.setInterval(measure, 400);
     return () => {
+      window.cancelAnimationFrame(raf);
       window.removeEventListener("resize", measure);
+      window.removeEventListener("scroll", measure, true);
       window.clearInterval(timer);
     };
-  }, [open, targetSelector]);
+  }, [open, targetSelector, lang]);
 
   if (!open || !anchor) return null;
 
   const cx = anchor.left + anchor.width / 2;
-  const cy = anchor.bottom + 8;
+  const below = (bubblePos?.placement ?? "below") === "below";
+  const tipY = below ? anchor.bottom + 8 : anchor.top - 8;
+  const bubbleLeft = bubblePos?.left ?? VIEWPORT_EDGE_PAD;
+  const bubbleTop = bubblePos?.top ?? tipY + 12;
+  const arrowEnd = tipY;
+  const arrowStart = below
+    ? Math.min(bubbleTop + 24, tipY + 80)
+    : Math.max(bubbleTop + (bubbleRef.current?.offsetHeight ?? 100) - 24, tipY - 80);
+
   const copy =
     lang === "en"
       ? "Tap here to fly into a major front and feel the battlespace."
@@ -58,7 +96,6 @@ export function TheaterDropdownCoachmark({
         aria-label="dismiss"
         onClick={dismiss}
       />
-      {/* 스포트라이트 컷아웃은 아래 box-shadow가 전담 — 풀스크린 스크림과 중복 시 타겟(nav)까지 어두워짐 */}
       <div
         className="pointer-events-none absolute rounded-full border-2 border-sky-300/90 shadow-[0_0_0_9999px_rgba(0,0,0,0.45)]"
         style={{
@@ -79,20 +116,18 @@ export function TheaterDropdownCoachmark({
           </marker>
         </defs>
         <path
-          d={`M ${cx} ${cy + 72} Q ${cx - 18} ${cy + 36} ${cx} ${cy + 4}`}
+          d={`M ${cx} ${arrowStart} Q ${cx + (below ? -18 : 18)} ${(arrowStart + arrowEnd) / 2} ${cx} ${arrowEnd}`}
           fill="none"
           stroke="currentColor"
           strokeWidth="2.5"
           markerEnd="url(#coach-arrow)"
         />
-        <circle cx={cx} cy={cy + 72} r="5" fill="currentColor" opacity="0.85" />
+        <circle cx={cx} cy={arrowStart} r="5" fill="currentColor" opacity="0.85" />
       </svg>
       <div
+        ref={bubbleRef}
         className="pointer-events-auto absolute max-w-[min(88vw,280px)] rounded-2xl border border-sky-300/30 bg-[#0a1830]/95 px-4 py-3 text-sm text-sky-50 shadow-2xl backdrop-blur-md"
-        style={{
-          left: Math.min(Math.max(12, cx - 140), window.innerWidth - 292),
-          top: cy + 84,
-        }}
+        style={{ left: bubbleLeft, top: bubbleTop }}
       >
         <p className="leading-snug">{copy}</p>
         <button

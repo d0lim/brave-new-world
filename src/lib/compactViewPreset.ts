@@ -28,6 +28,7 @@ export const COMPACT_CONFLICT_PRESETS: CompactChipDef[] = [
       showNeptun: true,
       showTzevaAdom: true,
       showUsCarriers: true,
+      showNewfeedsIranAttacks: true,
     },
   },
   {
@@ -38,6 +39,7 @@ export const COMPACT_CONFLICT_PRESETS: CompactChipDef[] = [
       showUkraineControl: true,
       showGdeltWar: true,
       showTelegramOsint: true,
+      showNewfeedsIranAttacks: true,
     },
   },
   {
@@ -48,6 +50,7 @@ export const COMPACT_CONFLICT_PRESETS: CompactChipDef[] = [
       showNeptun: true,
       showTzevaAdom: true,
       showGdeltWar: true,
+      showNewfeedsIranAttacks: true,
     },
   },
 ];
@@ -65,6 +68,7 @@ export const COMPACT_ECONOMY_PRESETS: CompactChipDef[] = [
       showPorts: true,
       showLogisticsRisk: true,
       showCriticalNodes: true,
+      showNewfeedsIranAttacks: true,
     },
   },
   {
@@ -75,6 +79,7 @@ export const COMPACT_ECONOMY_PRESETS: CompactChipDef[] = [
       showOilPipelines: true,
       showGasPipelines: true,
       showLngTerminals: true,
+      showNewfeedsIranAttacks: true,
     },
   },
   {
@@ -85,6 +90,7 @@ export const COMPACT_ECONOMY_PRESETS: CompactChipDef[] = [
       showSanctionsEntities: true,
       showEconomicCenters: true,
       showAiDataCenters: true,
+      showNewfeedsIranAttacks: true,
     },
   },
 ];

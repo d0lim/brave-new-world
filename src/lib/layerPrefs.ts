@@ -123,7 +123,7 @@ export const DEFAULT_LAYER_PREFS: LayerPrefs = {
   showGdeltProtests: false,
   showTelegramOsint: true,
   showTzevaAdom: false,
-  showNewfeedsIranAttacks: false,
+  showNewfeedsIranAttacks: true,
   showNeptun: true,
   showNeptunPreviousTrails: false,
   showEastAsiaAdiz: false,

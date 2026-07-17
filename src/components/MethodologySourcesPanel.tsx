@@ -119,33 +119,63 @@ export function MethodologySourcesPanel({ open, onClose }: MethodologySourcesPan
 
           <section className="rounded-xl border border-rose-800/40 bg-rose-950/20 p-3">
             <h3 className="text-sm font-medium text-rose-100">
-              Mediazona — 러·우 사망·부상 (지정학)
+              HDX HAPI · ACLED — 열린 전선 사망 (지정학)
             </h3>
             <p className="mt-2 text-[12px] leading-5 text-sky-100/80">
-              사망: Mediazona × BBC 명의 확인 전사(하한). 부상: CSIS 전투손실 추정에서
-              사망분을 제외한 추정치(명의 목록 없음). 지정학 탭에서 우크라 전선 위에
-              해골·부상자 아이콘 2줄로 표시합니다(레이어 체크 없음).
+              HDX HAPI conflict-events(ACLED)의 political_violence fatalities를
+              최근 창(약 4개월)으로 합산해, 실제로 교전이 열린 행정구역(전선)에만
+              사망 숫자를 표시합니다. 대만·한반도 등 개전 전 긴장 구간은 표시하지
+              않습니다. ACLED는 부상 필드를 제공하지 않습니다.
             </p>
             <p className="mt-2 text-[11px] leading-5 text-sky-100/65">
-              인용: Mediazona · BBC · CSIS · Meduza · (지역 패널) gogov.ru · Rosstat ·
-              GADM.
+              우크라 전선 주: Donetsk · Luhansk · Kharkiv · Zaporizhzhia · Kherson ·
+              Sumy · Dnipropetrovsk. 중동: Gaza · 남부 레바논 등.
+            </p>
+            <p className="mt-2 text-[11px] leading-5 text-sky-100/65">
+              인용: HDX HAPI · ACLED · OCHA HDX. (Mediazona 명의 RU KIA와는 정의가
+              다름 — 전 당사자 사망 집계)
             </p>
             <p className="mt-2 text-[11px] leading-5 text-sky-100/65">
               API:{" "}
               <a
-                href="/api/mediazona-casualties"
+                href="/api/hapi-conflict-casualties"
                 className="underline decoration-rose-400/40 underline-offset-2 hover:text-sky-50"
               >
-                /api/mediazona-casualties
+                /api/hapi-conflict-casualties
               </a>
               {" · "}
               <a
-                href="https://200.zona.media/"
+                href="https://hapi.humdata.org/"
                 target="_blank"
                 rel="noreferrer"
                 className="underline decoration-rose-400/40 underline-offset-2 hover:text-sky-50"
               >
-                200.zona.media
+                hapi.humdata.org
+              </a>
+            </p>
+          </section>
+
+          <section className="rounded-xl border border-yellow-800/40 bg-yellow-950/20 p-3">
+            <h3 className="text-sm font-medium text-yellow-100">
+              핵탄두 보유량 — 각국 ICBM 마커 (Our World in Data)
+            </h3>
+            <p className="mt-2 text-[12px] leading-5 text-sky-100/80">
+              각국 좌표 위에 ICBM 형상 아이콘과 최신(2026) 핵탄두 보유 수를 표시합니다.
+              보유 9개국(러시아·미국·중국·프랑스·영국·인도·파키스탄·이스라엘·북한)만
+              나타나며, 폐기국(남아공)과 세계 합계는 제외했습니다.
+            </p>
+            <p className="mt-2 text-[11px] leading-5 text-sky-100/65">
+              인용: Our World in Data · FAS Nuclear Notebook / SIPRI.
+            </p>
+            <p className="mt-2 text-[11px] leading-5 text-sky-100/65">
+              데이터:{" "}
+              <a
+                href="https://ourworldindata.org/grapher/nuclear-warhead-stockpiles-lines"
+                target="_blank"
+                rel="noreferrer"
+                className="underline decoration-yellow-400/40 underline-offset-2 hover:text-sky-50"
+              >
+                ourworldindata.org/grapher/nuclear-warhead-stockpiles-lines
               </a>
             </p>
           </section>

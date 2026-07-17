@@ -163,11 +163,19 @@ export const HOVER = {
   civAircraft: (lang: LabelLanguage) =>
     pick({ ko: "민간 항공기 (ADS-B)", en: "Civilian aircraft (ADS-B)" }, lang),
   firmsCombat: (lang: LabelLanguage) =>
-    pick({ ko: "폭격·화재 추정", en: "Likely strike / fire" }, lang),
+    pick({ ko: "분쟁 관련 화재 가능성", en: "Likely conflict-related fire" }, lang),
   firmsFire: (lang: LabelLanguage) =>
-    pick({ ko: "위성 화재 탐지", en: "Satellite fire detection" }, lang),
+    pick({ ko: "산불·기타 열원 가능성", en: "Possible wildfire or other heat" }, lang),
   firmsCombatHint: (lang: LabelLanguage) =>
-    pick({ ko: "전쟁 뉴스 인근 열감지", en: "Thermal near war news" }, lang),
+    pick(
+      { ko: "근접 추정 · 폭격 증거가 아닙니다", en: "Proximity estimate · not proof of a strike" },
+      lang,
+    ),
+  firmsWildfireHint: (lang: LabelLanguage) =>
+    pick(
+      { ko: "위성 열감지일 뿐 · 원인 확정 아님", en: "Satellite thermal detection only" },
+      lang,
+    ),
   aiWarZone: (tension: string, lang: LabelLanguage) =>
     pick(
       { ko: `AI 전쟁지역 (데모) · 긴장도 ${tension}`, en: `AI war zone (demo) · tension ${tension}` },

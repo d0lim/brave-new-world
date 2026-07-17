@@ -146,6 +146,53 @@ export function buildRingsGeoJson<T>(
   };
 }
 
+/** NASA FIRMS — glow/ember/core 불꽃 레이어용 GeoJSON */
+export function buildFirmsFiresGeoJson<T>(
+  items: T[],
+  accessors: {
+    lat: Accessor<T, number>;
+    lng: Accessor<T, number>;
+    /** combat | exercise | none */
+    cause: Accessor<T, string>;
+    frp: Accessor<T, number | null | undefined>;
+    /** 각도 반경 (기존 pointRadius와 동일 스케일) */
+    angularRadius: Accessor<T, number>;
+    coreColor: Accessor<T, string>;
+    emberColor: Accessor<T, string>;
+    glowColor: Accessor<T, string>;
+  },
+  zoom: number,
+): FeatureCollection<Point> {
+  return {
+    type: "FeatureCollection",
+    features: items.map((item, index) => {
+      const corePx = angularToPixelRadius(accessors.angularRadius(item), zoom);
+      const frp = accessors.frp(item) ?? 0;
+      const intensity = frp >= 50 ? 1.35 : frp >= 20 ? 1.15 : 1;
+      return {
+        type: "Feature" as const,
+        geometry: {
+          type: "Point" as const,
+          coordinates: [accessors.lng(item), accessors.lat(item)],
+        },
+        properties: {
+          index,
+          cause: accessors.cause(item),
+          phase: index % 3,
+          coreColor: accessors.coreColor(item),
+          emberColor: accessors.emberColor(item),
+          glowColor: accessors.glowColor(item),
+          coreRadius: Math.max(2.2, corePx * 0.55),
+          emberRadius: Math.max(3.5, corePx * 1.05 * intensity),
+          glowRadius: Math.max(5, corePx * 1.85 * intensity),
+          glowOpacity: 0.42 * intensity,
+          emberOpacity: 0.78,
+        },
+      };
+    }),
+  };
+}
+
 export function buildLabelsGeoJson<T>(
   items: T[],
   accessors: {

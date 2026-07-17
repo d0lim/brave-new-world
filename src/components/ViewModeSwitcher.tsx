@@ -28,7 +28,9 @@ export function ViewModeSwitcher({ mode, onChange }: ViewModeSwitcherProps) {
   return (
     <div
       className={`pointer-events-none fixed inset-x-0 z-[35] flex justify-center px-3 ${
-        mode === "conflict" ? "top-[8.1rem] max-md:top-[8.85rem]" : "top-[5.1rem] max-md:top-[5.6rem]"
+        mode === "conflict"
+          ? "top-[8.1rem] max-md:top-[4.65rem]"
+          : "top-[5.1rem] max-md:top-[4.65rem]"
       }`}
     >
       <div

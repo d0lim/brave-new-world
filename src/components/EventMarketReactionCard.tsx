@@ -2,7 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { useLocale } from "@/contexts/LocaleContext";
-import { formatTickerChangePercent, tickerChangeTone, type MarketReactionItem } from "@/lib/stockTickers";
+import {
+  formatTickerChangePercent,
+  tickerChangeTone,
+  tickerDisplayName,
+  type MarketReactionItem,
+} from "@/lib/stockTickers";
 import type { TheaterMarketFilter } from "@/lib/theaterAssets";
 
 type EventMarketReactionCardProps = {
@@ -57,12 +62,15 @@ export function EventMarketReactionCard({ theater, ageMinutes }: EventMarketReac
       ) : (
         withData.map((item) => {
           const tone = tickerChangeTone(item.changePercentSinceEvent);
+          const name = tickerDisplayName(item.symbol, lang);
           return (
             <span
               key={item.symbol}
-              className={`font-mono text-[11px] font-semibold ${TONE_CLASS[tone]}`}
+              title={item.symbol}
+              className={`text-[11px] font-semibold ${TONE_CLASS[tone]}`}
             >
-              {item.symbol} {formatTickerChangePercent(item.changePercentSinceEvent)}
+              {name}{" "}
+              <span className="font-mono">{formatTickerChangePercent(item.changePercentSinceEvent)}</span>
             </span>
           );
         })

@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
+import { placeNearAnchor, VIEWPORT_EDGE_PAD } from "@/lib/viewportClamp";
 
 export type SpotlightPlacement = "below" | "above";
 
@@ -21,6 +22,7 @@ type UiSpotlightCoachmarkProps = {
 
 /**
  * 화면 요소를 가리키는 1회성 표지 + 설명창.
+ * 말풍선은 항상 브라우저 뷰포트 안에 남도록 clamp / flip 합니다.
  */
 export function UiSpotlightCoachmark({
   open,
@@ -34,31 +36,67 @@ export function UiSpotlightCoachmark({
   placement = "below",
   accent = "sky",
 }: UiSpotlightCoachmarkProps) {
+  const bubbleRef = useRef<HTMLDivElement>(null);
   const [anchor, setAnchor] = useState<DOMRect | null>(null);
+  const [bubblePos, setBubblePos] = useState<{
+    left: number;
+    top: number;
+    placement: SpotlightPlacement;
+  } | null>(null);
 
-  useEffect(() => {
-    if (!open) return;
+  useLayoutEffect(() => {
+    if (!open) {
+      setAnchor(null);
+      setBubblePos(null);
+      return;
+    }
+
     function measure() {
       const el = document.querySelector(targetSelector);
-      if (el) setAnchor(el.getBoundingClientRect());
+      if (!el) return;
+      const nextAnchor = el.getBoundingClientRect();
+      setAnchor(nextAnchor);
+
+      const bubble = bubbleRef.current;
+      const width = bubble?.offsetWidth || Math.min(300, window.innerWidth - VIEWPORT_EDGE_PAD * 2);
+      const height = bubble?.offsetHeight || 160;
+      setBubblePos(
+        placeNearAnchor({
+          anchor: nextAnchor,
+          width,
+          height,
+          preferred: placement,
+          gap: 14,
+        }),
+      );
     }
+
     measure();
+    // 첫 렌더 후 실제 말풍선 크기로 재측정
+    const raf = window.requestAnimationFrame(measure);
     window.addEventListener("resize", measure);
+    window.addEventListener("scroll", measure, true);
     const timer = window.setInterval(measure, 400);
     return () => {
+      window.cancelAnimationFrame(raf);
       window.removeEventListener("resize", measure);
+      window.removeEventListener("scroll", measure, true);
       window.clearInterval(timer);
     };
-  }, [open, targetSelector]);
+  }, [open, targetSelector, placement, title, body, ctaLabel, skipLabel]);
 
   if (!open || !anchor) return null;
 
   const cx = anchor.left + anchor.width / 2;
-  const below = placement === "below";
+  const resolved = bubblePos?.placement ?? placement;
+  const below = resolved === "below";
   const tipY = below ? anchor.bottom + 8 : anchor.top - 8;
-  const bubbleTop = below ? tipY + 84 : Math.max(12, tipY - 200);
-  const arrowStart = below ? tipY + 72 : tipY - 72;
-  const arrowEnd = below ? tipY + 4 : tipY - 4;
+  const bubbleLeft = bubblePos?.left ?? VIEWPORT_EDGE_PAD;
+  const bubbleTop = bubblePos?.top ?? tipY + 12;
+  const arrowEnd = tipY;
+  const arrowStart = below
+    ? Math.min(bubbleTop + 24, tipY + 80)
+    : Math.max(bubbleTop + (bubbleRef.current?.offsetHeight ?? 120) - 24, tipY - 80);
 
   const tone =
     accent === "emerald"
@@ -96,11 +134,6 @@ export function UiSpotlightCoachmark({
                 btn: "border-sky-300/30 text-sky-100/90 hover:bg-sky-400/15",
               };
 
-  const bubbleLeft = Math.min(
-    Math.max(12, cx - 150),
-    typeof window !== "undefined" ? window.innerWidth - 312 : cx - 150,
-  );
-
   return (
     <div className="pointer-events-auto fixed inset-0 z-[90]" role="dialog" aria-modal="true">
       <button
@@ -127,7 +160,7 @@ export function UiSpotlightCoachmark({
       >
         <defs>
           <marker
-            id={`coach-arrow-${accent}-${placement}`}
+            id={`coach-arrow-${accent}-${resolved}`}
             markerWidth="8"
             markerHeight="8"
             refX="6"
@@ -142,11 +175,12 @@ export function UiSpotlightCoachmark({
           fill="none"
           stroke="currentColor"
           strokeWidth="2.5"
-          markerEnd={`url(#coach-arrow-${accent}-${placement})`}
+          markerEnd={`url(#coach-arrow-${accent}-${resolved})`}
         />
         <circle cx={cx} cy={arrowStart} r="5" fill="currentColor" opacity="0.85" />
       </svg>
       <div
+        ref={bubbleRef}
         className={`pointer-events-auto absolute max-w-[min(88vw,300px)] rounded-2xl border px-4 py-3 text-sm shadow-2xl backdrop-blur-md ${tone.card}`}
         style={{ left: bubbleLeft, top: bubbleTop }}
       >

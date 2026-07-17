@@ -3,6 +3,7 @@ import {
   theaterAssetSymbols,
   type TheaterMarketFilter,
 } from "@/lib/theaterAssets";
+import type { LabelLanguage } from "@/lib/layerPrefs";
 
 export type { TheaterMarketFilter } from "@/lib/theaterAssets";
 export {
@@ -36,22 +37,53 @@ export type MarketReactionItem = {
 };
 
 /**
+ * Yahoo 심볼 → 사람이 읽는 이름 (CL=F → WTI 원유 등).
+ * UI는 심볼 대신 이 이름을 쓰고, 심볼은 title/링크에만 둡니다.
+ */
+export const TICKER_DISPLAY_NAMES: Record<string, { ko: string; en: string }> = {
+  "^VIX": { ko: "VIX 공포지수", en: "VIX Fear Index" },
+  "CL=F": { ko: "WTI 원유", en: "WTI Crude Oil" },
+  "BZ=F": { ko: "브렌트유", en: "Brent Crude" },
+  "GC=F": { ko: "금 선물", en: "Gold Futures" },
+  "DX-Y.NYB": { ko: "달러 인덱스", en: "US Dollar Index" },
+  "^GSPC": { ko: "S&P 500", en: "S&P 500" },
+  "^IXIC": { ko: "나스닥", en: "Nasdaq Composite" },
+  "^N225": { ko: "니케이 225", en: "Nikkei 225" },
+  "^KS11": { ko: "코스피", en: "KOSPI" },
+  "^HSI": { ko: "항셍지수", en: "Hang Seng" },
+  "000001.SS": { ko: "상하이종합", en: "Shanghai Composite" },
+};
+
+/**
  * Yahoo Finance — API 키 없이 동작 검증된 심볼만 (Massive 무료 미지원 아시아·원자재 대체).
+ * label은 영문 짧은 표기(API 기본값). UI는 tickerDisplayName() 사용.
  * @see `/api/stock-tickers` · `yahoo-finance2`
  */
 export const STOCK_TICKER_SYMBOLS: StockTickerSymbol[] = [
-  { symbol: "^VIX", label: "VIX" },
-  { symbol: "CL=F", label: "WTI" },
-  { symbol: "BZ=F", label: "Brent" },
-  { symbol: "GC=F", label: "Gold" },
-  { symbol: "DX-Y.NYB", label: "DXY" },
+  { symbol: "^VIX", label: "VIX Fear Index" },
+  { symbol: "CL=F", label: "WTI Crude Oil" },
+  { symbol: "BZ=F", label: "Brent Crude" },
+  { symbol: "GC=F", label: "Gold Futures" },
+  { symbol: "DX-Y.NYB", label: "US Dollar Index" },
   { symbol: "^GSPC", label: "S&P 500" },
-  { symbol: "^IXIC", label: "NASDAQ" },
-  { symbol: "^N225", label: "Nikkei" },
+  { symbol: "^IXIC", label: "Nasdaq" },
+  { symbol: "^N225", label: "Nikkei 225" },
   { symbol: "^KS11", label: "KOSPI" },
   { symbol: "^HSI", label: "Hang Seng" },
-  { symbol: "000001.SS", label: "Shanghai" },
+  { symbol: "000001.SS", label: "Shanghai Composite" },
 ];
+
+/** Yahoo 심볼을 한글/영문 표시명으로. 없으면 기존 label·심볼 정제. */
+export function tickerDisplayName(
+  symbol: string,
+  lang: LabelLanguage = "ko",
+): string {
+  const named = TICKER_DISPLAY_NAMES[symbol];
+  if (named) return lang === "en" ? named.en : named.ko;
+  const fallback = STOCK_TICKER_SYMBOLS.find((entry) => entry.symbol === symbol)?.label;
+  if (fallback) return fallback;
+  return symbol.replace(/^\^/, "").replace(/=F$/, "");
+}
 
 /** 하단 스크롤 스트립 — 매크로·에너지·미국 지수 (지정학 트레이더 우선) */
 export const TICKER_STRIP_SYMBOLS: string[] = [

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { allEconInsightBriefs } from "@/data/econInsightBriefs";
 import type { LabelLanguage } from "@/lib/layerPrefs";
+import { rewriteLampNarrative } from "@/lib/llm/lampNarrative";
 import { getSotwApiKey, SOTW_ATTRIBUTION } from "@/lib/sotw";
 import {
   composeMarketLampParagraphs,
@@ -93,18 +94,28 @@ export async function GET(request: Request) {
             return koChars >= 6 && koChars >= latin * 0.5;
           })
         : [];
+    const draftParagraphs = composeMarketLampParagraphs(macros, lang, {
+      focusTitle: titleSeed,
+      koreanExtras,
+    });
+    const narrative = await rewriteLampNarrative({
+      mode: "economy",
+      lang,
+      periodKey: dayKey,
+      title: titleSeed,
+      paragraphs: draftParagraphs,
+    });
 
     return NextResponse.json({
       disabled: false,
       dayKey,
       focusNavId: primary.navId,
-      focusTitle: titleSeed,
+      focusTitle: narrative.title,
       impactLine: lang === "en" ? primary.impactLine : undefined,
       countries: macros.map((m) => m.name ?? m.id),
-      paragraphs: composeMarketLampParagraphs(macros, lang, {
-        focusTitle: titleSeed,
-        koreanExtras,
-      }),
+      paragraphs: narrative.paragraphs,
+      llmEnhanced: narrative.llmEnhanced,
+      model: narrative.model,
       macros,
       attribution: SOTW_ATTRIBUTION,
     });

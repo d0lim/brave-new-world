@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { PARCHMENT_FOLD_EXIT_MS } from "@/components/ParchmentLetter";
 import type { LabelLanguage } from "@/lib/layerPrefs";
 import {
@@ -103,6 +103,9 @@ export function EconInsightParchment({
   const [phase, setPhase] = useState<"idle" | "folding" | "done">("idle");
   const [worldStats, setWorldStats] = useState<WorldStatsMacro | null>(null);
   const [typedChars, setTypedChars] = useState(0);
+  const bodyScrollRef = useRef<HTMLDivElement>(null);
+  const typingSkipRef = useRef(false);
+  const typingIntervalRef = useRef<number | null>(null);
   const displayBrief = useMemo(() => localizeEconInsightBrief(brief, lang), [brief, lang]);
   const title = lang === "en" ? displayBrief.titleEn : displayBrief.titleKo;
   const macroNarrative = useMemo(() => {
@@ -123,21 +126,35 @@ export function EconInsightParchment({
   }, []);
 
   useEffect(() => {
+    typingSkipRef.current = false;
     setTypedChars(0);
     const reduced =
       typeof window !== "undefined" &&
       window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     if (reduced || totalChars === 0) {
+      typingSkipRef.current = true;
       setTypedChars(totalChars);
       return;
     }
     let i = 0;
     const id = window.setInterval(() => {
+      if (typingSkipRef.current) {
+        window.clearInterval(id);
+        typingIntervalRef.current = null;
+        return;
+      }
       i += 1;
       setTypedChars(i);
-      if (i >= totalChars) window.clearInterval(id);
+      if (i >= totalChars) {
+        window.clearInterval(id);
+        typingIntervalRef.current = null;
+      }
     }, TYPE_MS_PER_CHAR);
-    return () => window.clearInterval(id);
+    typingIntervalRef.current = id;
+    return () => {
+      window.clearInterval(id);
+      typingIntervalRef.current = null;
+    };
   }, [totalChars, fullBody]);
 
   const visibleParagraphs = useMemo(() => {
@@ -157,6 +174,12 @@ export function EconInsightParchment({
     }
     return out.length > 0 ? out : [""];
   }, [paragraphs, typedChars, totalChars]);
+
+  useEffect(() => {
+    const el = bodyScrollRef.current;
+    if (!el) return;
+    el.scrollTop = el.scrollHeight;
+  }, [typedChars, typingDone]);
 
   useEffect(() => {
     if (!displayBrief.countryHint) {
@@ -187,6 +210,11 @@ export function EconInsightParchment({
     (next: () => void) => {
       if (phase !== "idle") return;
       if (!typingDone) {
+        typingSkipRef.current = true;
+        if (typingIntervalRef.current != null) {
+          window.clearInterval(typingIntervalRef.current);
+          typingIntervalRef.current = null;
+        }
         setTypedChars(totalChars);
         return;
       }
@@ -397,6 +425,7 @@ export function EconInsightParchment({
               <div className="welcome-letter-divider mx-auto mt-4 shrink-0" aria-hidden />
 
               <div
+                ref={bodyScrollRef}
                 className="welcome-letter-body mt-4 min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain text-[1.02rem] leading-[1.9] tracking-[0.01em] text-[#3f2e1c] sm:text-[1.08rem]"
                 style={{ fontFamily: SPACE_GROTESK_STACK, fontWeight: 400 }}
                 aria-live="polite"

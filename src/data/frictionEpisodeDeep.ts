@@ -1140,11 +1140,71 @@ export function frictionDeepDoc(episodeId: string): FrictionDeepDoc | null {
   return FRICTION_DEEP_DOCS[episodeId] ?? null;
 }
 
+/**
+ * 각 사건의 다방면적 의의와 이후 영향 — 양피지 맨 아래 블록.
+ * 사실 서술·6하원칙과 분리해, “무엇이 바뀌었고 무엇이 이어졌는가”만 고정한다.
+ */
+export const FRICTION_SIGNIFICANCE: Record<string, { ko: string; en: string }> = {
+  "sino-soviet-border-1969": {
+    ko: "이념·안보 면에서 공산권 ‘혈맹’ 서사가 실탄으로 깨졌고, 군사적으로는 국경 해석 차이가 핵 논의까지 키울 수 있음이 드러났습니다. 외교적으로는 항의·협상과 함께 대외 정렬이 재검토되어 미·중 접근의 배경 요인으로 남았으며, 이후 국경 협상·전략 재평가의 장기 과제를 남겼습니다.",
+    en: "Ideologically and in security terms it cracked the communist ‘fraternal’ myth under live fire; militarily it showed a cartographic quarrel could scale toward nuclear talk. Diplomatically, protests and talks ran with a realignment that fed into Sino-American rapprochement—and left long border talks and strategic reassessment in its wake.",
+  },
+  "sino-vietnamese-war-1979": {
+    ko: "지역 질서 면에서 중국이 인도차이나에 ‘응징·억지’ 신호를 무력으로 보낸 사례가 되었고, 군사적으로는 단기 교전 뒤에도 국경 포격·대치가 이어졌습니다. 외교·동맹 면에서는 소련–베트남 조약·캄보디아 연쇄와 맞물리며, 이후에도 중월 긴장과 인도차이나 점령·저항 구조가 한동안 남았습니다.",
+    en: "Regionally it became Beijing’s armed ‘punish and deter’ signal in Indochina; militarily shelling and stand-offs outlasted the short campaign. Diplomatically it locked into the Soviet–Vietnamese treaty and Cambodia chain—leaving Sino-Vietnamese tension and occupation/resistance structures for years after.",
+  },
+  "galwan-valley-clash-2020": {
+    ko: "안보 규범 면에서 총기 제한 관행 아래에서도 LAC가 치명적 충돌로 번질 수 있음이 각인되었고, 군사적으로는 전방 병력·장비 재배치가 장기화되었습니다. 외교·경제적으로는 회담과 교역·신뢰 타격이 병행되며, 이후 인도–중국 관계는 ‘관리형 대치’로 굳어졌습니다.",
+    en: "In norms it showed the LAC can turn lethal even under firearm restraints; militarily forward redeployments hardened. Diplomatically and economically, talks ran alongside damaged trade and trust—locking India–China into managed confrontation afterward.",
+  },
+  "russo-georgian-war-2008": {
+    ko: "주권·인정 면에서 압하지야·남오세티야 ‘승인’과 유엔 다수 미인정이 병존하는 동결 전선이 굳었고, 군사적으로는 러시아 대규모 개입의 선례가 남았습니다. 외교적으로는 EU 중재·감시와 러시아–서방 관계 악화가 겹치며, 이후 포스트소비에트 안보 질서·‘신냉전’ 서사의 이정표로 읽힙니다.",
+    en: "On sovereignty it froze recognition and non-recognition over Abkhazia and South Ossetia; militarily it set a precedent for large-scale Russian intervention. Diplomatically an EU ceasefire and monitoring overlapped a Russia–West chill—later read as a milestone in remade post-Soviet order and ‘new Cold War’ narratives.",
+  },
+  "nagorno-karabakh-war-2020": {
+    ko: "전장 기술 면에서 UAV·정밀타격이 재래식 균형을 흔든 사례로 기록되었고, 안보 질서 면에서는 러시아 중재·평화유지가 핵심 축임이 확인되었습니다. 인도주의적으로는 수천 명대 군 사망·민간 피해·피란이 남았으며, 휴전 이후에도 지위·영토의 장기 정치 해결은 자동으로 오지 않았습니다.",
+    en: "Technologically it is recorded as a war where UAVs and precision strike unsettled conventional balances; in security order it confirmed Russian mediation and peacekeeping as a core axis. Human costs ran to thousands of military deaths plus civilian harm and flight—and a ceasefire did not automatically deliver lasting political settlement.",
+  },
+  "iran-iraq-war-1980": {
+    ko: "걸프 질서 면에서 공유 수로·국경 해석이 8년 소모전으로 비화할 수 있음이 입증되었고, 인도주의·규범 면에서는 화학무기·민간 피폭 기록이 각인되었습니다. 경제·외교적으로는 양국 피폐와 UN 종결 뒤에도 수로·국경 의제가 남아, 이후 지역 안보·제재·동맹 계산의 장기 배경이 되었습니다.",
+    en: "In Gulf order it proved shared waterways and borders can escalate into eight years of attrition; in norms, chemical weapons and urban bombardment were etched into the record. Economically and diplomatically both sides were exhausted, and after UN closure waterway and border issues lingered as background to later regional security, sanctions, and alliance math.",
+  },
+  "tunb-islands-dispute-1971": {
+    ko: "주권 지도 면에서 영국 철수 직후 ‘점거·실효 지배’가 반세기 넘는 UAE–이란 병존 주장을 남겼고, 안보 면에서는 호르무즈 접근로·걸프 에너지 통항 서사와 맞물렸습니다. 외교적으로는 간헐적 긴장·협상이 반복되며, 이후에도 ‘닫히지 않은 섬 문제’로 지역 의제에 잔존합니다.",
+    en: "On the sovereignty map, occupation and effective control right after Britain’s withdrawal left half a century of coexisting UAE–Iran claims; in security it entangles Hormuz approaches and Gulf energy-transit narratives. Diplomatically, intermittent tension and talks recur—and the unresolved islands remain on the regional agenda.",
+  },
+  "cambodian-vietnamese-war-1978": {
+    ko: "인도차이나 질서 면에서 ‘인도주의·안보’ 명분과 점령·저항이 한 연쇄로 묶였고, 동맹 정치 면에서는 소련–베트남 조약·중월전쟁과 맞물려 무력 개입이 지역 재편을 불렀습니다. 이후 캄보디아 점령 기간·저항·외교 고립이 길어지며, ‘동맹 안 개입’의 대가를 보여주는 유산이 되었습니다.",
+    en: "In Indochina order it bound ‘humanitarian/security’ justifications to occupation and resistance; in alliance politics it locked into the Soviet–Vietnamese treaty and Sino-Vietnamese war so force remade the map. A long occupation, resistance, and diplomatic isolation followed—leaving a legacy of the costs of intervention inside alliance politics.",
+  },
+  "eritrean-ethiopian-war-1998": {
+    ko: "국경 규범 면에서 획정 미완이 전면전으로 비화할 수 있음이 드러났고, 인도주의적으로는 대규모 사상·피란이 남았습니다. 외교적으로는 알제 협정 이후에도 ‘동결된 평화’가 길어지며, 이후 양국 관계·역내 중재·국경 표석 분쟁이 반복되는 구조적 영향을 남겼습니다.",
+    en: "In border norms it showed unfinished demarcation can erupt into full war; human costs included large casualties and displacement. Diplomatically a ‘frozen peace’ lingered after Algiers—structuring later bilateral chill, regional mediation, and recurring marker disputes.",
+  },
+  "sino-north-korean-border-clash-1969": {
+    ko: "동맹 서사 면에서는 중–북 ‘혈맹’ 안에서도 국경·어로·관할이 충돌할 수 있음이 드러났고, 군사·현장 면에서는 공개 기록이 제한적이라도 마찰의 존재를 남겼습니다. 이후에도 ‘자동 순치’가 보장되지 않는다는 렌즈로 남아, 국경 관리·동맹 관리를 함께 읽는 참고가 됩니다.",
+    en: "In alliance narrative it showed China–DPRK ‘fraternity’ can still clash over borders, fishing, and jurisdiction; on the ground, sparse open records still leave evidence of friction. It remains a lens that automatic harmony is not guaranteed—useful for reading border and alliance management together.",
+  },
+  "ussr-north-korea-maritime-friction-1980s": {
+    ko: "후원·동맹 면에서는 해상 경계·어로·관할이 ‘경계선’이 될 수 있음이 드러났고, 안보 면에서는 북방 수역의 실무 마찰이 정치적 온도를 흔들 수 있음을 남겼습니다. 오늘날 러–북 밀착과 대비되며, 이후에도 동맹 내부 마찰 가능성을 읽는 참고 좌표로 쓰입니다.",
+    en: "Under patronage and alliance it showed maritime limits, fishing, and jurisdiction can become a fault line; in security, routine northern-water friction can move political temperature. Contrasted with today’s Russia–DPRK intimacy, it remains a reference for reading possible friction inside alliance afterward.",
+  },
+};
+
 export function frictionParchmentParagraphs(
   ep: FrictionEpisode,
   lang: "ko" | "en",
 ): string[] {
   const deep = frictionDeepDoc(ep.id);
+  const significance = FRICTION_SIGNIFICANCE[ep.id];
+  const significanceBlock = significance
+    ? [
+        lang === "en"
+          ? "【Multifaceted significance & aftermath】"
+          : "【다방면적 의의와 이후 영향】",
+        lang === "en" ? significance.en : significance.ko,
+      ]
+    : [];
   const head = [ep.locationName];
   if (deep) {
     const six = deep.sixW;
@@ -1199,7 +1259,8 @@ export function frictionParchmentParagraphs(
       ...body,
       ...note,
       ...refs,
+      ...significanceBlock,
     ];
   }
-  return [ep.locationName, ep.briefing, ...(ep.note ? [ep.note] : [])];
+  return [ep.locationName, ep.briefing, ...(ep.note ? [ep.note] : []), ...significanceBlock];
 }

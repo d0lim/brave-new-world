@@ -129,7 +129,7 @@ export const VIEW_PACKAGES: ViewPackageDef[] = [
       showUkraineControl: false,
       showNeptun: false,
       showTzevaAdom: false,
-      showNewfeedsIranAttacks: false,
+      showNewfeedsIranAttacks: true,
       showUsCarriers: false,
       showMilitaryActivity: false,
     },

@@ -437,13 +437,35 @@ export const NEWS_LAYER_SOURCE_CATALOG: NewsLayerSourceNote[] = [
     ingest: "cached-api",
   },
   {
+    layerId: "hapi-conflict-casualties",
+    source: "HDX HAPI · ACLED conflict-events (political_violence fatalities)",
+    url: "/api/hapi-conflict-casualties",
+    cadence: "Live HAPI fetch · ~30m cache · 4-month lookback",
+    attribution: "HDX HAPI · ACLED · OCHA HDX",
+    notes:
+      "Geopolitics-only: one skull marker per active front admin1 (Ukraine frontline oblasts + Gaza/south Lebanon). Tension theaters excluded. No wounded field from ACLED. Not comparable 1:1 with Mediazona named RU KIA.",
+    status: "shipped",
+    ingest: "cached-api",
+  },
+  {
+    layerId: "nuclear-warheads",
+    source: "Our World in Data — Nuclear warhead stockpiles",
+    url: "https://ourworldindata.org/grapher/nuclear-warhead-stockpiles-lines",
+    cadence: "Annual (OWID/FAS/SIPRI) · static seed",
+    attribution: "Our World in Data · FAS Nuclear Notebook / SIPRI",
+    notes:
+      "각국 좌표 위 ICBM 아이콘 + 최신(2026) 핵탄두 보유 수. 보유 9개국(러·미·중·프·영·인·파·이스라엘·북한)만 표시, 폐기국(남아공)·세계 합계 제외.",
+    status: "shipped",
+    ingest: "static-build",
+  },
+  {
     layerId: "mediazona-casualties",
     source: "Mediazona × BBC (KIA) · CSIS estimate (WIA)",
     url: "/api/mediazona-casualties",
     cadence: "Homepage scrape · 1h cache · Kaggle panel seed fallback",
     attribution: "Mediazona · BBC Russian Service · CSIS (WIA est.) · Meduza",
     notes:
-      "Geopolitics-only globe overlay: skull + killed (named lower bound), wounded icon + CSIS-derived estimate. Screen-scaled by altitude. No layer checkbox. Cite originals, not the Kaggle compilation.",
+      "Reference API retained. Globe overlay now prefers HAPI active-front fatalities; Mediazona remains named RU KIA lower bound for methodology.",
     status: "shipped",
     ingest: "cached-api",
   },

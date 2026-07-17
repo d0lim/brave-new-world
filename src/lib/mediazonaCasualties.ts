@@ -49,7 +49,7 @@ export type MediazonaCasualtySnapshot = {
 
 import { UKRAINE_CASUALTY_MARKER } from "@/lib/warCasualtyTheaters";
 
-/** 우크라이나 지리 중심 — 영토 고정 좌표 */
+/** 우크라이나 전선(Donetsk 부근) — 영토 고정 좌표 */
 export const MEDIAZONA_FRONT_MARKER = UKRAINE_CASUALTY_MARKER;
 
 export const MEDIAZONA_CASUALTY_SEED: MediazonaCasualtySnapshot = {

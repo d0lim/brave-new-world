@@ -16,6 +16,7 @@ import { globeViewToMapLibre, mapLibreZoomToAltitude } from "@/lib/mapLibreBasem
 import { createMapGlobeMethods, type MapGlobeMethods } from "@/lib/mapGlobeRef";
 import {
   asFn,
+  buildFirmsFiresGeoJson,
   buildHeatmapGeoJson,
   buildLabelsGeoJson,
   buildPathsGeoJson,
@@ -23,6 +24,7 @@ import {
   buildPolygonsGeoJson,
   buildRingsGeoJson,
 } from "@/lib/mapGlobeLayers";
+import { firmsFlameColors, type FirmsSoundKind } from "@/lib/firmsSoundClassify";
 
 /**
  * GlobeLayerProps(Record)와 intersection하면 index signature가 콜백을 unknown으로 넓힙니다.
@@ -44,6 +46,7 @@ const INTERACTIVE_LAYERS = [
   "map-paths",
   "map-polygons-fill",
   "map-rings",
+  "firms-core",
   "ukraine-macro-fill",
   "ukraine-micro-fill",
   "ukraine-micro-defense",
@@ -118,6 +121,10 @@ export const MapGlobeView = forwardRef<MapGlobeMethods, MapGlobeViewProps>(funct
     [props.polygonsData],
   );
   const ringsData = useMemo(() => (props.ringsData as unknown[]) ?? [], [props.ringsData]);
+  const firmsFiresData = useMemo(
+    () => (props.firmsFiresData as unknown[]) ?? [],
+    [props.firmsFiresData],
+  );
   const labelsData = useMemo(() => (props.labelsData as unknown[]) ?? [], [props.labelsData]);
   const htmlElementsData = useMemo(
     () => (props.htmlElementsData as unknown[]) ?? [],
@@ -163,6 +170,15 @@ export const MapGlobeView = forwardRef<MapGlobeMethods, MapGlobeViewProps>(funct
   const pointLng = asFn<unknown, number>(props.pointLng, () => 0);
   const pointColor = asFn<unknown, string>(props.pointColor, () => "rgba(148,163,184,0.8)");
   const pointRadius = asFn<unknown, number>(props.pointRadius, () => 0.15);
+
+  const firmsLat = asFn<unknown, number>(props.firmsLat ?? props.pointLat, () => 0);
+  const firmsLng = asFn<unknown, number>(props.firmsLng ?? props.pointLng, () => 0);
+  const firmsAngularRadius = asFn<unknown, number>(
+    props.firmsAngularRadius ?? props.pointRadius,
+    () => 0.2,
+  );
+  const firmsCause = asFn<unknown, string>(props.firmsCause, () => "none");
+  const firmsFrp = asFn<unknown, number | null | undefined>(props.firmsFrp, () => null);
 
   const pathPoints = asFn<unknown, { lat: number; lng: number; alt?: number }[]>(
     props.pathPoints,
@@ -218,6 +234,11 @@ export const MapGlobeView = forwardRef<MapGlobeMethods, MapGlobeViewProps>(funct
     pointLng,
     pointColor,
     pointRadius,
+    firmsLat,
+    firmsLng,
+    firmsAngularRadius,
+    firmsCause,
+    firmsFrp,
     pathPoints,
     pathColor,
     pathStroke,
@@ -243,6 +264,11 @@ export const MapGlobeView = forwardRef<MapGlobeMethods, MapGlobeViewProps>(funct
     pointLng,
     pointColor,
     pointRadius,
+    firmsLat,
+    firmsLng,
+    firmsAngularRadius,
+    firmsCause,
+    firmsFrp,
     pathPoints,
     pathColor,
     pathStroke,
@@ -306,6 +332,27 @@ export const MapGlobeView = forwardRef<MapGlobeMethods, MapGlobeViewProps>(funct
       mapZoom,
     );
   }, [mapZoom, ringsData]);
+
+  const firmsGeoJson = useMemo(() => {
+    const a = accessorsRef.current;
+    return buildFirmsFiresGeoJson(
+      firmsFiresData,
+      {
+        lat: a.firmsLat,
+        lng: a.firmsLng,
+        cause: a.firmsCause,
+        frp: a.firmsFrp,
+        angularRadius: a.firmsAngularRadius,
+        coreColor: (item) =>
+          firmsFlameColors((a.firmsCause(item) as FirmsSoundKind) || "none").core,
+        emberColor: (item) =>
+          firmsFlameColors((a.firmsCause(item) as FirmsSoundKind) || "none").ember,
+        glowColor: (item) =>
+          firmsFlameColors((a.firmsCause(item) as FirmsSoundKind) || "none").glow,
+      },
+      mapZoom,
+    );
+  }, [firmsFiresData, mapZoom]);
 
   const labelsGeoJson = useMemo(() => {
     const a = accessorsRef.current;
@@ -408,12 +455,15 @@ export const MapGlobeView = forwardRef<MapGlobeMethods, MapGlobeViewProps>(funct
   const resolveFeature = useCallback(
     (layerId: string, index: number) => {
       if (layerId === "map-points") return pointsData[index] ?? null;
+      if (layerId === "firms-core" || layerId === "firms-ember" || layerId === "firms-glow") {
+        return firmsFiresData[index] ?? null;
+      }
       if (layerId === "map-paths") return deferredPathsData[index] ?? null;
       if (layerId === "map-polygons-fill") return polygonsData[index] ?? null;
       if (layerId === "map-rings") return ringsData[index] ?? null;
       return null;
     },
-    [deferredPathsData, pointsData, polygonsData, ringsData],
+    [deferredPathsData, firmsFiresData, pointsData, polygonsData, ringsData],
   );
 
   const handleMapClick = useCallback(
@@ -425,7 +475,7 @@ export const MapGlobeView = forwardRef<MapGlobeMethods, MapGlobeViewProps>(funct
         if (layerId == null || index == null) continue;
         const item = resolveFeature(layerId, Number(index));
         if (!item) continue;
-        if (layerId === "map-points") {
+        if (layerId === "map-points" || layerId === "firms-core") {
           onPointClick?.(item);
           return;
         }
@@ -460,7 +510,7 @@ export const MapGlobeView = forwardRef<MapGlobeMethods, MapGlobeViewProps>(funct
         if (layerId == null || index == null) continue;
         const item = resolveFeature(layerId, Number(index));
         if (!item) continue;
-        if (layerId === "map-points") {
+        if (layerId === "map-points" || layerId === "firms-core") {
           onPointHover?.(item);
           return;
         }
@@ -486,6 +536,67 @@ export const MapGlobeView = forwardRef<MapGlobeMethods, MapGlobeViewProps>(funct
     onPathHover?.(null);
     onPolygonHover?.(null);
   }, [onPathHover, onPointHover, onPolygonHover]);
+
+  useEffect(() => {
+    if (!mapLoaded || firmsFiresData.length === 0) return;
+    if (
+      typeof window !== "undefined" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    ) {
+      return;
+    }
+
+    let raf = 0;
+    let last = 0;
+    const tick = (now: number) => {
+      if (now - last < 70) {
+        raf = window.requestAnimationFrame(tick);
+        return;
+      }
+      last = now;
+      if (movingRef.current) {
+        raf = window.requestAnimationFrame(tick);
+        return;
+      }
+      const map = mapRef.current?.getMap();
+      if (!map?.getLayer("firms-glow")) {
+        raf = window.requestAnimationFrame(tick);
+        return;
+      }
+      const t = now / 1000;
+      const p0 = 0.72 + 0.28 * Math.sin(t * 3.4);
+      const p1 = 0.72 + 0.28 * Math.sin(t * 3.4 + 2.15);
+      const p2 = 0.72 + 0.28 * Math.sin(t * 3.4 + 4.3);
+      const pulseByPhase = ["match", ["get", "phase"], 0, p0, 1, p1, p2];
+      try {
+        map.setPaintProperty("firms-glow", "circle-radius", [
+          "*",
+          ["get", "glowRadius"],
+          pulseByPhase,
+        ] as never);
+        map.setPaintProperty("firms-glow", "circle-opacity", [
+          "*",
+          ["get", "glowOpacity"],
+          pulseByPhase,
+        ] as never);
+        map.setPaintProperty("firms-ember", "circle-radius", [
+          "*",
+          ["get", "emberRadius"],
+          ["+", 0.88, ["*", 0.14, pulseByPhase]],
+        ] as never);
+        map.setPaintProperty("firms-core", "circle-opacity", [
+          "+",
+          0.82,
+          ["*", 0.16, pulseByPhase],
+        ] as never);
+      } catch {
+        /* style swap mid-frame */
+      }
+      raf = window.requestAnimationFrame(tick);
+    };
+    raf = window.requestAnimationFrame(tick);
+    return () => window.cancelAnimationFrame(raf);
+  }, [firmsFiresData.length, mapLoaded]);
 
   useEffect(() => {
     if (!mapLoaded) return;
@@ -601,6 +712,45 @@ export const MapGlobeView = forwardRef<MapGlobeMethods, MapGlobeViewProps>(funct
                 "circle-opacity": 0.92,
                 "circle-stroke-width": 0.5,
                 "circle-stroke-color": "rgba(2,4,10,0.55)",
+              }}
+            />
+          </Source>
+        ) : null}
+
+        {firmsGeoJson.features.length > 0 ? (
+          <Source id="firms-fires-source" type="geojson" data={firmsGeoJson}>
+            <Layer
+              id="firms-glow"
+              type="circle"
+              paint={{
+                "circle-color": ["get", "glowColor"],
+                "circle-radius": ["get", "glowRadius"],
+                "circle-opacity": ["get", "glowOpacity"],
+                "circle-blur": 0.85,
+                "circle-pitch-alignment": "map",
+              }}
+            />
+            <Layer
+              id="firms-ember"
+              type="circle"
+              paint={{
+                "circle-color": ["get", "emberColor"],
+                "circle-radius": ["get", "emberRadius"],
+                "circle-opacity": ["get", "emberOpacity"],
+                "circle-blur": 0.35,
+                "circle-pitch-alignment": "map",
+              }}
+            />
+            <Layer
+              id="firms-core"
+              type="circle"
+              paint={{
+                "circle-color": ["get", "coreColor"],
+                "circle-radius": ["get", "coreRadius"],
+                "circle-opacity": 0.96,
+                "circle-stroke-width": 0.6,
+                "circle-stroke-color": "rgba(255, 220, 140, 0.65)",
+                "circle-pitch-alignment": "map",
               }}
             />
           </Source>

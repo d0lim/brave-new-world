@@ -14,6 +14,8 @@ export type WarCasualtyOverlayInput = {
   elegyLines?: readonly [string, string];
   /** 부상 줄 호버 시 짧은 설명 (고정 추정치 등). 없으면 부상 전용 팁 없음 */
   woundedNote?: string;
+  /** true면 부상 줄 숨김 (HAPI/ACLED는 fatalities만 제공) */
+  hideWounded?: boolean;
   altitude?: number;
   /** 전장 박스 스팬(°) — 영토 대비 글자 크기 */
   territorySpanDeg?: number;
@@ -58,18 +60,20 @@ export function markCasualtyElegyTyped(theaterId: string): void {
 }
 
 /**
- * 영토에 붙어 보이는 배율 — 고고도에서도 과하게 크지 않게 상한을 낮춤.
- * 넓은 전장(territorySpanDeg↑)은 같은 고도에서 글자가 조금 더 큼.
+ * 영토에 붙어 보이는 배율.
+ * 줌아웃(고도↑) → 화면 배율↓ 로 전장 크기에 맞춰 축소하고,
+ * 줌인(고도↓) → 읽기 좋게 키움. (이전: 고도↑에 커져 전선에서 떠 보임)
  */
 export function getCasualtyOverlayScale(
   altitude: number,
   territorySpanDeg = 10,
 ): number {
-  const a = Math.max(0.04, Number.isFinite(altitude) ? altitude : 1.8);
+  const a = Math.max(0.06, Number.isFinite(altitude) ? altitude : 1.8);
   const span = Math.max(3, Number.isFinite(territorySpanDeg) ? territorySpanDeg : 10);
-  const spanFactor = Math.sqrt(span / 14);
-  const raw = (a / 2.6) * spanFactor;
-  return Math.min(0.95, Math.max(0.16, raw));
+  // 전장 각크기 ≈ span/a 에 비례 — 넓은 전장은 같은 고도에서 약간 더 큼
+  const territoryOnScreen = span / a;
+  const raw = territoryOnScreen * 0.028;
+  return Math.min(0.78, Math.max(0.12, raw));
 }
 
 export type CasualtyOverlayMetrics = {
@@ -85,16 +89,16 @@ export type CasualtyOverlayMetrics = {
 
 /** 숫자·호버 문구·아이콘 크기 — 배율에 비례 (영토 대비 작게) */
 export function getCasualtyOverlayMetrics(scale: number): CasualtyOverlayMetrics {
-  const s = Math.max(0.16, Math.min(0.95, scale));
+  const s = Math.max(0.12, Math.min(0.78, scale));
   return {
     scale: s,
-    numPx: Math.round(10 + 7 * s),
-    labelPx: Math.round(5 + 3 * s),
+    numPx: Math.round(10 + 8 * s),
+    labelPx: Math.round(5 + 3.5 * s),
     elegyPx: Math.round(6 + 4 * s),
     notePx: Math.round(5 + 3 * s),
-    iconPx: Math.round(12 + 10 * s),
-    rowGapPx: Math.round(4 + 4 * s),
-    blockGapPx: Math.round(6 + 5 * s),
+    iconPx: Math.round(11 + 11 * s),
+    rowGapPx: Math.round(3 + 4 * s),
+    blockGapPx: Math.round(4 + 4 * s),
   };
 }
 
@@ -106,12 +110,18 @@ export function applyCasualtyOverlayMetrics(
 ): void {
   const m = getCasualtyOverlayMetrics(scale);
   const visScale = visible ? m.scale : m.scale * 0.86;
+  // bottom-center 앵커 — 라벨이 전선 좌표 바로 위에 붙음
   el.style.transform = `translate(-50%, -100%) scale(${visScale})`;
-  el.style.transformOrigin = "center bottom";
-  el.style.gap = `${m.blockGapPx}px`;
+  el.style.transformOrigin = "50% 100%";
 
   const counts = el.querySelector<HTMLElement>(".casualty-skull-counts");
   if (counts) counts.style.gap = `${m.rowGapPx}px`;
+
+  const sidePane = el.querySelector<HTMLElement>(".casualty-side-pane");
+  if (sidePane) {
+    sidePane.style.marginLeft = `${Math.max(6, Math.round(m.blockGapPx))}px`;
+    sidePane.style.width = `${Math.round(m.elegyPx * 14)}px`;
+  }
 
   el.querySelectorAll<HTMLElement>(".casualty-count-num").forEach((node) => {
     node.style.fontSize = `${m.numPx}px`;
@@ -127,12 +137,13 @@ export function applyCasualtyOverlayMetrics(
   if (note) {
     note.style.fontSize = `${m.notePx}px`;
     note.style.padding = `${Math.max(3, Math.round(m.notePx * 0.55))}px ${Math.max(5, Math.round(m.notePx * 0.85))}px`;
+    note.style.maxWidth = `${Math.round(m.notePx * 14)}px`;
   }
 
-  el.querySelectorAll<HTMLElement>(".casualty-row svg").forEach((svg) => {
-    const px = m.iconPx;
-    svg.setAttribute("width", String(px));
-    svg.setAttribute("height", String(px));
+  el.querySelectorAll<SVGElement>(".casualty-row svg").forEach((svg) => {
+    const px = String(m.iconPx);
+    svg.setAttribute("width", px);
+    svg.setAttribute("height", px);
   });
 
   el.querySelectorAll<HTMLElement>(".casualty-row").forEach((row) => {
@@ -156,9 +167,16 @@ function escapeHtml(value: string | null | undefined) {
 const CASUALTY_NUMBER_FONT =
   'var(--font-sb-agro), "SB Agro", "SBAgro", sans-serif';
 
+/**
+ * 흰색 두개골 SVG — 눈구멍·코구멍 뚫림, 턱·이빨 노출.
+ */
 function skullSvg(iconPx: number) {
-  return `<svg width="${iconPx}" height="${iconPx}" viewBox="0 0 24 24" aria-hidden="true" style="display:block;flex-shrink:0">
-  <path fill="#ffffff" d="M12 2C7.6 2 4.2 5.1 4.2 9.1c0 2.4 1.1 4.5 2.8 5.9L6 20.2c0 .4.3.8.8.8h1.6c.3 0 .6-.2.7-.5L10 18h4l.9 2.5c.1.3.4.5.7.5h1.6c.4 0 .8-.4.8-.8l-1-5.2c1.7-1.4 2.8-3.5 2.8-5.9C19.8 5.1 16.4 2 12 2zm-3.2 7.2c-.7 0-1.3-.6-1.3-1.3S8.1 6.6 8.8 6.6s1.3.6 1.3 1.3-.6 1.3-1.3 1.3zm6.4 0c-.7 0-1.3-.6-1.3-1.3s.6-1.3 1.3-1.3 1.3.6 1.3 1.3-.6 1.3-1.3 1.3zM9.5 14.2c.7.5 1.6.8 2.5.8s1.8-.3 2.5-.8c.2-.1.2-.4 0-.5-.7-.4-1.6-.7-2.5-.7s-1.8.3-2.5.7c-.2.1-.2.4 0-.5z"/>
+  const px = Math.max(14, Math.round(iconPx));
+  return `<svg class="casualty-skull-svg" width="${px}" height="${px}" viewBox="0 0 64 64" aria-hidden="true" style="display:block;flex-shrink:0;filter:drop-shadow(0 1px 2px rgba(0,0,0,0.85))">
+  <path fill="#ffffff" fill-rule="evenodd" d="M32 3.5C18.2 3.5 8 13.8 8 27.2c0 8.6 4.1 14.8 9.8 18.6.5 1.6.8 3.2.8 4.6v2.4c0 1.3-.35 2.5-.95 3.6L15.4 61c-.25.7.25 1.45 1.05 1.45h5.5c.35 0 .68-.2.85-.52L26.4 54h11.2l3.6 7.93c.17.32.5.52.85.52h5.5c.8 0 1.3-.75 1.05-1.45l-2.25-5.2c-.6-1.1-.95-2.3-.95-3.6v-2.4c0-1.4.3-3 .8-4.6C51.9 42 56 35.8 56 27.2 56 13.8 45.8 3.5 32 3.5zm-10.8 18a5.9 6.5 0 1 0 11.8 0 5.9 6.5 0 1 0-11.8 0zm10 0a5.9 6.5 0 1 0 11.8 0 5.9 6.5 0 1 0-11.8 0zM32 28.6c-2.7 0-4.8 1.75-5.35 3.95-.12.55.32 1.05.9 1.05h8.9c.58 0 1.02-.5.9-1.05C36.8 30.35 34.7 28.6 32 28.6z"/>
+  <path fill="#ffffff" d="M21.6 41.2h20.8v9.2c0 1.2-.7 2.2-1.7 2.6-3.4.7-14 .7-17.4 0-1-.4-1.7-1.4-1.7-2.6v-9.2z"/>
+  <path fill="none" stroke="rgba(0,0,0,0.55)" stroke-width="1.15" d="M24.8 41.4v9.2M28 41.4v9.2M31.2 41.4v9.2M34.4 41.4v9.2M37.6 41.4v9.2M25.2 46h13.6"/>
+  <path fill="none" stroke="#ffffff" stroke-width="1.15" stroke-linecap="round" d="M17.6 29.4c2.5 2.1 5.5 3.2 8.7 3.2M46.4 29.4c-2.5 2.1-5.5 3.2-8.7 3.2"/>
 </svg>`;
 }
 
@@ -191,9 +209,9 @@ export function createWarCasualtyOverlayElement(
   el.className = "casualty-skull-marker war-casualty-overlay";
   el.dataset.theaterId = theaterId;
   el.dataset.territorySpan = String(spanDeg);
-  el.style.display = "flex";
-  el.style.flexDirection = "row";
-  el.style.alignItems = "center";
+  // 인플로우 자식은 counts만 — 사이드 페인은 absolute라 핀이 전선 좌표에서 안 밀림
+  el.style.display = "block";
+  el.style.position = "relative";
   el.style.pointerEvents = "auto";
   el.style.userSelect = "none";
   el.style.cursor = "default";
@@ -230,15 +248,21 @@ export function createWarCasualtyOverlayElement(
   };
 
   const killedRow = row(skullSvg(metrics.iconPx), input.killed, input.killedLabel, "killed");
-  const woundedRow = row(woundedSvg(metrics.iconPx), input.wounded, input.woundedLabel, "wounded");
-  counts.append(killedRow, woundedRow);
+  const woundedRow = input.hideWounded
+    ? null
+    : row(woundedSvg(metrics.iconPx), input.wounded, input.woundedLabel, "wounded");
+  counts.append(killedRow);
+  if (woundedRow) counts.append(woundedRow);
 
   const sidePane = document.createElement("div");
   sidePane.className = "casualty-side-pane";
-  sidePane.style.position = "relative";
-  sidePane.style.minWidth = `${Math.round(metrics.elegyPx * 11)}px`;
-  sidePane.style.maxWidth = `${Math.round(metrics.elegyPx * 16)}px`;
-  sidePane.style.minHeight = `${Math.round(metrics.elegyPx * 2.2)}px`;
+  sidePane.style.position = "absolute";
+  sidePane.style.left = "100%";
+  sidePane.style.top = "50%";
+  sidePane.style.transform = "translateY(-50%)";
+  sidePane.style.marginLeft = `${Math.max(6, Math.round(metrics.blockGapPx))}px`;
+  sidePane.style.width = `${Math.round(metrics.elegyPx * 14)}px`;
+  sidePane.style.pointerEvents = "none";
 
   const elegy = document.createElement("div");
   elegy.className = "casualty-elegy";
@@ -391,7 +415,7 @@ export function createWarCasualtyOverlayElement(
   killedRow.addEventListener("mouseenter", typewrite);
   killedRow.addEventListener("mouseleave", () => hideElegy(false));
 
-  if (woundedNote) {
+  if (woundedRow && woundedNote) {
     woundedRow.addEventListener("mouseenter", showNote);
     woundedRow.addEventListener("mouseleave", hideNote);
   }
@@ -416,7 +440,7 @@ export function createWarCasualtyOverlayElement(
     { passive: false },
   );
 
-  if (woundedNote) {
+  if (woundedRow && woundedNote) {
     woundedRow.addEventListener(
       "touchend",
       (ev) => {

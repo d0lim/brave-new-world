@@ -1,9 +1,9 @@
 "use client";
 
 import { useLayoutEffect, useRef, useState } from "react";
+import { clampBoxToViewport, VIEWPORT_EDGE_PAD } from "@/lib/viewportClamp";
 
 const CURSOR_OFFSET = 14;
-const EDGE_PADDING = 10;
 
 type CursorHoverCardProps = {
   visible: boolean;
@@ -45,17 +45,20 @@ export function CursorHoverCard({
     let left = x + CURSOR_OFFSET;
     let top = y + CURSOR_OFFSET;
 
-    if (left + cardW + EDGE_PADDING > boundsW) {
+    // 오른쪽·아래가 넘치면 커서 반대편으로
+    if (left + cardW + VIEWPORT_EDGE_PAD > boundsW) {
       left = x - cardW - CURSOR_OFFSET;
     }
-    if (top + cardH + EDGE_PADDING > boundsH) {
+    if (top + cardH + VIEWPORT_EDGE_PAD > boundsH) {
       top = y - cardH - CURSOR_OFFSET;
     }
 
-    setPosition({
-      left: Math.max(EDGE_PADDING, left),
-      top: Math.max(EDGE_PADDING, top),
-    });
+    setPosition(
+      clampBoxToViewport(left, top, cardW, cardH, VIEWPORT_EDGE_PAD, {
+        width: boundsW,
+        height: boundsH,
+      }),
+    );
   }, [visible, x, y, title, detail, badge, meta, body, hint]);
 
   if (!visible) return null;

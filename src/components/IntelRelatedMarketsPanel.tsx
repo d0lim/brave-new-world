@@ -9,6 +9,7 @@ import {
   STOCK_TICKER_SYMBOLS,
   theaterMarketBlurb,
   tickerChangeTone,
+  tickerDisplayName,
   yahooQuoteUrl,
   type StockTickerItem,
   type TheaterMarketFilter,
@@ -92,6 +93,7 @@ function MarketCard({
   watchLabel,
   unwatchLabel,
   yahooLabel,
+  lang,
 }: {
   item: StockTickerItem;
   highlight?: boolean;
@@ -100,8 +102,10 @@ function MarketCard({
   watchLabel: string;
   unwatchLabel: string;
   yahooLabel: string;
+  lang: "ko" | "en";
 }) {
   const tone = tickerChangeTone(item.changePercent);
+  const name = tickerDisplayName(item.symbol, lang);
 
   return (
     <div
@@ -112,7 +116,9 @@ function MarketCard({
       }`}
     >
       <div className="flex items-center justify-between gap-2">
-        <span className="truncate text-sm font-semibold text-emerald-50/95">{item.label}</span>
+        <span className="truncate text-sm font-semibold text-emerald-50/95" title={item.symbol}>
+          {name}
+        </span>
         <div className="flex shrink-0 items-center gap-1">
           {onToggleWatch ? (
             <button
@@ -143,9 +149,9 @@ function MarketCard({
           target="_blank"
           rel="noopener noreferrer"
           className="truncate text-[10px] text-emerald-300/80 underline-offset-2 hover:text-emerald-200 hover:underline"
-          title={yahooLabel}
+          title={`${yahooLabel} · ${item.symbol}`}
         >
-          {item.symbol} ↗
+          Yahoo ↗
         </a>
       </div>
     </div>
@@ -171,10 +177,15 @@ type IntelRelatedMarketsPanelProps = {
   searchQuery?: string;
 };
 
-function matchesTickerSearch(item: StockTickerItem, query: string): boolean {
+function matchesTickerSearch(item: StockTickerItem, query: string, lang: "ko" | "en" = "ko"): boolean {
   const q = query.trim().toLowerCase();
   if (!q) return true;
-  return item.label.toLowerCase().includes(q) || item.symbol.toLowerCase().includes(q);
+  const name = tickerDisplayName(item.symbol, lang).toLowerCase();
+  return (
+    name.includes(q) ||
+    item.label.toLowerCase().includes(q) ||
+    item.symbol.toLowerCase().includes(q)
+  );
 }
 
 export function IntelRelatedMarketsPanel({
@@ -233,8 +244,8 @@ export function IntelRelatedMarketsPanel({
   const related = pickRelatedTickers(allTickers, marketFilter);
   const relatedSet = useMemo(() => new Set(related.map((t) => t.symbol)), [related]);
   const filteredRelated = useMemo(
-    () => related.filter((item) => matchesTickerSearch(item, searchQuery)),
-    [related, searchQuery],
+    () => related.filter((item) => matchesTickerSearch(item, searchQuery, lang)),
+    [related, searchQuery, lang],
   );
   const watchItems = useMemo(
     () =>
@@ -253,6 +264,7 @@ export function IntelRelatedMarketsPanel({
     watchLabel: t("addWatch"),
     unwatchLabel: t("removeWatch"),
     yahooLabel: t("openYahoo"),
+    lang,
   };
 
   const marketBody = (
@@ -303,10 +315,10 @@ export function IntelRelatedMarketsPanel({
             </h3>
             {loading && !tickers ? (
               <SkeletonGrid count={4} />
-            ) : filteredRelated.length > 0 || allTickers.some((t) => matchesTickerSearch(t, searchQuery)) ? (
+            ) : filteredRelated.length > 0 || allTickers.some((t) => matchesTickerSearch(t, searchQuery, lang)) ? (
               <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
                 {allTickers
-                  .filter((item) => matchesTickerSearch(item, searchQuery))
+                  .filter((item) => matchesTickerSearch(item, searchQuery, lang))
                   .map((item) => (
                     <MarketCard
                       key={item.symbol}

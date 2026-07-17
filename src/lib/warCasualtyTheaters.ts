@@ -1,9 +1,12 @@
 /**
  * 전장별 사상자 마커 좌표·시드 (우크라는 Mediazona 라이브로 덮어씀).
- * 지정학 지구본 — 영토 고정 좌표에 사망/부상 오버레이.
+ * 지정학 지구본 — 실제 교전 전선(ACTIVE_WAR)에만 사망/부상 오버레이.
  */
 
-import type { CombatTheaterId } from "@/lib/theaterCombat";
+import {
+  isActiveWarTheater,
+  type CombatTheaterId,
+} from "@/lib/theaterCombat";
 
 export type TheaterCasualtySeed = {
   theaterId: CombatTheaterId;
@@ -18,12 +21,13 @@ export type TheaterCasualtySeed = {
   woundedNoteEn?: string;
 };
 
-/** 우크라이나 지리 중심 — 사용자 지정 좌표 */
+/** 우크라이나 전선(Donetsk 부근) — 줌아웃해도 이 좌표에 고정 */
 export const UKRAINE_CASUALTY_MARKER = {
-  lat: 48.3794,
-  lng: 31.1656,
+  lat: 48.52,
+  lng: 37.85,
 } as const;
 
+/** 표시용 — 실제 교전 전장만 (긴장 구간 제외) */
 export const THEATER_CASUALTY_SEEDS: TheaterCasualtySeed[] = [
   {
     theaterId: "russia-ukraine",
@@ -48,6 +52,10 @@ export const THEATER_CASUALTY_SEEDS: TheaterCasualtySeed[] = [
     woundedNoteKo: "부상은 공개 추정치입니다. (명의 확인 목록 없음)",
     woundedNoteEn: "Wounded is a public estimate (no named list).",
   },
+];
+
+/** 개전 전 긴장 구간 — 시드만 보관, 지도 오버레이에는 쓰지 않음 */
+export const TENSION_CASUALTY_SEEDS: TheaterCasualtySeed[] = [
   {
     theaterId: "china-taiwan",
     lat: 24.2,
@@ -75,5 +83,10 @@ export const THEATER_CASUALTY_SEEDS: TheaterCasualtySeed[] = [
 ];
 
 export function getTheaterCasualtySeed(theaterId: CombatTheaterId): TheaterCasualtySeed | undefined {
-  return THEATER_CASUALTY_SEEDS.find((s) => s.theaterId === theaterId);
+  return [...THEATER_CASUALTY_SEEDS, ...TENSION_CASUALTY_SEEDS].find((s) => s.theaterId === theaterId);
+}
+
+/** 실제 교전 전선만 — 사망·부상 오버레이 표시 대상 */
+export function getActiveCasualtySeeds(): TheaterCasualtySeed[] {
+  return THEATER_CASUALTY_SEEDS.filter((seed) => isActiveWarTheater(seed.theaterId));
 }

@@ -68,8 +68,16 @@ const CONFLICT_FORCE_ON: Partial<LayerPrefs> = {
   showNeptun: true,
   showNeptunPreviousTrails: false,
   showTelegramOsint: true,
+  /** 지정학 진입 즉시 NewFeeds 이란·공격 지도 레이어 */
+  showNewfeedsIranAttacks: true,
   /** 지정학 진입 즉시 전 세계 미 항모 배치·항구 위치 표시 */
   showUsCarriers: true,
+  /** 에너지·자원 카테고리 — 지정학에서도 패널·기본 ON */
+  showOilPipelines: true,
+  showGasPipelines: true,
+  showLngTerminals: true,
+  showResources: true,
+  showNuclearSites: true,
 };
 
 const CONFLICT_FORCE_OFF: Partial<LayerPrefs> = {
@@ -90,6 +98,8 @@ const ECONOMY_FORCE_ON: Partial<LayerPrefs> = {
   showAiDataCenters: true,
   showPorts: true,
   showAirports: true,
+  /** 유가 민감 — 이란·지역 공격 NewFeeds 지도 */
+  showNewfeedsIranAttacks: true,
 };
 
 const ECONOMY_FORCE_OFF: Partial<LayerPrefs> = {
@@ -105,7 +115,6 @@ const ECONOMY_FORCE_OFF: Partial<LayerPrefs> = {
   showNeptun: false,
   showNeptunPreviousTrails: false,
   showTzevaAdom: false,
-  showNewfeedsIranAttacks: false,
   showConflictZones: false,
   showUcdpEvents: false,
   showMilitaryBases: false,
@@ -122,7 +131,7 @@ export const VIEWER_CHROME: Record<ViewerMode, ViewerChromePreset> = {
   conflict: {
     mode: "conflict",
     packageId: "frontline-live",
-    layerCategoryIds: ["map", "conflict", "military", "transport", "live"],
+    layerCategoryIds: ["map", "conflict", "military", "energy", "transport", "live"],
     forceLayerOn: CONFLICT_FORCE_ON,
     forceLayerOff: CONFLICT_FORCE_OFF,
     fetchGdelt: true,
@@ -142,6 +151,7 @@ export const VIEWER_CHROME: Record<ViewerMode, ViewerChromePreset> = {
       "우크라이나 전선·NEPTUN 드론·미사일 궤적",
       "GDELT 전투·외교 뉴스 핀",
       "Telegram OSINT · VIINA 점령지",
+      "에너지·자원: 송유관·가스관·LNG·광물·원자력",
       "하단: 속보 + GDELT 범례",
     ],
     layerPanelTitle: "레이어 · 전선",

@@ -7,11 +7,14 @@ import {
   STOCK_TICKER_SYMBOLS,
   TICKER_STRIP_SYMBOLS,
   tickerChangeTone,
+  tickerDisplayName,
   type StockTickerItem,
 } from "@/lib/stockTickers";
 import type { HeroStatus } from "@/lib/news/types";
 import { TICKER_SPIKE_THRESHOLD_PERCENT, type IntelStackMode } from "@/lib/news/intelStackMode";
 import { liveTickerPollMs } from "@/lib/liveRenderGuard";
+import { useLocale } from "@/contexts/LocaleContext";
+import type { LabelLanguage } from "@/lib/layerPrefs";
 
 type StockTickersResponse = {
   tickers?: StockTickerItem[];
@@ -123,14 +126,17 @@ function TickerRow({
   item,
   highlighted,
   showSpike,
+  lang,
 }: {
   item: StockTickerItem;
   highlighted?: boolean;
   showSpike?: boolean;
+  lang: LabelLanguage;
 }) {
   const tone = tickerChangeTone(item.changePercent);
   const changeText = formatTickerChangePercent(item.changePercent);
   const spikeBadge = showSpike && highlighted ? formatSpikeBadge(item.changePercent) : null;
+  const name = tickerDisplayName(item.symbol, lang);
 
   return (
     <span
@@ -138,8 +144,8 @@ function TickerRow({
         highlighted ? (spikeBadge ? "ticker-row--spike" : "ticker-row--highlight") : ""
       }`}
     >
-      <span className={highlighted ? "font-semibold text-rose-100" : "text-slate-300"}>
-        {item.label}
+      <span className={highlighted ? "font-semibold text-rose-100" : "text-slate-300"} title={item.symbol}>
+        {name}
       </span>
       <TickerSparkline data={item.sparkline} tone={tone} />
       <span className={highlighted ? "font-semibold text-white" : "text-slate-100"}>
@@ -172,6 +178,7 @@ export function StockTickerStrip({
   showHeader = false,
   paused = false,
 }: StockTickerStripProps) {
+  const { lang } = useLocale();
   const [tickers, setTickers] = useState<StockTickerItem[] | null>(null);
   const [loading, setLoading] = useState(true);
   const pausedRef = useRef(paused);
@@ -248,6 +255,7 @@ export function StockTickerStrip({
                 item={item}
                 highlighted={highlighted}
                 showSpike={mode === "alert"}
+                lang={lang}
               />
             );
           })}

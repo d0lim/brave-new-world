@@ -5,7 +5,10 @@ import { parseSearchParams } from "@/lib/apiQuerySchemas";
 import {
   readBriefingStatsFromD1,
   readBriefingStatsFromIngestWorker,
+  type BriefingPeriodStats,
 } from "@/lib/briefingPeriodStats";
+import { rewriteLampNarrative } from "@/lib/llm/lampNarrative";
+import { buildBriefingFromStats } from "@/lib/news/periodicBriefing";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -14,6 +17,8 @@ const briefingStatsQuerySchema = z
   .object({
     key: z.string().min(3).max(64).optional(),
     tier: z.enum(["daily", "weekly", "monthly"]).optional(),
+    lang: z.enum(["ko", "en"]).optional(),
+    viewerMode: z.enum(["conflict", "economy"]).optional(),
   })
   .refine((v) => Boolean(v.key || v.tier), {
     message: "Provide key or tier",
@@ -36,20 +41,50 @@ export async function GET(request: Request) {
     );
   }
 
-  const { key, tier } = parsed.data;
-  const fromD1 = await readBriefingStatsFromD1({ key, tier });
-  if (fromD1) {
+  const { key, tier, lang, viewerMode } = parsed.data;
+  const respond = async (
+    stats: BriefingPeriodStats | null,
+    source: "d1" | "ingest-worker" | "empty",
+  ) => {
+    let briefing = null;
+    if (stats && tier && lang && viewerMode) {
+      const draft = buildBriefingFromStats(
+        stats,
+        tier,
+        stats.periodKey,
+        lang,
+        viewerMode,
+      );
+      if (draft) {
+        const rewritten = await rewriteLampNarrative({
+          mode: viewerMode,
+          lang,
+          periodKey: stats.periodKey,
+          title: draft.title,
+          paragraphs: draft.paragraphs,
+        });
+        briefing = {
+          ...draft,
+          title: rewritten.title,
+          paragraphs: rewritten.paragraphs,
+          llmEnhanced: rewritten.llmEnhanced,
+          model: rewritten.model,
+        };
+      }
+    }
     return NextResponse.json({
       fetchedAt: new Date().toISOString(),
-      source: "d1",
-      stats: fromD1,
+      source,
+      stats,
+      briefing,
     });
+  };
+
+  const fromD1 = await readBriefingStatsFromD1({ key, tier });
+  if (fromD1) {
+    return respond(fromD1, "d1");
   }
 
   const fromWorker = await readBriefingStatsFromIngestWorker({ key, tier });
-  return NextResponse.json({
-    fetchedAt: new Date().toISOString(),
-    source: fromWorker ? "ingest-worker" : "empty",
-    stats: fromWorker,
-  });
+  return respond(fromWorker, fromWorker ? "ingest-worker" : "empty");
 }

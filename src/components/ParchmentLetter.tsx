@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BRAND_NAME } from "@/lib/brand";
 import type { LabelLanguage } from "@/lib/layerPrefs";
 import {
@@ -103,6 +103,9 @@ export function ParchmentLetter({
 }: ParchmentLetterProps) {
   const [phase, setPhase] = useState<"idle" | "folding" | "done">("idle");
   const [typedChars, setTypedChars] = useState(0);
+  const bodyScrollRef = useRef<HTMLDivElement>(null);
+  const typingSkipRef = useRef(false);
+  const typingIntervalRef = useRef<number | null>(null);
   const handStack =
     'var(--font-letter-hand), "Gowun Batang", "Nanum Myeongjo", "Batang", serif';
   const scriptStack =
@@ -124,24 +127,39 @@ export function ParchmentLetter({
 
   useEffect(() => {
     if (!typewriter) {
+      typingSkipRef.current = true;
       setTypedChars(totalChars);
       return;
     }
+    typingSkipRef.current = false;
     setTypedChars(0);
     const reduced =
       typeof window !== "undefined" &&
       window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     if (reduced || totalChars === 0) {
+      typingSkipRef.current = true;
       setTypedChars(totalChars);
       return;
     }
     let i = 0;
     const id = window.setInterval(() => {
+      if (typingSkipRef.current) {
+        window.clearInterval(id);
+        typingIntervalRef.current = null;
+        return;
+      }
       i += 1;
       setTypedChars(i);
-      if (i >= totalChars) window.clearInterval(id);
+      if (i >= totalChars) {
+        window.clearInterval(id);
+        typingIntervalRef.current = null;
+      }
     }, TYPE_MS_PER_CHAR);
-    return () => window.clearInterval(id);
+    typingIntervalRef.current = id;
+    return () => {
+      window.clearInterval(id);
+      typingIntervalRef.current = null;
+    };
   }, [typewriter, totalChars, fullBody]);
 
   const visibleParagraphs = useMemo(() => {
@@ -163,9 +181,21 @@ export function ParchmentLetter({
     return out.length > 0 ? out : [""];
   }, [paragraphs, typewriter, typedChars, totalChars]);
 
+  useEffect(() => {
+    if (!typewriter) return;
+    const el = bodyScrollRef.current;
+    if (!el) return;
+    el.scrollTop = el.scrollHeight;
+  }, [typedChars, typewriter, typingDone]);
+
   const handleContinue = useCallback(() => {
     if (phase !== "idle") return;
     if (typewriter && !typingDone) {
+      typingSkipRef.current = true;
+      if (typingIntervalRef.current != null) {
+        window.clearInterval(typingIntervalRef.current);
+        typingIntervalRef.current = null;
+      }
       setTypedChars(totalChars);
       return;
     }
@@ -217,6 +247,7 @@ export function ParchmentLetter({
               </h1>
               <div className="welcome-letter-divider mx-auto mt-4 shrink-0" aria-hidden />
               <div
+                ref={bodyScrollRef}
                 className="welcome-letter-body mt-5 min-h-0 flex-1 space-y-5 overflow-y-auto overscroll-contain text-[1.06rem] leading-[1.95] tracking-[0.03em] text-[#3f2e1c] sm:text-[1.12rem] sm:leading-[2] sm:tracking-[0.035em]"
                 style={{ fontFamily: bodyFont, fontWeight: 400 }}
                 aria-live="polite"

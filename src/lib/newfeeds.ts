@@ -128,3 +128,33 @@ export function severityColor(severity: NewfeedsSeverity): string {
   if (severity === "medium") return "rgba(234, 179, 8, 0.82)";
   return "rgba(148, 163, 184, 0.75)";
 }
+
+/** 심각도 라벨 — 지도 호버·패널용 */
+export function severityLabel(
+  severity: NewfeedsSeverity,
+  lang: "ko" | "en" = "ko",
+): string {
+  const en = lang === "en";
+  if (severity === "major") return en ? "Major" : "대규모";
+  if (severity === "high") return en ? "High" : "높음";
+  if (severity === "medium") return en ? "Medium" : "중간";
+  if (severity === "low") return en ? "Low" : "낮음";
+  return en ? String(severity) : String(severity);
+}
+
+export function severityHint(
+  severity: NewfeedsSeverity,
+  lang: "ko" | "en" = "ko",
+): string {
+  const en = lang === "en";
+  if (severity === "major") {
+    return en ? "Highest intensity attack event" : "최고 강도 공격 이벤트";
+  }
+  if (severity === "high") {
+    return en ? "High intensity attack event" : "높은 강도 공격 이벤트";
+  }
+  if (severity === "medium") {
+    return en ? "Medium intensity event" : "중간 강도 이벤트";
+  }
+  return en ? "Lower intensity / unclassified" : "낮은 강도 · 미분류";
+}

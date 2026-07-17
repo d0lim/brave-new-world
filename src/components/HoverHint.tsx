@@ -5,11 +5,13 @@ import {
   useCallback,
   useEffect,
   useId,
+  useLayoutEffect,
   useRef,
   useState,
   type ReactElement,
 } from "react";
 import { useLocale } from "@/contexts/LocaleContext";
+import { placeNearAnchor, VIEWPORT_EDGE_PAD } from "@/lib/viewportClamp";
 
 type HoverHintProps = {
   title: string;
@@ -25,6 +27,9 @@ type HoverHintProps = {
   children: ReactElement;
 };
 
+/**
+ * 버튼 호버 설명. fixed 좌표 + 뷰포트 clamp로 화면 밖으로 나가지 않음.
+ */
 export function HoverHint({
   title,
   detail,
@@ -36,9 +41,47 @@ export function HoverHint({
   const { t } = useLocale();
   const tooltipId = useId();
   const rootRef = useRef<HTMLSpanElement>(null);
+  const tipRef = useRef<HTMLSpanElement>(null);
   const [pinned, setPinned] = useState(false);
+  const [hovered, setHovered] = useState(false);
+  const [coords, setCoords] = useState<{ left: number; top: number } | null>(null);
+
+  const open = pinned || hovered;
 
   const dismiss = useCallback(() => setPinned(false), []);
+
+  const updatePosition = useCallback(() => {
+    const root = rootRef.current;
+    const tip = tipRef.current;
+    if (!root) return;
+    const anchor = root.getBoundingClientRect();
+    const width = tip?.offsetWidth || Math.min(300, window.innerWidth - VIEWPORT_EDGE_PAD * 2);
+    const height = tip?.offsetHeight || 64;
+    const placed = placeNearAnchor({
+      anchor,
+      width,
+      height,
+      preferred: placement === "top" ? "above" : "below",
+      gap: 8,
+    });
+    setCoords({ left: placed.left, top: placed.top });
+  }, [placement]);
+
+  useLayoutEffect(() => {
+    if (!open) {
+      setCoords(null);
+      return;
+    }
+    updatePosition();
+    const raf = window.requestAnimationFrame(updatePosition);
+    window.addEventListener("resize", updatePosition);
+    window.addEventListener("scroll", updatePosition, true);
+    return () => {
+      window.cancelAnimationFrame(raf);
+      window.removeEventListener("resize", updatePosition);
+      window.removeEventListener("scroll", updatePosition, true);
+    };
+  }, [open, updatePosition, title, detail]);
 
   useEffect(() => {
     if (!pinned) return;
@@ -56,36 +99,47 @@ export function HoverHint({
     };
   }, [pinned, dismiss]);
 
-  const positionClass =
-    placement === "top"
-      ? "bottom-full left-1/2 mb-2 -translate-x-1/2"
-      : "top-full left-1/2 mt-2 -translate-x-1/2";
-
-  const visibleClass = pinned
+  const visibleClass = open
     ? "scale-100 opacity-100"
-    : "scale-[0.97] opacity-0 group-hover/hint:scale-100 group-hover/hint:opacity-100 group-focus-within/hint:scale-100 group-focus-within/hint:opacity-100";
+    : "scale-[0.97] opacity-0 pointer-events-none";
 
   const child = cloneElement(children, {
-    "aria-describedby": pinned ? tooltipId : children.props["aria-describedby"],
+    "aria-describedby": open ? tooltipId : children.props["aria-describedby"],
     onClick: (event: React.MouseEvent) => {
       children.props.onClick?.(event);
     },
     onPointerUp: (event: React.PointerEvent) => {
       children.props.onPointerUp?.(event);
-      // 터치 기본: pin 스킵 — FAB 등 액션 버튼에서 탭=액션+툴팁 동시 발동 방지
       if (pinOnTouch && event.pointerType === "touch") {
-        setPinned((open) => !open);
+        setPinned((prev) => !prev);
       }
     },
   });
 
   return (
-    <span ref={rootRef} className={`group/hint relative inline-flex max-w-full ${className}`}>
+    <span
+      ref={rootRef}
+      className={`group/hint relative inline-flex max-w-full ${className}`}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      onFocusCapture={() => setHovered(true)}
+      onBlurCapture={(event) => {
+        if (!rootRef.current?.contains(event.relatedTarget as Node)) {
+          setHovered(false);
+        }
+      }}
+    >
       {child}
       <span
+        ref={tipRef}
         id={tooltipId}
         role="tooltip"
-        className={`pointer-events-none absolute ${positionClass} z-[90] w-max max-w-[min(88vw,300px)] whitespace-normal rounded-xl border border-sky-300/30 bg-[#0a1830]/96 px-3 py-2 text-left shadow-2xl backdrop-blur-md transition-all duration-150 ${visibleClass}`}
+        className={`pointer-events-none fixed z-[90] w-max max-w-[min(88vw,300px)] whitespace-normal rounded-xl border border-sky-300/30 bg-[#0a1830]/96 px-3 py-2 text-left shadow-2xl backdrop-blur-md transition-all duration-150 ${visibleClass}`}
+        style={
+          coords
+            ? { left: coords.left, top: coords.top }
+            : { left: -9999, top: -9999, visibility: "hidden" as const }
+        }
       >
         <span className="block text-xs font-semibold leading-snug text-sky-50">{title}</span>
         {detail ? (

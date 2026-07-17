@@ -41,7 +41,7 @@ import type { LabelLanguage } from "@/lib/layerPrefs";
 import { useLocale } from "@/contexts/LocaleContext";
 import { theaterLabel } from "@/lib/uiStrings";
 import { ECONOMY_TIER_LABELS } from "@/lib/news/mediaTiers";
-import { STOCK_TICKER_SYMBOLS } from "@/lib/stockTickers";
+import { STOCK_TICKER_SYMBOLS, tickerDisplayName } from "@/lib/stockTickers";
 import {
   heroHighlightSymbols,
   INTEL_STACK_CLEARANCE_COLLAPSED,
@@ -1356,16 +1356,21 @@ export const IntelNewsSheet = forwardRef<BottomIntelStackHandle, IntelNewsSheetP
     const marketsSearchResults = useMemo(() => {
       const q = marketsSearchQuery.trim().toLowerCase();
       if (!q) return [];
-      return STOCK_TICKER_SYMBOLS.filter(
-        (t) => t.label.toLowerCase().includes(q) || t.symbol.toLowerCase().includes(q),
-      )
+      return STOCK_TICKER_SYMBOLS.filter((t) => {
+        const name = tickerDisplayName(t.symbol, lang).toLowerCase();
+        return (
+          name.includes(q) ||
+          t.label.toLowerCase().includes(q) ||
+          t.symbol.toLowerCase().includes(q)
+        );
+      })
         .slice(0, 8)
         .map((t) => ({
           id: t.symbol,
-          title: t.label,
+          title: tickerDisplayName(t.symbol, lang),
           subtitle: t.symbol,
         }));
-    }, [marketsSearchQuery]);
+    }, [lang, marketsSearchQuery]);
     const showHero =
       hero != null &&
       (theaterFilter === "all" || matchesTheaterFilter(hero.theater, theaterFilter));

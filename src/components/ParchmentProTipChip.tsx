@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useId, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import type { LabelLanguage } from "@/lib/layerPrefs";
+import { placeNearAnchor, VIEWPORT_EDGE_PAD } from "@/lib/viewportClamp";
 
 type ParchmentProTipChipProps = {
   lang: LabelLanguage;
@@ -14,14 +15,48 @@ const COPY = {
 
 /**
  * 우상단 고정 슬롯 — 양피지 천조각 꿀팁, 호버·포커스 시 짧은 드롭다운 (데스크톱만).
+ * 드롭다운은 뷰포트 밖으로 나가지 않도록 clamp 합니다.
  */
 export function ParchmentProTipChip({ lang }: ParchmentProTipChipProps) {
   const copy = COPY[lang] ?? COPY.ko;
   const menuId = useId();
   const rootRef = useRef<HTMLDivElement>(null);
+  const tipRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
+  const [coords, setCoords] = useState<{ left: number; top: number } | null>(null);
 
   const dismiss = useCallback(() => setOpen(false), []);
+
+  const updatePosition = useCallback(() => {
+    const root = rootRef.current;
+    const tip = tipRef.current;
+    if (!root) return;
+    const anchor = root.getBoundingClientRect();
+    const width = tip?.offsetWidth || Math.min(256, window.innerWidth - VIEWPORT_EDGE_PAD * 2);
+    const height = tip?.offsetHeight || 48;
+    const placed = placeNearAnchor({
+      anchor,
+      width,
+      height,
+      preferred: "below",
+      gap: 8,
+    });
+    setCoords({ left: placed.left, top: placed.top });
+  }, []);
+
+  useLayoutEffect(() => {
+    if (!open) {
+      setCoords(null);
+      return;
+    }
+    updatePosition();
+    const raf = window.requestAnimationFrame(updatePosition);
+    window.addEventListener("resize", updatePosition);
+    return () => {
+      window.cancelAnimationFrame(raf);
+      window.removeEventListener("resize", updatePosition);
+    };
+  }, [open, updatePosition, copy.tip]);
 
   useEffect(() => {
     if (!open) return;
@@ -60,13 +95,19 @@ export function ParchmentProTipChip({ lang }: ParchmentProTipChipProps) {
       </button>
 
       <div
+        ref={tipRef}
         id={menuId}
         role="tooltip"
-        className={`parchment-pro-tip-drop econ-insight-parchment pointer-events-none absolute right-0 top-[calc(100%+0.45rem)] z-[90] min-w-[11.5rem] max-w-[min(72vw,16rem)] px-3 py-2.5 text-[0.72rem] leading-snug tracking-[0.02em] text-[#4a3418] shadow-[0_10px_28px_rgba(0,0,0,0.42)] transition-all duration-150 ${
+        className={`parchment-pro-tip-drop econ-insight-parchment pointer-events-none fixed z-[90] min-w-[11.5rem] max-w-[min(72vw,16rem)] px-3 py-2.5 text-[0.72rem] leading-snug tracking-[0.02em] text-[#4a3418] shadow-[0_10px_28px_rgba(0,0,0,0.42)] transition-all duration-150 ${
           open
             ? "translate-y-0 scale-100 opacity-100"
-            : "translate-y-1 scale-[0.98] opacity-0 group-hover/protip:translate-y-0 group-hover/protip:scale-100 group-hover/protip:opacity-100 group-focus-within/protip:translate-y-0 group-focus-within/protip:scale-100 group-focus-within/protip:opacity-100"
+            : "translate-y-1 scale-[0.98] opacity-0"
         }`}
+        style={
+          coords
+            ? { left: coords.left, top: coords.top }
+            : { left: -9999, top: -9999, visibility: "hidden" }
+        }
       >
         <span className="parchment-pro-tip-drop-edge pointer-events-none absolute inset-0" aria-hidden />
         <span className="parchment-pro-tip-drop-thread pointer-events-none absolute inset-0" aria-hidden />

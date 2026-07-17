@@ -61,6 +61,7 @@
     "cf:ingest:tail": "wrangler tail -c wrangler.ingest.toml",
     "cf:d1:migrate:local": "npm run db:migrate:local",
     "cf:d1:migrate:remote": "npm run db:migrate:remote",
+    "cf:app:build": "opennextjs-cloudflare build",
     "cf:app:preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
     "cf:app:deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
     "cf:app:upload": "opennextjs-cloudflare build && opennextjs-cloudflare upload",

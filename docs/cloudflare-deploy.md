@@ -32,6 +32,22 @@ npm run cf:app:deploy
 - 정적 청크 캐시: `public/_headers`
 - 프로젝트가 OneDrive 아래에 있으면 `npm install`이 깨질 수 있습니다. 동기화 일시 중지 후 재설치하세요.
 
+### Workers Builds (대시보드) — 필수
+
+Git 연동 빌드에서 **`npm run build`(= `next build`)만 쓰면 실패**합니다.
+`wrangler deploy`는 `.open-next/`(OpenNext 산출물)가 있어야 하고, 그건 `opennextjs-cloudflare build`가 만듭니다.
+
+Cloudflare Dashboard → Workers & Pages → 해당 프로젝트 → **Settings → Builds** 에서:
+
+| 항목 | 잘못된 값 (지금) | 올바른 값 |
+|------|------------------|-----------|
+| Build command | `npm run build` | `npx opennextjs-cloudflare build` |
+| Deploy command | `npx wrangler deploy` | `npx opennextjs-cloudflare deploy` |
+
+한 줄로 쓰려면 Build command만 `npm run cf:app:deploy` 로 두고 Deploy command는 비워도 됩니다.
+
+**Vercel은 그대로 `npm run build`(`next build`)를 쓰세요.** Cloudflare만 OpenNext 경로가 필요합니다.
+
 ### 주의
 
 - API 중 `fs`로 `public/data`를 읽는 라우트는 Workers에서 동작이 제한될 수 있습니다. 배포 후 해당 API를 점검하세요.

@@ -7593,6 +7593,7 @@ export function GlobeDashboard({
         searchResults={searchResults}
         onSearchSelect={handleSearchSelect}
         compact={isCompactUi}
+        belowNav={<ViewModeSwitcher mode={viewerMode} onChange={handleViewerModeChange} />}
         compactMenuExtra={
           isCompactUi ? (
             <>
@@ -7694,8 +7695,6 @@ export function GlobeDashboard({
           }}
         />
       ) : null}
-
-      <ViewModeSwitcher mode={viewerMode} onChange={handleViewerModeChange} />
 
       <NewsStreamProvider
         visible={

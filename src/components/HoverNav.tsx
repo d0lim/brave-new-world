@@ -36,6 +36,8 @@ type HoverNavProps = {
   compact?: boolean;
   /** compact 드롭다운 하단 슬롯 (전장·프리셋 등) */
   compactMenuExtra?: ReactNode;
+  /** nav 본문·드롭다운 바로 아래 (지정학/지경학 스위치 등) — 메뉴 열림에 따라 함께 이동 */
+  belowNav?: ReactNode;
 };
 
 export function HoverNav({
@@ -49,6 +51,7 @@ export function HoverNav({
   onSearchSelect,
   compact = false,
   compactMenuExtra,
+  belowNav,
 }: HoverNavProps) {
   const [navOpen, setNavOpen] = useState(false);
   const [hubMenuOpen, setHubMenuOpen] = useState(false);
@@ -111,7 +114,7 @@ export function HoverNav({
 
   return (
     <div
-      className={`pointer-events-none fixed inset-x-0 top-0 z-[75] flex justify-center pt-3 ${
+      className={`pointer-events-none fixed inset-x-0 top-0 z-[75] flex flex-col items-center pt-3 ${
         compact ? "px-[3.4rem] sm:px-14" : "px-2 sm:px-3"
       }`}
       style={compact ? { paddingTop: "max(0.75rem, env(safe-area-inset-top, 0px))" } : undefined}
@@ -224,9 +227,13 @@ export function HoverNav({
           )}
         </div>
 
-        {!isEconomy && hubMenuOpen ? (
+        {!isEconomy ? (
           <div
-            className={`overflow-hidden rounded-b-2xl border ${borderTone} border-t-0 ${menuBg} shadow-xl backdrop-blur-xl`}
+            className={`overflow-hidden rounded-b-2xl border ${borderTone} border-t-0 ${menuBg} shadow-xl backdrop-blur-xl transition-all duration-300 ease-out ${
+              hubMenuOpen
+                ? "max-h-[min(70vh,28rem)] opacity-100"
+                : "pointer-events-none max-h-0 border-transparent opacity-0 shadow-none"
+            }`}
           >
             <div className="max-h-[min(70vh,28rem)] space-y-2 overflow-y-auto px-2 py-2">
               <button
@@ -351,6 +358,10 @@ export function HoverNav({
           </div>
         ) : null}
       </nav>
+
+      {belowNav ? (
+        <div className="pointer-events-auto z-[76] mt-2 flex justify-center">{belowNav}</div>
+      ) : null}
     </div>
   );
 }

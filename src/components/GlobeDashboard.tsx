@@ -7649,6 +7649,7 @@ export function GlobeDashboard({
         globeLodTier={globeLod.tier}
       />
 
+      {!intelSheetOpen ? (
       <HoverNav
         viewerMode={viewerMode}
         onNavigate={handleNavNavigate}
@@ -7705,6 +7706,7 @@ export function GlobeDashboard({
           ) : null
         }
       />
+      ) : null}
 
       {activeHubId && hubFocusMode === "arms" && axisArmsPayload && !hubBriefOpen ? (
         <AxisArmsPanel
@@ -8699,7 +8701,7 @@ export function GlobeDashboard({
           onOpenTrust={() => setShowTrustPanel(true)}
         />
 
-      {showIntroHint && (
+      {showIntroHint && !intelSheetOpen && (
         <div className="pointer-events-none absolute inset-x-0 top-[4.5rem] z-40 flex justify-center">
           <div className="rounded-full border border-sky-300/25 bg-[#0a1830]/80 px-4 py-2 text-sm text-sky-100/90 shadow-lg backdrop-blur-md">
             {showUkraineControl ? "우크라이나 전선으로 이동 중…" : "주요 분쟁 지역으로 이동 중…"}
@@ -8747,6 +8749,7 @@ export function GlobeDashboard({
         />
       ) : null}
 
+      {!intelSheetOpen ? (
       <div
         className="pointer-events-none absolute left-3 z-[60] flex flex-col items-start gap-2"
         style={{ top: "max(0.75rem, env(safe-area-inset-top, 0px))" }}
@@ -8799,8 +8802,10 @@ export function GlobeDashboard({
           </div>
         ) : null}
       </div>
+      ) : null}
 
-      {/* 데스크톱: 우상단 공습·주요전장·도움말 / 모바일: 항모만 */}
+      {/* 데스크톱: 우상단 공습·주요전장·도움말 / 모바일: 항모만 — 뉴스 시트 열리면 상단을 가리지 않도록 숨김 */}
+      {!intelSheetOpen ? (
       <div
         className="pointer-events-none absolute right-3 z-[60] flex flex-col items-end gap-2"
         style={{ top: "max(0.75rem, env(safe-area-inset-top, 0px))" }}
@@ -8892,9 +8897,11 @@ export function GlobeDashboard({
           </div>
         )}
       </div>
+      ) : null}
 
       {/* 모바일: 공습 경보는 하단 아이콘 — 상단 허브·주요전장 메뉴를 가리지 않음 */}
-      {isCompactUi &&
+      {!intelSheetOpen &&
+      isCompactUi &&
       ((!isEconomyViewer &&
         (showNeptun || neptunAlertCount > 0 || showTzevaAdom || showNewfeedsIranAttacks)) ||
         (isEconomyViewer && showNewfeedsIranAttacks)) ? (

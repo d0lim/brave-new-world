@@ -505,7 +505,7 @@ export function narrativeForLang(macro: SotwMacroDeep, lang: LabelLanguage): str
   return lang === "en" ? macro.narrativeEn : macro.narrativeKo;
 }
 
-/** 시장 등불용 — 육하원칙 뼈대의 짧은 스토리 */
+/** 시장 등불용 — 육하원칙 순서를 따르는 정례 브리핑 줄글 (라벨 나열 금지) */
 export function composeMarketLampParagraphs(
   macros: SotwMacroDeep[],
   lang: LabelLanguage,
@@ -524,13 +524,13 @@ export function composeMarketLampParagraphs(
     null;
 
   if (ko) {
-    // 누가 · 언제 · 어디서
     const where = opts?.focusTitle || names[0] || "세계 시장";
     const who = names.length > 0 ? names.join("·") : "시장 참여자";
-    const when = yearHint ? `${yearHint}년 전후 거시 창` : "오늘 시장 등불이 고른 창";
-    out.push(`누가 — ${who}. 언제 — ${when}. 어디서 — ${where}.`);
+    const when = yearHint ? `${yearHint}년 전후 거시 관측 창` : "금일 시장 관측 창";
+    out.push(
+      `보고드립니다. 기준 시점은 ${when}이며, 주요 관측 대상은 ${where}입니다. 집계에 포함된 주체는 ${who}입니다.`,
+    );
 
-    // 무엇을 · 왜
     for (const extra of (opts?.koreanExtras ?? []).slice(0, 2)) {
       out.push(extra);
     }
@@ -542,7 +542,7 @@ export function composeMarketLampParagraphs(
       if (growth != null) whatBits.push(`성장 ${growth.toFixed(1)}%`);
       if (whatBits.length > 0) {
         out.push(
-          `무엇을 — ${(primary.name ?? where)}의 ${whatBits.join("·")}가 오늘의 기온입니다.`,
+          `확인된 지표는 ${(primary.name ?? where)}의 ${whatBits.join("·")}입니다.`,
         );
       }
       const peer = primary.peers?.[0];
@@ -550,41 +550,44 @@ export function composeMarketLampParagraphs(
         const d = infl - peer.inflationPct;
         const why =
           Math.abs(d) < 0.4
-            ? `${peer.name}과 물가 온도가 비슷해, 같은 방의 이야기로 읽힙니다.`
+            ? `${peer.name}과 물가 수준이 유사하여 동일 권역 흐름으로 읽습니다.`
             : d > 0
-              ? `${peer.name}보다 물가가 ${Math.abs(d).toFixed(1)}%p 높아, 긴장의 이유를 가격에서 먼저 찾습니다.`
-              : `${peer.name}보다 물가가 ${Math.abs(d).toFixed(1)}%p 낮아, 성장·외부 축을 더 봅니다.`;
-        out.push(`왜 — ${why}`);
+              ? `${peer.name}보다 물가가 ${Math.abs(d).toFixed(1)}%p 높아, 가격 경로를 우선 점검합니다.`
+              : `${peer.name}보다 물가가 ${Math.abs(d).toFixed(1)}%p 낮아, 성장·외부 축을 함께 봅니다.`;
+        out.push(`주목 배경은 다음과 같습니다. ${why}`);
       } else if (opts?.focusTitle) {
         out.push(
-          `왜 — 「${opts.focusTitle}」이(가) 물자와 가격이 지나가는 병목이라, 시장 등불이 이곳을 고릅니다.`,
+          `주목 배경은 「${opts.focusTitle}」이(가) 물자와 가격이 지나가는 병목이라는 점입니다.`,
         );
       }
     } else if (opts?.focusTitle) {
       out.push(
-        `무엇을·왜 — 「${opts.focusTitle}」 긴장이 에너지·물류·물가로 번질 수 있어 오늘 무대로 올렸습니다.`,
+        `주목 배경은 「${opts.focusTitle}」 긴장이 에너지·물류·물가로 파급될 수 있다는 점입니다.`,
       );
     }
 
-    // 어떻게
     out.push(
-      "어떻게 — 육하원칙 여섯 칸만 챙기고 표는 내려놓으세요. 수치는 Statistics of the World 기준이며 시리즈마다 시점이 다를 수 있습니다.",
+      "종합하면, 본 보고는 누가·언제·어디서·무엇을·왜·어떻게 순서로 확인된 사실만 정리한 것입니다. 수치는 Statistics of the World 기준이며 시리즈별 기준 시점이 다를 수 있습니다. 다음 보고는 자정 기준으로 갱신됩니다.",
     );
     return out;
   }
 
   const where = opts?.focusTitle || names[0] || "global markets";
   const who = names.length > 0 ? names.join(" & ") : "market actors";
-  const when = yearHint ? `around ${yearHint}` : "tonight's macro window";
-  out.push(`Who — ${who}. When — ${when}. Where — ${where}.`);
+  const when = yearHint ? `around ${yearHint}` : "this observation window";
+  out.push(
+    `Briefing. As of ${when}, the primary area of interest is ${where}. Actors in the aggregate: ${who}.`,
+  );
   if (primary) {
     const bits: string[] = [];
     if (primary.inflationPct != null) bits.push(`inflation ${primary.inflationPct.toFixed(1)}%`);
     if (primary.gdpGrowthPct != null) bits.push(`growth ${primary.gdpGrowthPct.toFixed(1)}%`);
-    if (bits.length) out.push(`What — ${(primary.name ?? where)} prints ${bits.join(" / ")}.`);
+    if (bits.length) {
+      out.push(`Recorded indicators for ${primary.name ?? where}: ${bits.join(" / ")}.`);
+    }
   }
   out.push(
-    "Why & how — read as 5W1H, not a spreadsheet. Figures via Statistics of the World; vintages vary.",
+    "In summary, this report organizes verified observations in 5W1H order. Figures via Statistics of the World; vintages may vary. The next report updates at local midnight.",
   );
   return out;
 }

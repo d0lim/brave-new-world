@@ -54,6 +54,12 @@ export type PeriodicBriefing = {
   featuredNews?: LampFeaturedNews[];
   /** 지경학 — 텍스트 브리핑 대신 표로 보여주는 거시 지표 */
   macroTable?: LampMacroRow[];
+  /** 지정학 등불 사이드 — 오늘의 WTI (세계 긴장도 지수) */
+  wti?: {
+    score: number;
+    deltaScore: number | null;
+    lead: string;
+  } | null;
 };
 
 const STORAGE_PREFIX = "cv-periodic-brief-seen-";

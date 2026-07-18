@@ -57,6 +57,20 @@
       "when": 1784500000000,
       "tag": "0007_ui_events",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1784600000000,
+      "tag": "0008_daily_entity_ranks",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1784700000000,
+      "tag": "0009_daily_rank_predictions",
+      "breakpoints": true
     }
   ]
 }

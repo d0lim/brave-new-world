@@ -23,7 +23,10 @@ export type ApiStubRoute =
   | "conflict-zones"
   | "arms-embargo-zones"
   | "sanctions-entities"
-  | "briefing-stats";
+  | "briefing-stats"
+  | "daily-ranks"
+  | "daily-predict"
+  | "daily-predict-stats";
 
 function stubBody(route: ApiStubRoute, request?: Request): Record<string, unknown> {
   const at = STUB_AT();
@@ -31,6 +34,31 @@ function stubBody(route: ApiStubRoute, request?: Request): Record<string, unknow
   switch (route) {
     case "briefing-stats":
       return { fetchedAt: at, source: "stub", stats: null };
+    case "daily-ranks":
+      return {
+        date: at.slice(0, 10),
+        fetchedAt: at,
+        source: "empty",
+        theater: [],
+        chokepoint: [],
+        worldTension: null,
+        yesterdayCorrectPct: null,
+      };
+    case "daily-predict":
+      return {
+        ok: true,
+        targetDate: at.slice(0, 10),
+        pickEntityId: "ukraine",
+        createdAt: at,
+        source: "stub",
+      };
+    case "daily-predict-stats":
+      return {
+        date: at.slice(0, 10),
+        today: at.slice(0, 10),
+        fetchedAt: at,
+        stats: null,
+      };
     case "ais": {
       const classFilter = request
         ? new URL(request.url).searchParams.get("class") || "all"

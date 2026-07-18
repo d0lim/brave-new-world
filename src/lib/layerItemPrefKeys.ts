@@ -72,23 +72,36 @@ export const LAYER_ITEM_PREF_KEYS: Partial<Record<string, keyof LayerPrefs>> = {
   "axis-network": "showAxisNetwork",
 };
 
+type PrefTreeItem = { id: string; options?: PrefTreeItem[] };
+
+function collectPrefKeys(item: PrefTreeItem, patch: Partial<LayerPrefs>, enabled: boolean) {
+  if (item.options?.length) {
+    for (const opt of item.options) collectPrefKeys(opt, patch, enabled);
+    return;
+  }
+  const key = LAYER_ITEM_PREF_KEYS[item.id];
+  if (key) (patch as Record<string, boolean>)[key] = enabled;
+}
+
 export function patchFromCategoryItems(
-  items: Array<{ id: string; options?: Array<{ id: string }> }>,
+  items: PrefTreeItem[],
   enabled: boolean,
 ): Partial<LayerPrefs> {
   const patch: Partial<LayerPrefs> = {};
-  for (const item of items) {
-    if (item.options?.length) {
-      for (const opt of item.options) {
-        const key = LAYER_ITEM_PREF_KEYS[opt.id];
-        if (key) (patch as Record<string, boolean>)[key] = enabled;
-      }
-      continue;
-    }
-    const key = LAYER_ITEM_PREF_KEYS[item.id];
-    if (key) {
-      (patch as Record<string, boolean>)[key] = enabled;
-    }
-  }
+  for (const item of items) collectPrefKeys(item, patch, enabled);
   return patch;
+}
+
+/** 드롭다운 트리에서 리프 item id 목록 */
+export function flattenLayerItemIds(items: PrefTreeItem[]): string[] {
+  const out: string[] = [];
+  const walk = (item: PrefTreeItem) => {
+    if (item.options?.length) {
+      for (const opt of item.options) walk(opt);
+      return;
+    }
+    out.push(item.id);
+  };
+  for (const item of items) walk(item);
+  return out;
 }

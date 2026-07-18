@@ -23,7 +23,7 @@ export type LayerToggleItem = {
   accent?: LayerToggleAccent;
   /** checkbox(기본) | tag(위치 태그 칩) | dropdown(중첩 체크) */
   presentation?: "checkbox" | "tag" | "dropdown";
-  /** presentation === "dropdown" 일 때 하위 전장 체크 */
+  /** presentation === "dropdown" 일 때 하위 체크 또는 중첩 드롭다운 */
   options?: LayerToggleItem[];
   disabled?: boolean;
   /** Ultra-Lite 등 — 이름 옆 짧은 경고 태그 */
@@ -234,7 +234,21 @@ export function LayerToggle({
   );
 }
 
-/** 하위 전장 체크를 접는 드롭다운 행 */
+/** 드롭다운/중첩 포함 리프 체크 수 */
+export function countLayerLeaves(item: LayerToggleItem): { on: number; total: number } {
+  if (item.presentation === "dropdown" && item.options?.length) {
+    return item.options.reduce(
+      (acc, opt) => {
+        const c = countLayerLeaves(opt);
+        return { on: acc.on + c.on, total: acc.total + c.total };
+      },
+      { on: 0, total: 0 },
+    );
+  }
+  return { on: item.checked ? 1 : 0, total: 1 };
+}
+
+/** 하위 전장 체크를 접는 드롭다운 행 (중첩 드롭다운 지원) */
 export function LayerDropdownToggle({
   label,
   detail,
@@ -247,7 +261,13 @@ export function LayerDropdownToggle({
   accent?: LayerToggleAccent;
 }) {
   const [open, setOpen] = useState(false);
-  const onCount = options.filter((o) => o.checked).length;
+  const leaf = options.reduce(
+    (acc, o) => {
+      const c = countLayerLeaves(o);
+      return { on: acc.on + c.on, total: acc.total + c.total };
+    },
+    { on: 0, total: 0 },
+  );
 
   return (
     <div className="rounded-lg px-1 py-1">
@@ -264,18 +284,22 @@ export function LayerDropdownToggle({
         <span className="flex shrink-0 items-center gap-2 text-xs text-slate-500">
           <span
             className={
-              onCount > 0
+              leaf.on > 0
                 ? `rounded-full px-2 py-0.5 ${
                     accent === "fuchsia"
                       ? "bg-fuchsia-500/15 text-fuchsia-200"
                       : accent === "orange"
                         ? "bg-orange-500/15 text-orange-200"
-                        : "bg-sky-500/15 text-sky-200"
+                        : accent === "amber"
+                          ? "bg-amber-500/15 text-amber-200"
+                          : accent === "green"
+                            ? "bg-green-500/15 text-green-200"
+                            : "bg-sky-500/15 text-sky-200"
                   }`
                 : ""
             }
           >
-            {onCount}/{options.length}
+            {leaf.on}/{leaf.total}
           </span>
           <span className="text-slate-400" aria-hidden>
             {open ? "▾" : "▸"}
@@ -284,19 +308,29 @@ export function LayerDropdownToggle({
       </button>
       {open ? (
         <div className="ml-2 space-y-0.5 border-l border-slate-700/70 pl-2.5">
-          {options.map((opt) => (
-            <LayerToggle
-              key={opt.id}
-              label={opt.label}
-              detail={opt.detail}
-              checked={opt.checked}
-              onChange={opt.onChange}
-              accent={opt.accent ?? accent}
-              disabled={opt.disabled}
-              cautionTag={opt.cautionTag}
-              cautionHint={opt.cautionHint}
-            />
-          ))}
+          {options.map((opt) =>
+            opt.presentation === "dropdown" && opt.options?.length ? (
+              <LayerDropdownToggle
+                key={opt.id}
+                label={opt.label}
+                detail={opt.detail}
+                options={opt.options}
+                accent={opt.accent ?? accent}
+              />
+            ) : (
+              <LayerToggle
+                key={opt.id}
+                label={opt.label}
+                detail={opt.detail}
+                checked={opt.checked}
+                onChange={opt.onChange}
+                accent={opt.accent ?? accent}
+                disabled={opt.disabled}
+                cautionTag={opt.cautionTag}
+                cautionHint={opt.cautionHint}
+              />
+            ),
+          )}
         </div>
       ) : null}
     </div>
@@ -354,10 +388,7 @@ export function LayerCategoryPanel({
       let changed = false;
       const next = { ...prev };
       for (const category of categories) {
-        const hasActive = category.items.some(
-          (item) =>
-            item.checked || (item.options?.length ? item.options.some((o) => o.checked) : false),
-        );
+        const hasActive = category.items.some((item) => countLayerLeaves(item).on > 0);
         if (hasActive && prev[category.id] !== false && !next[category.id]) {
           next[category.id] = true;
           changed = true;
@@ -393,16 +424,8 @@ export function LayerCategoryPanel({
         </p>
       ) : null}
       {categories.map((category) => {
-        const activeCount = category.items.reduce((n, item) => {
-          if (item.options?.length) {
-            return n + item.options.filter((o) => o.checked).length;
-          }
-          return n + (item.checked ? 1 : 0);
-        }, 0);
-        const totalCount = category.items.reduce((n, item) => {
-          if (item.options?.length) return n + item.options.length;
-          return n + 1;
-        }, 0);
+        const activeCount = category.items.reduce((n, item) => n + countLayerLeaves(item).on, 0);
+        const totalCount = category.items.reduce((n, item) => n + countLayerLeaves(item).total, 0);
         const isOpen = openMap[category.id] ?? false;
 
         return (

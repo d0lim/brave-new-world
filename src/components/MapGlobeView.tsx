@@ -24,7 +24,12 @@ import {
   buildPolygonsGeoJson,
   buildRingsGeoJson,
 } from "@/lib/mapGlobeLayers";
-import { firmsFlameColors, type FirmsSoundKind } from "@/lib/firmsSoundClassify";
+import { firmsFireIconId, ensureFirmsFireImages } from "@/lib/firmsFireIcons";
+import {
+  gemFacilityIconId,
+  isGemFacilityKind,
+  ensureGemFacilityImages,
+} from "@/lib/gemFacilityIcons";
 
 /**
  * GlobeLayerProps(Record)와 intersection하면 index signature가 콜백을 unknown으로 넓힙니다.
@@ -43,10 +48,11 @@ export interface MapGlobeViewProps {
 
 const INTERACTIVE_LAYERS = [
   "map-points",
+  "map-gem-facilities",
   "map-paths",
   "map-polygons-fill",
   "map-rings",
-  "firms-core",
+  "firms-flame",
   "ukraine-macro-fill",
   "ukraine-micro-fill",
   "ukraine-micro-defense",
@@ -309,7 +315,23 @@ export const MapGlobeView = forwardRef<MapGlobeMethods, MapGlobeViewProps>(funct
     const a = accessorsRef.current;
     return buildPointsGeoJson(
       pointsData,
-      { lat: a.pointLat, lng: a.pointLng, color: a.pointColor, radius: a.pointRadius },
+      {
+        lat: a.pointLat,
+        lng: a.pointLng,
+        color: a.pointColor,
+        radius: a.pointRadius,
+        kind: (item) =>
+          item && typeof item === "object" && "kind" in item
+            ? String((item as { kind?: string }).kind ?? "")
+            : undefined,
+        icon: (item) => {
+          const kind =
+            item && typeof item === "object" && "kind" in item
+              ? String((item as { kind?: string }).kind ?? "")
+              : "";
+          return isGemFacilityKind(kind) ? gemFacilityIconId(kind) : undefined;
+        },
+      },
       mapZoom,
     );
   }, [mapZoom, pointsData]);
@@ -384,12 +406,7 @@ export const MapGlobeView = forwardRef<MapGlobeMethods, MapGlobeViewProps>(funct
         cause: a.firmsCause,
         frp: a.firmsFrp,
         angularRadius: a.firmsAngularRadius,
-        coreColor: (item) =>
-          firmsFlameColors((a.firmsCause(item) as FirmsSoundKind) || "none").core,
-        emberColor: (item) =>
-          firmsFlameColors((a.firmsCause(item) as FirmsSoundKind) || "none").ember,
-        glowColor: (item) =>
-          firmsFlameColors((a.firmsCause(item) as FirmsSoundKind) || "none").glow,
+        iconId: (item) => firmsFireIconId(a.firmsCause(item)),
       },
       mapZoom,
     );
@@ -492,6 +509,10 @@ export const MapGlobeView = forwardRef<MapGlobeMethods, MapGlobeViewProps>(funct
     publishZoom(map.getZoom(), true);
     setMapLoaded(true);
 
+    void ensureGemFacilityImages(map).catch(() => {
+      /* 아이콘 로드 실패 시 circle 폴백 없음 — 재시도는 스타일 리로드 시 */
+    });
+
     if (map.isStyleLoaded()) {
       emitGlobeReady();
       return;
@@ -502,8 +523,10 @@ export const MapGlobeView = forwardRef<MapGlobeMethods, MapGlobeViewProps>(funct
 
   const resolveFeature = useCallback(
     (layerId: string, index: number) => {
-      if (layerId === "map-points") return pointsData[index] ?? null;
-      if (layerId === "firms-core" || layerId === "firms-ember" || layerId === "firms-glow") {
+      if (layerId === "map-points" || layerId === "map-gem-facilities") {
+        return pointsData[index] ?? null;
+      }
+      if (layerId === "firms-flame") {
         return firmsFiresData[index] ?? null;
       }
       if (layerId === "map-paths") return deferredPathsData[index] ?? null;
@@ -523,7 +546,7 @@ export const MapGlobeView = forwardRef<MapGlobeMethods, MapGlobeViewProps>(funct
         if (layerId == null || index == null) continue;
         const item = resolveFeature(layerId, Number(index));
         if (!item) continue;
-        if (layerId === "map-points" || layerId === "firms-core") {
+        if (layerId === "map-points" || layerId === "firms-flame") {
           onPointClick?.(item);
           return;
         }
@@ -558,7 +581,7 @@ export const MapGlobeView = forwardRef<MapGlobeMethods, MapGlobeViewProps>(funct
         if (layerId == null || index == null) continue;
         const item = resolveFeature(layerId, Number(index));
         if (!item) continue;
-        if (layerId === "map-points" || layerId === "firms-core") {
+        if (layerId === "map-points" || layerId === "firms-flame") {
           onPointHover?.(item);
           return;
         }
@@ -587,6 +610,13 @@ export const MapGlobeView = forwardRef<MapGlobeMethods, MapGlobeViewProps>(funct
 
   useEffect(() => {
     if (!mapLoaded || firmsFiresData.length === 0) return;
+    const map = mapRef.current?.getMap();
+    if (!map) return;
+    void ensureFirmsFireImages(map).catch(() => undefined);
+  }, [firmsFiresData.length, mapLoaded]);
+
+  useEffect(() => {
+    if (!mapLoaded || firmsFiresData.length === 0) return;
     if (
       typeof window !== "undefined" &&
       window.matchMedia("(prefers-reduced-motion: reduce)").matches
@@ -607,35 +637,25 @@ export const MapGlobeView = forwardRef<MapGlobeMethods, MapGlobeViewProps>(funct
         return;
       }
       const map = mapRef.current?.getMap();
-      if (!map?.getLayer("firms-glow")) {
+      if (!map?.getLayer("firms-flame")) {
         raf = window.requestAnimationFrame(tick);
         return;
       }
       const t = now / 1000;
-      const p0 = 0.72 + 0.28 * Math.sin(t * 3.4);
-      const p1 = 0.72 + 0.28 * Math.sin(t * 3.4 + 2.15);
-      const p2 = 0.72 + 0.28 * Math.sin(t * 3.4 + 4.3);
+      const p0 = 0.94 + 0.06 * Math.sin(t * 3.2);
+      const p1 = 0.94 + 0.06 * Math.sin(t * 3.2 + 2.1);
+      const p2 = 0.94 + 0.06 * Math.sin(t * 3.2 + 4.2);
       const pulseByPhase = ["match", ["get", "phase"], 0, p0, 1, p1, p2];
       try {
-        map.setPaintProperty("firms-glow", "circle-radius", [
+        map.setLayoutProperty("firms-flame", "icon-size", [
           "*",
-          ["get", "glowRadius"],
+          ["get", "iconSize"],
           pulseByPhase,
         ] as never);
-        map.setPaintProperty("firms-glow", "circle-opacity", [
+        map.setPaintProperty("firms-flame", "icon-opacity", [
           "*",
-          ["get", "glowOpacity"],
-          pulseByPhase,
-        ] as never);
-        map.setPaintProperty("firms-ember", "circle-radius", [
-          "*",
-          ["get", "emberRadius"],
-          ["+", 0.88, ["*", 0.14, pulseByPhase]],
-        ] as never);
-        map.setPaintProperty("firms-core", "circle-opacity", [
-          "+",
-          0.82,
-          ["*", 0.16, pulseByPhase],
+          ["get", "iconOpacity"],
+          ["+", 0.92, ["*", 0.08, pulseByPhase]],
         ] as never);
       } catch {
         /* style swap mid-frame */
@@ -645,6 +665,28 @@ export const MapGlobeView = forwardRef<MapGlobeMethods, MapGlobeViewProps>(funct
     raf = window.requestAnimationFrame(tick);
     return () => window.cancelAnimationFrame(raf);
   }, [firmsFiresData.length, mapLoaded]);
+
+  useEffect(() => {
+    if (!mapLoaded) return;
+    const map = mapRef.current?.getMap();
+    if (!map) return;
+    void ensureGemFacilityImages(map).catch(() => undefined);
+    void ensureFirmsFireImages(map).catch(() => undefined);
+  }, [mapLoaded, mapStyleUrl]);
+
+  useEffect(() => {
+    if (!mapLoaded) return;
+    const map = mapRef.current?.getMap();
+    if (!map) return;
+    const onStyle = () => {
+      void ensureGemFacilityImages(map).catch(() => undefined);
+      void ensureFirmsFireImages(map).catch(() => undefined);
+    };
+    map.on("style.load", onStyle);
+    return () => {
+      map.off("style.load", onStyle);
+    };
+  }, [mapLoaded, mapStyleUrl]);
 
   useEffect(() => {
     if (!mapLoaded) return;
@@ -781,6 +823,7 @@ export const MapGlobeView = forwardRef<MapGlobeMethods, MapGlobeViewProps>(funct
             <Layer
               id="map-points"
               type="circle"
+              filter={["!", ["has", "icon"]]}
               paint={{
                 "circle-color": ["get", "color"],
                 "circle-radius": ["get", "radius"],
@@ -789,43 +832,52 @@ export const MapGlobeView = forwardRef<MapGlobeMethods, MapGlobeViewProps>(funct
                 "circle-stroke-color": "rgba(2,4,10,0.55)",
               }}
             />
+            <Layer
+              id="map-gem-facilities"
+              type="symbol"
+              filter={["has", "icon"]}
+              layout={{
+                "icon-image": ["get", "icon"],
+                "icon-size": [
+                  "interpolate",
+                  ["linear"],
+                  ["zoom"],
+                  1.5,
+                  0.28,
+                  4,
+                  0.42,
+                  7,
+                  0.62,
+                  10,
+                  0.85,
+                ],
+                "icon-allow-overlap": true,
+                "icon-ignore-placement": true,
+                "icon-anchor": "center",
+              }}
+              paint={{
+                "icon-opacity": 0.95,
+              }}
+            />
           </Source>
         ) : null}
 
         {firmsGeoJson.features.length > 0 ? (
           <Source id="firms-fires-source" type="geojson" data={firmsGeoJson}>
             <Layer
-              id="firms-glow"
-              type="circle"
-              paint={{
-                "circle-color": ["get", "glowColor"],
-                "circle-radius": ["get", "glowRadius"],
-                "circle-opacity": ["get", "glowOpacity"],
-                "circle-blur": 0.85,
-                "circle-pitch-alignment": "map",
+              id="firms-flame"
+              type="symbol"
+              layout={{
+                "icon-image": ["get", "icon"],
+                "icon-size": ["get", "iconSize"],
+                "icon-allow-overlap": true,
+                "icon-ignore-placement": true,
+                "icon-anchor": "bottom",
+                "icon-pitch-alignment": "viewport",
+                "icon-rotation-alignment": "viewport",
               }}
-            />
-            <Layer
-              id="firms-ember"
-              type="circle"
               paint={{
-                "circle-color": ["get", "emberColor"],
-                "circle-radius": ["get", "emberRadius"],
-                "circle-opacity": ["get", "emberOpacity"],
-                "circle-blur": 0.35,
-                "circle-pitch-alignment": "map",
-              }}
-            />
-            <Layer
-              id="firms-core"
-              type="circle"
-              paint={{
-                "circle-color": ["get", "coreColor"],
-                "circle-radius": ["get", "coreRadius"],
-                "circle-opacity": 0.96,
-                "circle-stroke-width": 0.6,
-                "circle-stroke-color": "rgba(255, 220, 140, 0.65)",
-                "circle-pitch-alignment": "map",
+                "icon-opacity": ["get", "iconOpacity"],
               }}
             />
           </Source>

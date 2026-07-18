@@ -6,7 +6,12 @@ export interface NewsLayerSourceNote {
   attribution: string;
   notes: string;
   status: "shipped" | "planned";
-  ingest: "static-build" | "cached-api" | "live-poll" | "mapped-existing";
+  ingest:
+    | "static-build"
+    | "cached-api"
+    | "live-poll"
+    | "mapped-existing"
+    | "live-api";
 }
 
 /** 주요 실시간 출처 — 자료출처 패널 상단·도움말에 고정 표기 */

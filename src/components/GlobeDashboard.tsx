@@ -12,6 +12,7 @@ import { MethodologySourcesPanel, SourcesLinkButton } from "@/components/Methodo
 import { NewsTrustTierPanel } from "@/components/NewsTrustTierPanel";
 import { TrustBadgeChip } from "@/components/TrustBadgeChip";
 import { ShareViewButton } from "@/components/ShareViewButton";
+import { MobileAlertFeed } from "@/components/MobileAlertFeed";
 import { GdeltAlertPanel } from "@/components/GdeltAlertPanel";
 import { TelegramOsintPanel } from "@/components/TelegramOsintPanel";
 import { TzevaAdomPanel, type AirRaidFocusTarget } from "@/components/TzevaAdomPanel";
@@ -1520,6 +1521,8 @@ export function GlobeDashboard({
   const [showQuickStart, setShowQuickStart] = useState(false);
   const [showSourcesPanel, setShowSourcesPanel] = useState(false);
   const [showTrustPanel, setShowTrustPanel] = useState(false);
+  /** 모바일 전용 — 지구본을 가리지 않는 속보+반응 바텀시트 (지구본과 동시에 볼 수 있음) */
+  const [showMobileAlertFeed, setShowMobileAlertFeed] = useState(false);
   const [showLocalAlertPanel, setShowLocalAlertPanel] = useState(false);
   const [showGdeltAlertPanel, setShowGdeltAlertPanel] = useState(false);
   const [showDisputeLegendPanel, setShowDisputeLegendPanel] = useState(false);
@@ -2350,6 +2353,8 @@ export function GlobeDashboard({
         if (!res.ok) return;
         const payload = (await res.json()) as HapiConflictCasualtiesPayload;
         if (cancelled || !payload?.fronts) return;
+        // 라이브가 비면 시드 유지 — 빈 배열로 덮어 사망 숫자가 사라지지 않게
+        if (payload.fronts.length === 0) return;
         setHapiCasualties({ ...HAPI_CASUALTY_SEED, ...payload });
       } catch {
         /* seed 유지 */
@@ -7649,6 +7654,7 @@ export function GlobeDashboard({
         globeLodTier={globeLod.tier}
       />
 
+      {!intelSheetOpen ? (
       <HoverNav
         viewerMode={viewerMode}
         onNavigate={handleNavNavigate}
@@ -7705,6 +7711,7 @@ export function GlobeDashboard({
           ) : null
         }
       />
+      ) : null}
 
       {activeHubId && hubFocusMode === "arms" && axisArmsPayload && !hubBriefOpen ? (
         <AxisArmsPanel
@@ -8067,7 +8074,7 @@ export function GlobeDashboard({
               htmlLat={(point: HtmlOverlayMarker) => point.lat}
               htmlLng={(point: HtmlOverlayMarker) => point.lng}
               htmlAltitude={(point: HtmlOverlayMarker) =>
-                point.displayKind === "casualty-skull" ? 0.0005 : 0.004
+                point.displayKind === "casualty-skull" ? 0.002 : 0.004
               }
               htmlElement={createHtmlOverlayElement}
               htmlRotation={(point: HtmlOverlayMarker) => {
@@ -8699,7 +8706,7 @@ export function GlobeDashboard({
           onOpenTrust={() => setShowTrustPanel(true)}
         />
 
-      {showIntroHint && (
+      {showIntroHint && !intelSheetOpen && (
         <div className="pointer-events-none absolute inset-x-0 top-[4.5rem] z-40 flex justify-center">
           <div className="rounded-full border border-sky-300/25 bg-[#0a1830]/80 px-4 py-2 text-sm text-sky-100/90 shadow-lg backdrop-blur-md">
             {showUkraineControl ? "우크라이나 전선으로 이동 중…" : "주요 분쟁 지역으로 이동 중…"}
@@ -8747,6 +8754,7 @@ export function GlobeDashboard({
         />
       ) : null}
 
+      {!intelSheetOpen ? (
       <div
         className="pointer-events-none absolute left-3 z-[60] flex flex-col items-start gap-2"
         style={{ top: "max(0.75rem, env(safe-area-inset-top, 0px))" }}
@@ -8798,9 +8806,16 @@ export function GlobeDashboard({
             <ServerDonateChip lang={labelLanguage} />
           </div>
         ) : null}
+        {isCompactUi ? (
+          <div className="cv-compact-only pointer-events-auto">
+            <ServerDonateChip lang={labelLanguage} />
+          </div>
+        ) : null}
       </div>
+      ) : null}
 
-      {/* 데스크톱: 우상단 공습·주요전장·도움말 / 모바일: 항모만 */}
+      {/* 데스크톱: 우상단 공습·주요전장·도움말 / 모바일: 항모만 — 뉴스 시트 열리면 상단을 가리지 않도록 숨김 */}
+      {!intelSheetOpen ? (
       <div
         className="pointer-events-none absolute right-3 z-[60] flex flex-col items-end gap-2"
         style={{ top: "max(0.75rem, env(safe-area-inset-top, 0px))" }}
@@ -8883,7 +8898,16 @@ export function GlobeDashboard({
             <FeatureGuideButton viewerMode={viewerMode} onClick={() => setShowFeatureGuide(true)} />
           </div>
         ) : (
-          <div className="cv-compact-only pointer-events-auto">
+          <div className="cv-compact-only pointer-events-auto flex flex-col items-end gap-2">
+            <button
+              type="button"
+              onClick={() => setShowMobileAlertFeed((prev) => !prev)}
+              aria-label={labelLanguage === "en" ? "Alerts" : "알림"}
+              aria-pressed={showMobileAlertFeed}
+              className="tap-target flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-sky-300/25 bg-slate-950/70 text-[15px] text-sky-100 shadow-sm transition hover:border-sky-200/45"
+            >
+              🔔
+            </button>
             <TrustBadgeChip
               lang={labelLanguage}
               compact
@@ -8892,9 +8916,11 @@ export function GlobeDashboard({
           </div>
         )}
       </div>
+      ) : null}
 
       {/* 모바일: 공습 경보는 하단 아이콘 — 상단 허브·주요전장 메뉴를 가리지 않음 */}
-      {isCompactUi &&
+      {!intelSheetOpen &&
+      isCompactUi &&
       ((!isEconomyViewer &&
         (showNeptun || neptunAlertCount > 0 || showTzevaAdom || showNewfeedsIranAttacks)) ||
         (isEconomyViewer && showNewfeedsIranAttacks)) ? (
@@ -9366,6 +9392,7 @@ export function GlobeDashboard({
           onContinue={() => setFrictionEpisodeBrief(null)}
           playBreakingDispatch
           typewriter
+          historyHandFont
           titleId="friction-episode-letter-title"
           zIndexClass="z-[9990]"
         />
@@ -9432,6 +9459,10 @@ export function GlobeDashboard({
           placement={isCompactUi ? "above" : "below"}
           onDismiss={() => setShowAirRaidCoach(false)}
         />
+      ) : null}
+
+      {isCompactUi && showMobileAlertFeed ? (
+        <MobileAlertFeed onClose={() => setShowMobileAlertFeed(false)} />
       ) : null}
 
       {periodicBriefing ? (

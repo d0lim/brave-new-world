@@ -1052,9 +1052,28 @@ export const MapGlobeView = forwardRef<MapGlobeMethods, MapGlobeViewProps>(funct
               >
                 <div
                   ref={(node) => {
-                    if (!node || node.childElementCount > 0) return;
+                    if (!node) return;
+                    // killed/label 등이 바뀌면 DOM을 다시 그려 사망 숫자가 갱신되게 함
+                    const typed = item as {
+                      displayKind?: string;
+                      killed?: number;
+                      wounded?: number;
+                      warheads?: number;
+                      labelLanguage?: string;
+                      killedLabel?: string;
+                    };
+                    const sig = [
+                      typed.displayKind ?? "",
+                      typed.killed ?? "",
+                      typed.wounded ?? "",
+                      typed.warheads ?? "",
+                      typed.killedLabel ?? "",
+                    ].join("|");
+                    if (node.dataset.markerSig === sig && node.childElementCount > 0) return;
+                    node.replaceChildren();
                     const el = htmlElement(item);
                     node.appendChild(el);
+                    node.dataset.markerSig = sig;
                   }}
                 />
               </Marker>

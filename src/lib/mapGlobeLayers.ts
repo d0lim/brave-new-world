@@ -2,6 +2,10 @@ import type { FeatureCollection, LineString, Point, Polygon } from "geojson";
 
 type Accessor<T, R> = (item: T) => R;
 
+/** MapLibre paint/layout expression (zoom-aware sizing) */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type ZoomExpr = any;
+
 function asFn<T, R>(value: unknown, fallback: Accessor<T, R>): Accessor<T, R> {
   return typeof value === "function" ? (value as Accessor<T, R>) : fallback;
 }
@@ -12,8 +16,10 @@ function asFn<T, R>(value: unknown, fallback: Accessor<T, R>): Accessor<T, R> {
  * 뒤덮는 문제가 있었다. 의도된 "확대하면 좀 더 굵게" 느낌은 유지하되 화면을
  * 뒤덮는 사고는 나지 않도록 안전 상한을 둔다.
  */
-const MAX_ANGULAR_POINT_RADIUS_PX = 48;
-const MAX_ANGULAR_LINE_WIDTH_PX = 26;
+export const MAX_ANGULAR_POINT_RADIUS_PX = 48;
+export const MAX_ANGULAR_LINE_WIDTH_PX = 26;
+
+const CABLE_KINDS = new Set(["submarine-cable", "oil-pipeline", "gas-pipeline"]);
 
 /**
  * 해저 케이블·송유관·가스관 — 일반 path와 반대:
@@ -21,7 +27,6 @@ const MAX_ANGULAR_LINE_WIDTH_PX = 26;
  */
 export function cableInverseLineWidth(zoom: number): number {
   const z = Number.isFinite(zoom) ? zoom : 2;
-  // zoom 1.2 → 멀리(굵음), zoom 9 → 가까이(0.1)
   const t = Math.max(0, Math.min(1, (z - 1.2) / 7.8));
   const farPx = 2.6;
   const nearPx = 0.1;
@@ -32,17 +37,106 @@ function angularToPixelRadius(angular: number, zoom: number): number {
   return Math.min(MAX_ANGULAR_POINT_RADIUS_PX, Math.max(2, angular * Math.pow(2, zoom - 0.5) * 14));
 }
 
-function angularToLineWidth(angular: number, zoom: number): number {
-  return Math.min(MAX_ANGULAR_LINE_WIDTH_PX, Math.max(0.35, angular * Math.pow(2, zoom - 2) * 5.5));
-}
+/** MapLibre paint — 줌 중에도 끊김 없이 점 크기 추적 (GeoJSON 재빌드 불필요) */
+export const CIRCLE_RADIUS_BY_ZOOM: ZoomExpr = [
+  "min",
+  MAX_ANGULAR_POINT_RADIUS_PX,
+  [
+    "max",
+    2,
+    [
+      "*",
+      ["get", "angularRadius"],
+      ["*", ["^", 2, ["-", ["zoom"], 0.5]], 14],
+    ],
+  ],
+];
 
-function resolvePathLineWidth(stroke: number, zoom: number, kind?: string): number {
-  // 해저 케이블·송유관·가스관: 줌아웃 시 굵고 줌인 시 가늘어짐
-  if (kind === "submarine-cable" || kind === "oil-pipeline" || kind === "gas-pipeline") {
-    return cableInverseLineWidth(zoom);
-  }
-  return angularToLineWidth(stroke, zoom);
-}
+export const RING_RADIUS_BY_ZOOM: ZoomExpr = [
+  "min",
+  MAX_ANGULAR_POINT_RADIUS_PX,
+  [
+    "max",
+    2,
+    [
+      "*",
+      ["get", "angularRadius"],
+      ["*", ["^", 2, ["-", ["zoom"], 0.5]], 14],
+    ],
+  ],
+];
+
+/** 일반 path 굵기 */
+export const LINE_WIDTH_BY_ZOOM: ZoomExpr = [
+  "min",
+  MAX_ANGULAR_LINE_WIDTH_PX,
+  [
+    "max",
+    0.35,
+    [
+      "*",
+      ["get", "strokeAngular"],
+      ["*", ["^", 2, ["-", ["zoom"], 2]], 5.5],
+    ],
+  ],
+];
+
+/** 케이블·파이프 — 멀리 굵고 가까이 가늘게 */
+export const CABLE_LINE_WIDTH_BY_ZOOM: ZoomExpr = [
+  "interpolate",
+  ["linear"],
+  ["zoom"],
+  1.2,
+  2.6,
+  9,
+  0.1,
+];
+
+export const PATH_LINE_WIDTH_BY_ZOOM: ZoomExpr = [
+  "case",
+  ["==", ["get", "widthMode"], "cable"],
+  CABLE_LINE_WIDTH_BY_ZOOM,
+  LINE_WIDTH_BY_ZOOM,
+];
+
+export const LABEL_TEXT_SIZE_BY_ZOOM: ZoomExpr = [
+  "max",
+  9,
+  ["*", ["get", "baseSize"], ["^", 2, ["*", ["-", ["zoom"], 2], 0.12]]],
+];
+
+export const LABEL_DOT_RADIUS_BY_ZOOM: ZoomExpr = [
+  "max",
+  1.5,
+  ["*", ["get", "baseDotRadius"], ["^", 2, ["*", ["-", ["zoom"], 2], 0.1]]],
+];
+
+/** FIRMS — 기준 배율 × 줌. 재빌드 없이 연속 스케일 */
+export const FIRMS_ICON_SIZE_BY_ZOOM: ZoomExpr = [
+  "min",
+  0.72,
+  [
+    "max",
+    0.22,
+    [
+      "*",
+      ["get", "iconSizeFactor"],
+      [
+        "interpolate",
+        ["linear"],
+        ["zoom"],
+        1.5,
+        0.55,
+        4,
+        1,
+        7,
+        1.35,
+        10,
+        1.55,
+      ],
+    ],
+  ],
+];
 
 export function buildPointsGeoJson<T>(
   items: T[],
@@ -51,11 +145,9 @@ export function buildPointsGeoJson<T>(
     lng: Accessor<T, number>;
     color: Accessor<T, string>;
     radius: Accessor<T, number>;
-    /** 정적 포인트 kind — GEM 시설은 symbol 아이콘용 */
     kind?: Accessor<T, string | undefined>;
     icon?: Accessor<T, string | undefined>;
   },
-  zoom: number,
 ): FeatureCollection<Point> {
   return {
     type: "FeatureCollection",
@@ -71,7 +163,7 @@ export function buildPointsGeoJson<T>(
         properties: {
           index,
           color: accessors.color(item),
-          radius: angularToPixelRadius(accessors.radius(item), zoom),
+          angularRadius: accessors.radius(item),
           ...(kind ? { kind } : {}),
           ...(icon ? { icon } : {}),
         },
@@ -88,10 +180,8 @@ export function buildPathsGeoJson<T>(
     stroke: Accessor<T, number>;
     dashLength: Accessor<T, number>;
     dashGap: Accessor<T, number>;
-    /** path.kind — 해저 케이블 역줌 굵기 등에 사용 */
     kind?: Accessor<T, string | undefined>;
   },
-  zoom: number,
 ): FeatureCollection<LineString> {
   return {
     type: "FeatureCollection",
@@ -99,6 +189,7 @@ export function buildPathsGeoJson<T>(
       const pts = accessors.points(item);
       if (!pts || pts.length < 2) return [];
       const kind = accessors.kind?.(item);
+      const widthMode = kind && CABLE_KINDS.has(kind) ? "cable" : "angular";
       return [
         {
           type: "Feature" as const,
@@ -109,7 +200,8 @@ export function buildPathsGeoJson<T>(
           properties: {
             index,
             color: accessors.color(item),
-            width: resolvePathLineWidth(accessors.stroke(item), zoom, kind),
+            strokeAngular: accessors.stroke(item),
+            widthMode,
             dashLength: accessors.dashLength(item),
             dashGap: accessors.dashGap(item),
           },
@@ -160,7 +252,6 @@ export function buildRingsGeoJson<T>(
     color: Accessor<T, string>;
     maxRadius: Accessor<T, number>;
   },
-  zoom: number,
 ): FeatureCollection<Point> {
   return {
     type: "FeatureCollection",
@@ -173,35 +264,32 @@ export function buildRingsGeoJson<T>(
       properties: {
         index,
         color: accessors.color(item),
-        radius: angularToPixelRadius(accessors.maxRadius(item) * 0.35, zoom),
+        angularRadius: accessors.maxRadius(item) * 0.35,
       },
     })),
   };
 }
 
-/** NASA FIRMS — 불꽃·연기 symbol 레이어용 GeoJSON */
+/** NASA FIRMS — 불꽃·연기 symbol (크기는 줌 표현식) */
 export function buildFirmsFiresGeoJson<T>(
   items: T[],
   accessors: {
     lat: Accessor<T, number>;
     lng: Accessor<T, number>;
-    /** combat | exercise | none */
     cause: Accessor<T, string>;
     frp: Accessor<T, number | null | undefined>;
-    /** 각도 반경 (기존 pointRadius와 동일 스케일) */
     angularRadius: Accessor<T, number>;
     iconId: Accessor<T, string>;
   },
-  zoom: number,
 ): FeatureCollection<Point> {
   return {
     type: "FeatureCollection",
     features: items.map((item, index) => {
-      const corePx = angularToPixelRadius(accessors.angularRadius(item), zoom);
       const frp = accessors.frp(item) ?? 0;
       const intensity = frp >= 50 ? 1.2 : frp >= 20 ? 1.08 : 1;
-      /** 네온 점 크기 — 작되 FRP에 따라만 살짝 커짐 */
-      const iconSize = Math.min(0.72, Math.max(0.22, (corePx / 22) * intensity));
+      const angular = accessors.angularRadius(item);
+      /** zoom≈4 근처에서 이전 baked 크기와 비슷한 기준 배율 */
+      const iconSizeFactor = Math.min(0.55, Math.max(0.18, (angular * 14 * intensity) / 22));
       return {
         type: "Feature" as const,
         geometry: {
@@ -213,7 +301,7 @@ export function buildFirmsFiresGeoJson<T>(
           cause: accessors.cause(item),
           phase: index % 3,
           icon: accessors.iconId(item),
-          iconSize,
+          iconSizeFactor,
           iconOpacity: Math.min(0.82, 0.58 + intensity * 0.1),
         },
       };
@@ -231,7 +319,6 @@ export function buildLabelsGeoJson<T>(
     color: Accessor<T, string>;
     dotRadius: Accessor<T, number>;
   },
-  zoom: number,
 ): FeatureCollection<Point> {
   return {
     type: "FeatureCollection",
@@ -244,9 +331,9 @@ export function buildLabelsGeoJson<T>(
       properties: {
         index,
         label: accessors.text(item),
-        size: Math.max(9, accessors.size(item) * Math.pow(2, (zoom - 2) * 0.12)),
+        baseSize: accessors.size(item),
         color: accessors.color(item),
-        dotRadius: Math.max(1.5, accessors.dotRadius(item) * Math.pow(2, (zoom - 2) * 0.1)),
+        baseDotRadius: accessors.dotRadius(item),
       },
     })),
   };
@@ -272,7 +359,7 @@ export function buildHeatmapGeoJson(
   }));
 }
 
-export { asFn };
+export { asFn, angularToPixelRadius };
 
 export type GlobeLayerProps = Record<string, unknown>;
 

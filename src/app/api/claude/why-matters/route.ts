@@ -72,8 +72,8 @@ function extractUserKey(request: NextRequest, body: Record<string, unknown>): st
 /**
  * POST /api/claude/why-matters
  *
- * - BYOK 있으면 심층 세미나
- * - 없으면 서버 키로 짧은 해설 (일일 한도) → 없으면 템플릿
+ * - BYOK 있으면 심층 인과 해설
+ * - 없으면 서버 키로 짧은 인과 해설 (일일 한도) → 없으면 템플릿
  */
 export async function POST(request: NextRequest) {
   const ip = clientIp(request);
@@ -139,7 +139,7 @@ export async function POST(request: NextRequest) {
       system: buildWhyMattersSystem(lang),
       user: buildWhyMattersUserMessage(input, "deep"),
       model: getAnthropicModel(),
-      maxTokens: 1400,
+      maxTokens: 900,
     });
 
     if (!result.ok) {
@@ -200,7 +200,7 @@ export async function POST(request: NextRequest) {
       system: buildWhyMattersQuickSystem(lang),
       user: buildWhyMattersUserMessage(input, "quick"),
       model: getAnthropicModel(),
-      maxTokens: 550,
+      maxTokens: 420,
     });
 
     if (result.ok) {

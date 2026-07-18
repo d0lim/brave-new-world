@@ -1,3 +1,9 @@
+import type { AppData, StaticPoint } from "@/data/geoTypes";
+import type { LayerCategory } from "@/components/LayerCategoryPanel";
+import type { PolygonLayerFeature } from "@/components/globe/types";
+import { CYBER_WAR_ROOM_THEME } from "@/lib/cyberWarRoomTheme";
+import { CAMERA_IDLE_DEBOUNCE_MS } from "@/lib/globePerformance";
+
 /** Ukraine territorial-control map colors (MapLibre / hatch fallbacks) */
 export const US_BASE_FILL = "rgba(37, 99, 235, 0.32)";
 export const UKRAINE_RU_OCCUPIED_LINE = "rgba(185, 28, 28, 0.72)";
@@ -15,3 +21,121 @@ export const UKRAINE_UA_STROKE = "rgba(59, 130, 246, 0.5)";
 export const UKRAINE_CONTESTED_STROKE = "rgba(234, 179, 8, 0.55)";
 export const UKRAINE_CONTROL_ALTITUDE = 0;
 export const UKRAINE_COMBAT_ZONE_LINE = "rgba(100, 116, 139, 0.72)";
+
+export const US_BASE_STROKE = "rgba(96, 165, 250, 0.85)";
+export const US_BASE_ALTITUDE = 0.0022;
+export const CONFLICT_ZONE_ALTITUDE = 0.0016;
+/** 무기금수: 면 채움 없이 사각 테두리만 */
+export const ARMS_EMBARGO_STROKE = "#c084fc";
+export const ARMS_EMBARGO_STROKE_WIDTH = 0.72;
+export const INTEL_MISSILE_ARC = CYBER_WAR_ROOM_THEME.intel.missileArc;
+export const INTEL_NASA_FIRE = CYBER_WAR_ROOM_THEME.intel.nasaFire;
+export const TZEVA_ADOM_MARKER = "#ff1744";
+
+export const INFRA_COLORS = {
+  rail: {
+    dim: "rgba(150, 105, 65, 0.58)",
+    glow: "rgba(210, 165, 105, 0.74)",
+  },
+  city: {
+    dim: "rgba(255, 255, 255, 0.52)",
+    glow: "rgba(255, 214, 60, 0.66)",
+  },
+} as const;
+
+export const INFRA_STROKE = {
+  rail: { dim: 0.28, glow: 0.82 },
+} as const;
+
+export const PATH_LAYER_COLORS = {
+  "shipping-lane": "rgba(56, 189, 248, 0.88)",
+  "submarine-cable": "rgba(196, 181, 253, 0.92)",
+  "oil-pipeline": "rgba(251, 191, 36, 0.95)",
+  "gas-pipeline": "rgba(52, 211, 153, 0.92)",
+} as const;
+
+export const STATIC_KIND_LABELS: Record<StaticPoint["kind"], string> = {
+  airport: "공항",
+  port: "항구",
+  resource: "자원 매장지",
+  "military-base": "군사기지",
+  "cable-landing": "케이블 착륙지",
+  "nuclear-site": "원자력 시설",
+  "internet-exchange": "인터넷 교환점",
+  "refugee-camp": "난민 캠프",
+  "ucdp-event": "분쟁 사건",
+  "ai-data-center": "AI 데이터센터",
+  "economic-center": "경제 중심지",
+  "sanctions-entity": "제재 대상",
+  "space-launch": "우주 발사",
+  "lng-terminal": "액화가스 터미널",
+  chokepoint: "해상 초크포인트",
+  "logistics-hub": "핵심 물류 거점",
+  "submarine-tunnel": "해저터널",
+  "critical-node": "크리티컬 노드",
+  "gem-coal-plant": "석탄 발전소",
+  "gem-coal-mine": "석탄 광산",
+  "gem-coal-terminal": "석탄 터미널",
+  "gem-nuclear": "원자력 (GEM)",
+  "gem-solar": "태양광",
+  "gem-wind": "풍력",
+  "gem-hydro": "수력",
+  "gem-geothermal": "지열",
+  "gem-bioenergy": "바이오에너지",
+  "gem-oil-gas-plant": "오일·가스 발전",
+  "gem-oil-gas-extraction": "오일·가스 채굴",
+  "gem-iron-ore": "철광산",
+  "gem-cement": "시멘트",
+  "gem-steel": "철강",
+  "gem-chemical": "화학",
+};
+
+export const EMPTY_OVERLAY_POLYGONS: PolygonLayerFeature[] = [];
+export const EMPTY_LAYER_CATEGORIES: LayerCategory[] = [];
+
+export const LAYER_ALTITUDE_SYNC_MIN_DELTA = 0.065;
+export const MOVING_IDLE_DELAY_MS = CAMERA_IDLE_DEBOUNCE_MS;
+export const INTRO_CAMERA_DURATION_MS = 2200;
+export const INTRO_CAMERA_DELAY_MS = 900;
+export const INTRO_SESSION_KEY = "cv-intro-seen";
+export const WELCOME_GATE_KEY = "geowatch-welcome-gate-v1";
+
+export const FLOW_PATH_KINDS = new Set([
+  "shipping-lane",
+  "submarine-cable",
+  "msr",
+  "oil-pipeline",
+  "gas-pipeline",
+  "msr",
+  "neptun-projection",
+  "axis-link",
+  "bri-trade",
+  "us-dfc-supply",
+]);
+
+export const HEATMAP_MEANINGFUL_DELTA = 28;
+export const LABEL_MEANINGFUL_DELTA = 56;
+export const PATH_MEANINGFUL_DELTA = 120;
+/** HTML 실루엣 마커는 DOM 비용이 커서 뷰포트 포인트보다 더 세게 캡 */
+export const INFRA_HTML_MARKER_CAP = 72;
+export const LOD_HYSTERESIS_MARGIN = 0.06;
+/** 분쟁 외교사(역사 모드) — 줌아웃해도 궤도 밖으로 튕기지 않게 상한 */
+export const HISTORY_IMMERSION_MAX_ALTITUDE = 1.38;
+export const REGION_FIT_PADDING = 1.18;
+export const REGION_MIN_SPAN_DEG = 0.8;
+export const REGION_MIN_ALTITUDE = 0.42;
+export const REGION_MAX_ALTITUDE = 2.35;
+
+export const emptyData: AppData = {
+  generatedAt: "",
+  sources: {
+    naturalEarth: "",
+    gdelt: "",
+  },
+  countries: [],
+  disputes: [],
+  places: [],
+  events: [],
+  roads: [],
+  railroads: [],
+};

@@ -23,6 +23,12 @@ import {
   buildPointsGeoJson,
   buildPolygonsGeoJson,
   buildRingsGeoJson,
+  CIRCLE_RADIUS_BY_ZOOM,
+  FIRMS_ICON_SIZE_BY_ZOOM,
+  LABEL_DOT_RADIUS_BY_ZOOM,
+  LABEL_TEXT_SIZE_BY_ZOOM,
+  PATH_LINE_WIDTH_BY_ZOOM,
+  RING_RADIUS_BY_ZOOM,
 } from "@/lib/mapGlobeLayers";
 import { firmsFireIconId, ensureFirmsFireImages } from "@/lib/firmsFireIcons";
 import {
@@ -76,7 +82,7 @@ export const MapGlobeView = forwardRef<MapGlobeMethods, MapGlobeViewProps>(funct
   const onGlobeMouseMoveRef = useRef<
     ((coords: { lat: number; lng: number } | null) => void) | undefined
   >(onGlobeMouseMove);
-  const [mapZoom, setMapZoom] = useState(2);
+  const [, setMapZoom] = useState(2);
   const [mapLoaded, setMapLoaded] = useState(false);
   /** 수상전투함 8방위 실루엣용 — 5° 양자화 */
   const [mapBearingDeg, setMapBearingDeg] = useState(0);
@@ -313,69 +319,57 @@ export const MapGlobeView = forwardRef<MapGlobeMethods, MapGlobeViewProps>(funct
 
   const pointsGeoJson = useMemo(() => {
     const a = accessorsRef.current;
-    return buildPointsGeoJson(
-      pointsData,
-      {
-        lat: a.pointLat,
-        lng: a.pointLng,
-        color: a.pointColor,
-        radius: a.pointRadius,
-        kind: (item) =>
+    return buildPointsGeoJson(pointsData, {
+      lat: a.pointLat,
+      lng: a.pointLng,
+      color: a.pointColor,
+      radius: a.pointRadius,
+      kind: (item) =>
+        item && typeof item === "object" && "kind" in item
+          ? String((item as { kind?: string }).kind ?? "")
+          : undefined,
+      icon: (item) => {
+        const kind =
           item && typeof item === "object" && "kind" in item
             ? String((item as { kind?: string }).kind ?? "")
-            : undefined,
-        icon: (item) => {
-          const kind =
-            item && typeof item === "object" && "kind" in item
-              ? String((item as { kind?: string }).kind ?? "")
-              : "";
-          return isGemFacilityKind(kind) ? gemFacilityIconId(kind) : undefined;
-        },
+            : "";
+        return isGemFacilityKind(kind) ? gemFacilityIconId(kind) : undefined;
       },
-      mapZoom,
-    );
-  }, [mapZoom, pointsData]);
+    });
+  }, [pointsData]);
 
   const pathsGeoJson = useMemo(() => {
     const a = accessorsRef.current;
-    return buildPathsGeoJson(
-      deferredPathsData,
-      {
-        points: a.pathPoints,
-        color: a.pathColor,
-        stroke: a.pathStroke,
-        dashLength: a.pathDashLength,
-        dashGap: a.pathDashGap,
-        kind: (item) =>
-          item && typeof item === "object" && "kind" in item
-            ? String((item as { kind?: string }).kind ?? "")
-            : undefined,
-      },
-      mapZoom,
-    );
-  }, [mapZoom, deferredPathsData]);
+    return buildPathsGeoJson(deferredPathsData, {
+      points: a.pathPoints,
+      color: a.pathColor,
+      stroke: a.pathStroke,
+      dashLength: a.pathDashLength,
+      dashGap: a.pathDashGap,
+      kind: (item) =>
+        item && typeof item === "object" && "kind" in item
+          ? String((item as { kind?: string }).kind ?? "")
+          : undefined,
+    });
+  }, [deferredPathsData]);
 
   const priorityPathsGeoJson = useMemo(() => {
     if (priorityPathsData.length === 0) {
       return { type: "FeatureCollection" as const, features: [] };
     }
     const a = accessorsRef.current;
-    return buildPathsGeoJson(
-      priorityPathsData,
-      {
-        points: a.pathPoints,
-        color: a.pathColor,
-        stroke: a.pathStroke,
-        dashLength: a.pathDashLength,
-        dashGap: a.pathDashGap,
-        kind: (item) =>
-          item && typeof item === "object" && "kind" in item
-            ? String((item as { kind?: string }).kind ?? "")
-            : undefined,
-      },
-      mapZoom,
-    );
-  }, [mapZoom, priorityPathsData]);
+    return buildPathsGeoJson(priorityPathsData, {
+      points: a.pathPoints,
+      color: a.pathColor,
+      stroke: a.pathStroke,
+      dashLength: a.pathDashLength,
+      dashGap: a.pathDashGap,
+      kind: (item) =>
+        item && typeof item === "object" && "kind" in item
+          ? String((item as { kind?: string }).kind ?? "")
+          : undefined,
+    });
+  }, [priorityPathsData]);
 
   const polygonsGeoJson = useMemo(() => {
     const a = accessorsRef.current;
@@ -389,44 +383,37 @@ export const MapGlobeView = forwardRef<MapGlobeMethods, MapGlobeViewProps>(funct
 
   const ringsGeoJson = useMemo(() => {
     const a = accessorsRef.current;
-    return buildRingsGeoJson(
-      ringsData,
-      { lat: a.ringLat, lng: a.ringLng, color: a.ringColor, maxRadius: a.ringMaxRadius },
-      mapZoom,
-    );
-  }, [mapZoom, ringsData]);
+    return buildRingsGeoJson(ringsData, {
+      lat: a.ringLat,
+      lng: a.ringLng,
+      color: a.ringColor,
+      maxRadius: a.ringMaxRadius,
+    });
+  }, [ringsData]);
 
   const firmsGeoJson = useMemo(() => {
     const a = accessorsRef.current;
-    return buildFirmsFiresGeoJson(
-      firmsFiresData,
-      {
-        lat: a.firmsLat,
-        lng: a.firmsLng,
-        cause: a.firmsCause,
-        frp: a.firmsFrp,
-        angularRadius: a.firmsAngularRadius,
-        iconId: (item) => firmsFireIconId(a.firmsCause(item)),
-      },
-      mapZoom,
-    );
-  }, [firmsFiresData, mapZoom]);
+    return buildFirmsFiresGeoJson(firmsFiresData, {
+      lat: a.firmsLat,
+      lng: a.firmsLng,
+      cause: a.firmsCause,
+      frp: a.firmsFrp,
+      angularRadius: a.firmsAngularRadius,
+      iconId: (item) => firmsFireIconId(a.firmsCause(item)),
+    });
+  }, [firmsFiresData]);
 
   const labelsGeoJson = useMemo(() => {
     const a = accessorsRef.current;
-    return buildLabelsGeoJson(
-      labelsData,
-      {
-        lat: a.labelLat,
-        lng: a.labelLng,
-        text: a.labelText,
-        size: a.labelSize,
-        color: a.labelColor,
-        dotRadius: a.labelDotRadius,
-      },
-      mapZoom,
-    );
-  }, [labelsData, mapZoom]);
+    return buildLabelsGeoJson(labelsData, {
+      lat: a.labelLat,
+      lng: a.labelLng,
+      text: a.labelText,
+      size: a.labelSize,
+      color: a.labelColor,
+      dotRadius: a.labelDotRadius,
+    });
+  }, [labelsData]);
 
   const heatmapCollections = useMemo(() => buildHeatmapGeoJson(heatmapsData), [heatmapsData]);
 
@@ -470,11 +457,8 @@ export const MapGlobeView = forwardRef<MapGlobeMethods, MapGlobeViewProps>(funct
       if (moveIdleTimerRef.current != null) {
         window.clearTimeout(moveIdleTimerRef.current);
       }
-      // GeoJSON zoom은 idle 후 1회 — notify는 idle 타이머 리셋용으로 매 프레임 유지(setState 없음)
-      // (이동 중 publishZoom을 매번 흘리는 시도를 했었으나, points/paths/rings/labels
-      //  GeoJSON을 mapZoom 변경마다 통째로 재계산하는 구조라 스크롤·핀치 줌 도중 계속
-      //  재빌드가 발생해 렌더링이 오히려 불안정(끊김)해짐 — 원복. 화면을 뒤덮는 문제는
-      //  mapGlobeLayers.ts의 angularToPixelRadius/angularToLineWidth 상한(clamp)으로 해결.)
+      // Sizes track via MapLibre zoom expressions (no GeoJSON rebuild on zoom).
+      // publishZoom on idle keeps mapZoomRef / listeners in sync; notify runs every frame (no setState).
       moveIdleTimerRef.current = window.setTimeout(() => {
         movingRef.current = false;
         publishZoom(mapZoomRef.current, true);
@@ -647,11 +631,7 @@ export const MapGlobeView = forwardRef<MapGlobeMethods, MapGlobeViewProps>(funct
       const p2 = 0.94 + 0.06 * Math.sin(t * 3.2 + 4.2);
       const pulseByPhase = ["match", ["get", "phase"], 0, p0, 1, p1, p2];
       try {
-        map.setLayoutProperty("firms-flame", "icon-size", [
-          "*",
-          ["get", "iconSize"],
-          pulseByPhase,
-        ] as never);
+        // icon-size is a zoom expression (FIRMS_ICON_SIZE_BY_ZOOM); only pulse opacity
         map.setPaintProperty("firms-flame", "icon-opacity", [
           "*",
           ["get", "iconOpacity"],
@@ -778,7 +758,7 @@ export const MapGlobeView = forwardRef<MapGlobeMethods, MapGlobeViewProps>(funct
               type="line"
               paint={{
                 "line-color": ["get", "color"],
-                "line-width": ["get", "width"],
+                "line-width": PATH_LINE_WIDTH_BY_ZOOM,
                 "line-opacity": 0.92,
                 "line-dasharray": [
                   "case",
@@ -811,7 +791,7 @@ export const MapGlobeView = forwardRef<MapGlobeMethods, MapGlobeViewProps>(funct
               type="line"
               paint={{
                 "line-color": ["get", "color"],
-                "line-width": ["get", "width"],
+                "line-width": PATH_LINE_WIDTH_BY_ZOOM,
                 "line-opacity": 1,
               }}
             />
@@ -826,7 +806,7 @@ export const MapGlobeView = forwardRef<MapGlobeMethods, MapGlobeViewProps>(funct
               filter={["!", ["has", "icon"]]}
               paint={{
                 "circle-color": ["get", "color"],
-                "circle-radius": ["get", "radius"],
+                "circle-radius": CIRCLE_RADIUS_BY_ZOOM,
                 "circle-opacity": 0.92,
                 "circle-stroke-width": 0.5,
                 "circle-stroke-color": "rgba(2,4,10,0.55)",
@@ -869,7 +849,7 @@ export const MapGlobeView = forwardRef<MapGlobeMethods, MapGlobeViewProps>(funct
               type="symbol"
               layout={{
                 "icon-image": ["get", "icon"],
-                "icon-size": ["get", "iconSize"],
+                "icon-size": FIRMS_ICON_SIZE_BY_ZOOM,
                 "icon-allow-overlap": true,
                 "icon-ignore-placement": true,
                 "icon-anchor": "bottom",
@@ -890,7 +870,7 @@ export const MapGlobeView = forwardRef<MapGlobeMethods, MapGlobeViewProps>(funct
               type="circle"
               paint={{
                 "circle-color": ["get", "color"],
-                "circle-radius": ["get", "radius"],
+                "circle-radius": RING_RADIUS_BY_ZOOM,
                 "circle-opacity": 0.35,
                 "circle-stroke-width": 1,
                 "circle-stroke-color": ["get", "color"],
@@ -899,13 +879,13 @@ export const MapGlobeView = forwardRef<MapGlobeMethods, MapGlobeViewProps>(funct
           </Source>
         ) : null}
 
-        {/* 우크라 전선 LOD: macro Zoom≤5 · micro Zoom≥6 — 좌표는 항상 [lng,lat] GeoJSON */}
+        {/* Ukraine front LOD: soft macro/micro overlap */}
         {ukraineMacroGeoJson.features.length > 0 ? (
           <Source id="ukraine-macro-source" type="geojson" data={ukraineMacroGeoJson}>
             <Layer
               id="ukraine-macro-fill"
               type="fill"
-              maxzoom={6}
+              maxzoom={6.25}
               filter={[
                 "all",
                 ["==", ["geometry-type"], "Polygon"],
@@ -919,7 +899,7 @@ export const MapGlobeView = forwardRef<MapGlobeMethods, MapGlobeViewProps>(funct
             <Layer
               id="ukraine-macro-outline"
               type="line"
-              maxzoom={6}
+              maxzoom={6.25}
               filter={["==", ["geometry-type"], "Polygon"]}
               paint={{
                 "line-color": ["coalesce", ["get", "stroke"], "#fecaca"],
@@ -930,7 +910,7 @@ export const MapGlobeView = forwardRef<MapGlobeMethods, MapGlobeViewProps>(funct
             <Layer
               id="ukraine-macro-hatch"
               type="line"
-              maxzoom={6}
+              maxzoom={6.25}
               filter={[
                 "all",
                 ["==", ["geometry-type"], "LineString"],
@@ -950,7 +930,7 @@ export const MapGlobeView = forwardRef<MapGlobeMethods, MapGlobeViewProps>(funct
             <Layer
               id="ukraine-micro-fill"
               type="fill"
-              minzoom={6}
+              minzoom={5.75}
               filter={[
                 "all",
                 ["==", ["geometry-type"], "Polygon"],
@@ -964,7 +944,7 @@ export const MapGlobeView = forwardRef<MapGlobeMethods, MapGlobeViewProps>(funct
             <Layer
               id="ukraine-micro-outline"
               type="line"
-              minzoom={6}
+              minzoom={5.75}
               filter={["==", ["geometry-type"], "Polygon"]}
               paint={{
                 "line-color": ["coalesce", ["get", "stroke"], "#fed7aa"],
@@ -975,7 +955,7 @@ export const MapGlobeView = forwardRef<MapGlobeMethods, MapGlobeViewProps>(funct
             <Layer
               id="ukraine-micro-defense"
               type="line"
-              minzoom={6}
+              minzoom={5.75}
               filter={[
                 "all",
                 ["==", ["geometry-type"], "LineString"],
@@ -990,7 +970,7 @@ export const MapGlobeView = forwardRef<MapGlobeMethods, MapGlobeViewProps>(funct
             <Layer
               id="ukraine-micro-advance"
               type="line"
-              minzoom={6}
+              minzoom={5.75}
               filter={[
                 "all",
                 ["==", ["geometry-type"], "LineString"],
@@ -1006,7 +986,7 @@ export const MapGlobeView = forwardRef<MapGlobeMethods, MapGlobeViewProps>(funct
             <Layer
               id="ukraine-micro-combat-circle"
               type="circle"
-              minzoom={6}
+              minzoom={5.75}
               filter={[
                 "all",
                 ["==", ["geometry-type"], "Point"],
@@ -1033,7 +1013,7 @@ export const MapGlobeView = forwardRef<MapGlobeMethods, MapGlobeViewProps>(funct
             <Layer
               id="ukraine-micro-combat-ring-line"
               type="line"
-              minzoom={6}
+              minzoom={5.75}
               filter={[
                 "all",
                 ["==", ["geometry-type"], "LineString"],
@@ -1055,7 +1035,7 @@ export const MapGlobeView = forwardRef<MapGlobeMethods, MapGlobeViewProps>(funct
               type="circle"
               paint={{
                 "circle-color": ["get", "color"],
-                "circle-radius": ["get", "dotRadius"],
+                "circle-radius": LABEL_DOT_RADIUS_BY_ZOOM,
                 "circle-opacity": 0.9,
               }}
             />
@@ -1064,7 +1044,7 @@ export const MapGlobeView = forwardRef<MapGlobeMethods, MapGlobeViewProps>(funct
               type="symbol"
               layout={{
                 "text-field": ["get", "label"],
-                "text-size": ["get", "size"],
+                "text-size": LABEL_TEXT_SIZE_BY_ZOOM,
                 "text-offset": [0, 0.8],
                 "text-anchor": "top",
                 "text-font": ["Open Sans Regular", "Arial Unicode MS Regular"],

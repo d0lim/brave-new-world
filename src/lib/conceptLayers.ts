@@ -38,6 +38,7 @@ const CONFLICT_BASE: LayerPatch = {
   showDiplomaticTension: true,
   showGdeltWar: true,
   showGdeltDiplomatic: true,
+  showGdeltOceanCompetition: true,
   showTelegramOsint: true,
 };
 
@@ -63,6 +64,7 @@ const MIDDLE_EAST_STACK: LayerPatch = {
   showPorts: true,
   showFirmsFires: true,
   showTzevaAdom: false,
+  showNewfeedsIranAttacks: true,
 };
 
 const CONFLICT_THEATER_LAYERS: Record<ConflictConceptTheater, LayerPatch> = {
@@ -72,6 +74,8 @@ const CONFLICT_THEATER_LAYERS: Record<ConflictConceptTheater, LayerPatch> = {
     ...NO_UKRAINE,
     ...CARRIER_MIL_WATCH,
     showTzevaAdom: false,
+    showEastAsiaAdiz: true,
+    showNorthKoreaMissileTests: true,
   },
   "china-taiwan": {
     ...CONFLICT_BASE,
@@ -81,6 +85,11 @@ const CONFLICT_THEATER_LAYERS: Record<ConflictConceptTheater, LayerPatch> = {
     showGdeltAlliance: true,
     showUsCarriers: true,
     showMilitaryActivity: true,
+    showEastAsiaAdiz: true,
+    showChinaTaiwanIncidents: true,
+    showChinaJapanIncidents: true,
+    showChinaPhilippinesIncidents: true,
+    showUsChinaIncidents: true,
   },
   "middle-east": {
     ...NO_UKRAINE,

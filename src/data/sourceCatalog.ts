@@ -6,7 +6,12 @@ export interface NewsLayerSourceNote {
   attribution: string;
   notes: string;
   status: "shipped" | "planned";
-  ingest: "static-build" | "cached-api" | "live-poll" | "mapped-existing";
+  ingest:
+    | "static-build"
+    | "cached-api"
+    | "live-poll"
+    | "mapped-existing"
+    | "live-api";
 }
 
 /** 주요 실시간 출처 — 자료출처 패널 상단·도움말에 고정 표기 */
@@ -437,6 +442,28 @@ export const NEWS_LAYER_SOURCE_CATALOG: NewsLayerSourceNote[] = [
     ingest: "cached-api",
   },
   {
+    layerId: "korea-missile-incidents",
+    source: "GDELT live · DPRK missile dens",
+    url: "/api/gdelt + src/data/koreaMissileIncidentsSeed.ts",
+    cadence: "Live GDELT · layer toggle",
+    attribution: "GDELT · open reporting / known launch anchors",
+    notes:
+      "주황 네온 점+물결. 상시 시드가 아니라 최신(24h) 미사일·발사 속보가 있을 때만 점등. 탄착군 미확정 — 발생 좌표 기준. 실시간 궤적·탄착은 우크라 NEPTUN.",
+    status: "shipped",
+    ingest: "live-api",
+  },
+  {
+    layerId: "china-theater-incidents",
+    source: "GDELT live · China theater dens (dyad layers)",
+    url: "/api/gdelt + src/data/chinaTheaterIncidentsSeed.ts",
+    cadence: "Live GDELT · layer toggles",
+    attribution: "GDELT · theater dens for China↔Taiwan / Japan / Philippines / US↔China",
+    notes:
+      "빨간 네온 점 + 물방울 리플. 시드 앵커는 매칭용 — 최신(24h) GDELT 속보가 앵커 근처에 있을 때만 사건 좌표에 표시.",
+    status: "shipped",
+    ingest: "live-api",
+  },
+  {
     layerId: "hapi-conflict-casualties",
     source: "ACLED via HDX HAPI · conflict-events (political_violence fatalities)",
     url: "https://hapi.humdata.org/api/v2/coordination-context/conflict-events → /api/hapi-conflict-casualties",
@@ -444,7 +471,7 @@ export const NEWS_LAYER_SOURCE_CATALOG: NewsLayerSourceNote[] = [
     attribution:
       "Armed Conflict Location & Event Data Project (ACLED) · HDX HAPI · OCHA HDX · www.acleddata.com",
     notes:
-      "원천: ACLED. 배포/질의: OCHA HDX HAPI conflict-events. Geopolitics-only: one skull marker per active front admin1 (Ukraine frontline oblasts + Gaza/south Lebanon). Tension theaters excluded. No wounded field. Docs: https://hapi.humdata.org/docs · Dataset: https://data.humdata.org/dataset/hdx-hapi-conflict-event · ACLED attribution: https://acleddata.com/attributionpolicy",
+      "원천: ACLED. 배포/질의: OCHA HDX HAPI conflict-events. Geopolitics: Ukraine frontline oblasts + Gaza/south Lebanon fatalities; Iran (IRN) admin1 events/fatalities; China/Taiwan political_violence event dens (often 0 fatalities). No wounded field. Docs: https://hapi.humdata.org/docs · Dataset: https://data.humdata.org/dataset/hdx-hapi-conflict-event · ACLED attribution: https://acleddata.com/attributionpolicy",
     status: "shipped",
     ingest: "cached-api",
   },

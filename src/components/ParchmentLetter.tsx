@@ -112,9 +112,14 @@ export function ParchmentLetter({
   const bodyScrollRef = useRef<HTMLDivElement>(null);
   const typingSkipRef = useRef(false);
   const typingIntervalRef = useRef<number | null>(null);
+  /** 타이핑 중 본문 하단 자동 추적. 유저가 스크롤하면 false. */
+  const autoScrollFollowRef = useRef(true);
+  const programmaticScrollRef = useRef(false);
   const parchmentStack = historyHandFont
     ? 'var(--font-letter-hand), "RIDI Batang", "Gowun Batang", "Nanum Myeongjo", "Batang", serif'
-    : 'var(--font-wanted), "Wanted Sans Variable", "Wanted Sans", sans-serif';
+    : lang === "en"
+      ? "var(--font-parchment-en)"
+      : 'var(--font-wanted), "Wanted Sans Variable", "Wanted Sans", sans-serif';
   const bodyFont = parchmentStack;
   const titleFont = parchmentStack;
   const resolvedBackMark = backMark ?? (lang === "en" ? BRAND_NAME.en : BRAND_NAME.ko);
@@ -137,6 +142,7 @@ export function ParchmentLetter({
       return;
     }
     typingSkipRef.current = false;
+    autoScrollFollowRef.current = true;
     setTypedChars(0);
     const reduced =
       typeof window !== "undefined" &&
@@ -190,7 +196,34 @@ export function ParchmentLetter({
     if (!typewriter) return;
     const el = bodyScrollRef.current;
     if (!el) return;
+
+    const stopAutoFollow = () => {
+      autoScrollFollowRef.current = false;
+    };
+    const onScroll = () => {
+      if (programmaticScrollRef.current) return;
+      autoScrollFollowRef.current = false;
+    };
+
+    el.addEventListener("wheel", stopAutoFollow, { passive: true });
+    el.addEventListener("touchmove", stopAutoFollow, { passive: true });
+    el.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      el.removeEventListener("wheel", stopAutoFollow);
+      el.removeEventListener("touchmove", stopAutoFollow);
+      el.removeEventListener("scroll", onScroll);
+    };
+  }, [typewriter, fullBody]);
+
+  useEffect(() => {
+    if (!typewriter || !autoScrollFollowRef.current) return;
+    const el = bodyScrollRef.current;
+    if (!el) return;
+    programmaticScrollRef.current = true;
     el.scrollTop = el.scrollHeight;
+    requestAnimationFrame(() => {
+      programmaticScrollRef.current = false;
+    });
   }, [typedChars, typewriter, typingDone]);
 
   const handleContinue = useCallback(() => {

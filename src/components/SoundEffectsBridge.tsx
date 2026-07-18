@@ -251,6 +251,15 @@ export function SoundEffectsBridge({
     setCameraAltitude(cameraAltitude);
   }, [cameraAltitude, setCameraAltitude]);
 
+  // 대시보드 배경음악(BGM) — 아직 public/audio/dashboard-bgm.mp3 음원을 안 넣기로 해서
+  // 자동 트리거는 꺼둠(파일 없는 채로 매 세션 404 요청만 발생하는 걸 방지).
+  // 나중에 음원 넣으면: 위 destructuring에 playBgm 추가하고, 아래 트리거를 되살리면 됨.
+  //   useEffect(() => {
+  //     if (!canPlay) return;
+  //     void playBgm("dashboard-bgm");
+  //   }, [canPlay, playBgm]);
+  // useSoundStream()의 playBgm/stopBgm 자체는 이미 구현돼 있어 그대로 씀.
+
   useEffect(() => {
     if (!canPlay || primedRef.current) return;
     primedRef.current = true;

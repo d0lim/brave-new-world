@@ -12,8 +12,11 @@ import {
 } from "@/lib/hoverLabels";
 import { milAircraftIconSvg } from "@/lib/milAircraftIcon";
 import { classifyMilAircraft, milAircraftRoleLabel } from "@/lib/milAircraftKind";
+import { aisDisplayTypeLabel } from "@/lib/aisVesselClass";
 import { ukraineControlStatusLabel } from "@/lib/ukraineSettlementLabels";
 import type { AnalysisSelection } from "@/components/globe/types";
+import { Metric } from "@/components/globe/Metric";
+import { formatDateTime, hostFromUrl } from "@/components/globe/formatters";
 
 function formatViinaDate(value: string | null | undefined) {
   if (!value || !/^\d{8}$/.test(value)) return value || "N/A";
@@ -30,32 +33,6 @@ function getTensionLabel(tension: DisputeArea["tension"], lang: "ko" | "en" = "k
 
 function formatCategories(categories: DisputeArea["categories"], lang: "ko" | "en" = "ko") {
   return categories.map((category) => disputeCategoryLabel(category, lang)).join(" · ");
-}
-
-function hostFromUrl(url: string | null) {
-  if (!url) return "source url 없음";
-  try {
-    return new URL(url).hostname.replace(/^www\./, "");
-  } catch {
-    return url;
-  }
-}
-
-function formatDateTime(value: string) {
-  if (!value) return "생성 전";
-  return new Intl.DateTimeFormat("ko-KR", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(value));
-}
-
-function Metric({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-lg border border-slate-800 bg-slate-950/40 p-3">
-      <dt className="text-[10px] uppercase tracking-[0.2em] text-slate-500">{label}</dt>
-      <dd className="mt-1 text-sm text-slate-100">{value}</dd>
-    </div>
-  );
 }
 
 function MetaRow({ label, value }: { label: string; value: string }) {
@@ -115,6 +92,7 @@ export function AnalysisPanel({
   ukraineRuCellCount?: number;
   disputeOverview?: DisputeOverview | null;
 }) {
+  const { lang } = useLocale();
   if (selection.kind === "country") {
     const country = selection.item;
     return (
@@ -299,20 +277,21 @@ export function AnalysisPanel({
         : vessel.category === "commercial"
           ? "민간"
           : "기타";
+    const typeLabel =
+      aisDisplayTypeLabel(vessel, lang) ||
+      vessel.shipTypeLabel ||
+      (vessel.shipType != null ? String(vessel.shipType) : "N/A");
     return (
       <div className="flex flex-col gap-4">
         <PanelHeader
           eyebrow={`AIS · ${categoryLabel}`}
           title={vessel.shipName || `MMSI ${vessel.mmsi}`}
-          badge={vessel.shipTypeLabel || "AIS"}
+          badge={typeLabel || "AIS"}
           onClose={onClose}
         />
         <section className="grid grid-cols-2 gap-3">
           <Metric label="MMSI" value={vessel.mmsi} />
-          <Metric
-            label="유형"
-            value={vessel.shipTypeLabel || (vessel.shipType != null ? String(vessel.shipType) : "N/A")}
-          />
+          <Metric label="유형" value={typeLabel} />
           <Metric
             label="SOG"
             value={vessel.speedOverGround === null ? "N/A" : `${vessel.speedOverGround} kn`}

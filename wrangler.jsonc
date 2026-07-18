@@ -1,11 +1,14 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "main": ".open-next/worker.js",
-  "name": "conflict-view",
+  // Workers Builds CI Worker name (dashboard) — was "conflict-view", CI expects this spelling.
+  "name": "confilct-view",
   "compatibility_date": "2026-07-11",
   "compatibility_flags": [
     "nodejs_compat",
-    "global_fetch_strictly_public"
+    "global_fetch_strictly_public",
+    // undici optional sqlite cache → require("sqlite"); Workers stub breaks wrangler re-bundle.
+    "disable_nodejs_sqlite_module"
   ],
   "assets": {
     "directory": ".open-next/assets",
@@ -14,7 +17,7 @@
   "services": [
     {
       "binding": "WORKER_SELF_REFERENCE",
-      "service": "conflict-view"
+      "service": "confilct-view"
     }
   ],
   "images": {
@@ -33,5 +36,9 @@
       "binding": "DATA_BUCKET",
       "bucket_name": "conflict-view-data"
     }
-  ]
+  ],
+  "alias": {
+    "sqlite": "./cloudflare-stubs/empty-module.js",
+    "node:sqlite": "./cloudflare-stubs/empty-module.js"
+  }
 }

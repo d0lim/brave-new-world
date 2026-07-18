@@ -97,6 +97,55 @@ export const MIDDLE_EAST_ACTIVE_FRONT_ADMIN1 = new Set([
   "Baalbek-Hermel",
 ]);
 
+/**
+ * 이란 — HAPI/ACLED admin1 (영문).
+ * 사망이 적어도 events가 있으면 사건 태그로 표시.
+ */
+export const IRAN_ACTIVE_FRONT_ADMIN1 = new Set([
+  "Tehran",
+  "Isfahan",
+  "Esfahan",
+  "Khuzestan",
+  "Bushehr",
+  "Hormozgan",
+  "Fars",
+  "Kermanshah",
+  "West Azerbaijan",
+  "East Azerbaijan",
+  "Sistan and Baluchestan",
+  "Sistan & Baluchestan",
+  "Kerman",
+  "Lorestan",
+  "Ilam",
+  "Kurdistan",
+  "Hamadan",
+  "Qom",
+  "Markazi",
+  "Yazd",
+  "Semnan",
+  "Golestan",
+  "Mazandaran",
+  "Gilan",
+  "Ardabil",
+  "Zanjan",
+  "Qazvin",
+  "Alborz",
+  "Chahar Mahaal and Bakhtiari",
+  "Kohgiluyeh and Boyer-Ahmad",
+  "North Khorasan",
+  "Razavi Khorasan",
+  "South Khorasan",
+  "Iran",
+]);
+
+export const IRAN_LOCATION_CODES = new Set(["IRN"]);
+
+/**
+ * 중국·대만 — HAPI는 종종 admin1=null(국가 단위)만 줌.
+ * 해상 대치·물대포 등 회색지대는 fatalities=0이어도 events>0.
+ */
+export const CHINA_TAIWAN_LOCATION_CODES = new Set(["CHN", "TWN"]);
+
 type AdminCentroid = { lat: number; lng: number; spanDeg?: number };
 
 const UKRAINE_ADMIN1_CENTROIDS: Record<string, AdminCentroid> = {
@@ -120,6 +169,54 @@ const ME_ADMIN1_CENTROIDS: Record<string, AdminCentroid> = {
   Israel: { lat: 31.5, lng: 34.85, spanDeg: 2.2 },
 };
 
+/** 이란 admin1 센트로이드 (대략) */
+const IRAN_ADMIN1_CENTROIDS: Record<string, AdminCentroid> = {
+  Tehran: { lat: 35.69, lng: 51.39, spanDeg: 2.2 },
+  Isfahan: { lat: 32.65, lng: 51.67, spanDeg: 3.5 },
+  Esfahan: { lat: 32.65, lng: 51.67, spanDeg: 3.5 },
+  Khuzestan: { lat: 31.32, lng: 48.67, spanDeg: 3.2 },
+  Bushehr: { lat: 28.92, lng: 50.84, spanDeg: 2.4 },
+  Hormozgan: { lat: 27.18, lng: 56.28, spanDeg: 3.0 },
+  Fars: { lat: 29.59, lng: 52.58, spanDeg: 3.5 },
+  Kermanshah: { lat: 34.31, lng: 47.06, spanDeg: 2.2 },
+  "West Azerbaijan": { lat: 37.55, lng: 45.07, spanDeg: 2.8 },
+  "East Azerbaijan": { lat: 38.08, lng: 46.29, spanDeg: 2.6 },
+  "Sistan and Baluchestan": { lat: 29.49, lng: 60.87, spanDeg: 4.5 },
+  "Sistan & Baluchestan": { lat: 29.49, lng: 60.87, spanDeg: 4.5 },
+  Kerman: { lat: 30.28, lng: 57.07, spanDeg: 4.0 },
+  Lorestan: { lat: 33.49, lng: 48.35, spanDeg: 2.2 },
+  Ilam: { lat: 33.64, lng: 46.42, spanDeg: 2.0 },
+  Kurdistan: { lat: 35.31, lng: 46.99, spanDeg: 2.2 },
+  Hamadan: { lat: 34.8, lng: 48.51, spanDeg: 2.0 },
+  Qom: { lat: 34.64, lng: 50.88, spanDeg: 1.6 },
+  Markazi: { lat: 34.09, lng: 49.69, spanDeg: 2.2 },
+  Yazd: { lat: 31.9, lng: 54.37, spanDeg: 3.2 },
+  Semnan: { lat: 35.57, lng: 53.39, spanDeg: 3.5 },
+  Golestan: { lat: 37.25, lng: 55.17, spanDeg: 2.2 },
+  Mazandaran: { lat: 36.56, lng: 53.06, spanDeg: 2.4 },
+  Gilan: { lat: 37.28, lng: 49.58, spanDeg: 2.0 },
+  Ardabil: { lat: 38.25, lng: 48.3, spanDeg: 2.0 },
+  Zanjan: { lat: 36.67, lng: 48.5, spanDeg: 2.0 },
+  Qazvin: { lat: 36.27, lng: 50.0, spanDeg: 1.8 },
+  Alborz: { lat: 35.99, lng: 50.93, spanDeg: 1.5 },
+  "Chahar Mahaal and Bakhtiari": { lat: 32.33, lng: 50.86, spanDeg: 1.8 },
+  "Kohgiluyeh and Boyer-Ahmad": { lat: 30.67, lng: 51.6, spanDeg: 1.8 },
+  "North Khorasan": { lat: 37.47, lng: 57.33, spanDeg: 2.4 },
+  "Razavi Khorasan": { lat: 36.3, lng: 59.6, spanDeg: 3.5 },
+  "South Khorasan": { lat: 32.86, lng: 59.22, spanDeg: 3.2 },
+  Iran: { lat: 32.5, lng: 53.5, spanDeg: 8 },
+  IRN: { lat: 32.5, lng: 53.5, spanDeg: 8 },
+};
+
+/** 국가 단위(admin1 null) — 대만해협·연안 앵커 */
+const CHINA_TAIWAN_CENTROIDS: Record<string, AdminCentroid> = {
+  China: { lat: 24.5, lng: 118.2, spanDeg: 6 },
+  "Taiwan (Province of China)": { lat: 23.7, lng: 120.9, spanDeg: 3.5 },
+  Taiwan: { lat: 23.7, lng: 120.9, spanDeg: 3.5 },
+  CHN: { lat: 24.5, lng: 118.2, spanDeg: 6 },
+  TWN: { lat: 23.7, lng: 120.9, spanDeg: 3.5 },
+};
+
 const LOCATION_THEATER: Record<string, CombatTheaterId> = {
   UKR: "russia-ukraine",
   PSE: "middle-east",
@@ -129,10 +226,20 @@ const LOCATION_THEATER: Record<string, CombatTheaterId> = {
   YEM: "middle-east",
   IRQ: "middle-east",
   IRN: "middle-east",
+  CHN: "china-taiwan",
+  TWN: "china-taiwan",
 };
 
-/** HAPI 조회 대상 — 실제 교전 국가만 (긴장 구간 제외) */
-export const HAPI_ACTIVE_WAR_LOCATION_CODES = ["UKR", "PSE", "ISR", "LBN"] as const;
+/** HAPI 조회 대상 — 교전(우크라·중동·이란) + 중국·대만 긴장 감시 */
+export const HAPI_ACTIVE_WAR_LOCATION_CODES = [
+  "UKR",
+  "PSE",
+  "ISR",
+  "LBN",
+  "IRN",
+  "CHN",
+  "TWN",
+] as const;
 
 export function resolveHapiAppIdentifier(): string {
   return (
@@ -156,7 +263,23 @@ function normalizeAdmin1(name: string | null | undefined, locationName: string):
   return locationName.trim() || "Unknown";
 }
 
-function isActiveFrontAdmin1(locationCode: string, admin1Name: string, fatalities: number): boolean {
+function isActiveFrontAdmin1(
+  locationCode: string,
+  admin1Name: string,
+  fatalities: number,
+  events: number,
+): boolean {
+  if (CHINA_TAIWAN_LOCATION_CODES.has(locationCode)) {
+    // 회색지대·해상 대치: 사망 0이어도 사건 집계가 있으면 표시
+    return events >= 1 || fatalities >= 1;
+  }
+  if (IRAN_LOCATION_CODES.has(locationCode)) {
+    // 이란: 허용 admin1이면 사건/사망 중 하나, 밖이면 고강도만
+    if (IRAN_ACTIVE_FRONT_ADMIN1.has(admin1Name)) {
+      return events >= 1 || fatalities >= 1;
+    }
+    return fatalities >= 40 || events >= 12;
+  }
   if (locationCode === "UKR") {
     return UKRAINE_ACTIVE_FRONT_ADMIN1.has(admin1Name) && fatalities > 0;
   }
@@ -171,8 +294,26 @@ function isActiveFrontAdmin1(locationCode: string, admin1Name: string, fatalitie
 function centroidFor(
   locationCode: string,
   admin1Name: string,
+  locationName?: string,
 ): AdminCentroid | null {
   if (locationCode === "UKR") return UKRAINE_ADMIN1_CENTROIDS[admin1Name] ?? null;
+  if (IRAN_LOCATION_CODES.has(locationCode)) {
+    return (
+      IRAN_ADMIN1_CENTROIDS[admin1Name] ??
+      IRAN_ADMIN1_CENTROIDS[locationName || ""] ??
+      IRAN_ADMIN1_CENTROIDS[locationCode] ??
+      IRAN_ADMIN1_CENTROIDS.Iran ??
+      null
+    );
+  }
+  if (CHINA_TAIWAN_LOCATION_CODES.has(locationCode)) {
+    return (
+      CHINA_TAIWAN_CENTROIDS[admin1Name] ??
+      CHINA_TAIWAN_CENTROIDS[locationName || ""] ??
+      CHINA_TAIWAN_CENTROIDS[locationCode] ??
+      null
+    );
+  }
   return ME_ADMIN1_CENTROIDS[admin1Name] ?? null;
 }
 
@@ -226,9 +367,16 @@ export function aggregateActiveFronts(
 
   const fronts: HapiActiveFront[] = [];
   for (const acc of map.values()) {
-    if (acc.killed < minFat) continue;
-    if (!isActiveFrontAdmin1(acc.locationCode, acc.admin1Name, acc.killed)) continue;
-    const center = centroidFor(acc.locationCode, acc.admin1Name);
+    const isChinaTaiwan = CHINA_TAIWAN_LOCATION_CODES.has(acc.locationCode);
+    const isIran = IRAN_LOCATION_CODES.has(acc.locationCode);
+    if (!isChinaTaiwan && !isIran && acc.killed < minFat) continue;
+    if (isIran && acc.killed < minFat && acc.events < 1) continue;
+    if (
+      !isActiveFrontAdmin1(acc.locationCode, acc.admin1Name, acc.killed, acc.events)
+    ) {
+      continue;
+    }
+    const center = centroidFor(acc.locationCode, acc.admin1Name, acc.locationName);
     if (!center) continue;
     const theaterId = LOCATION_THEATER[acc.locationCode];
     if (!theaterId) continue;
@@ -252,7 +400,7 @@ export function aggregateActiveFronts(
 }
 
 export const HAPI_CASUALTY_CAVEAT =
-  "HDX HAPI · ACLED political_violence fatalities (monthly admin aggregates). All parties · not Mediazona named RU KIA. No wounded field. Cite ACLED: www.acleddata.com";
+  "HDX HAPI · ACLED political_violence (monthly aggregates). Ukraine/ME/Iran: fatalities (+Iran events). China/Taiwan: events often 0 fatalities (gray-zone). Not Mediazona named RU KIA. Cite ACLED: www.acleddata.com";
 
 /** 라이브 HAPI 실패·지연 시에도 전선 숫자가 보이게 하는 폴백 (최근 창 근사값) */
 export const HAPI_CASUALTY_SEED: HapiConflictCasualtiesPayload = {
@@ -312,6 +460,62 @@ export const HAPI_CASUALTY_SEED: HapiConflictCasualtiesPayload = {
       periodStart: "",
       periodEnd: "",
       territorySpanDeg: 1.4,
+    },
+    {
+      id: "hapi-chn-china",
+      theaterId: "china-taiwan",
+      locationCode: "CHN",
+      locationName: "China",
+      admin1Name: "China",
+      lat: 24.5,
+      lng: 118.2,
+      killed: 0,
+      events: 23,
+      periodStart: "",
+      periodEnd: "",
+      territorySpanDeg: 6,
+    },
+    {
+      id: "hapi-twn-taiwan",
+      theaterId: "china-taiwan",
+      locationCode: "TWN",
+      locationName: "Taiwan (Province of China)",
+      admin1Name: "Taiwan (Province of China)",
+      lat: 23.7,
+      lng: 120.9,
+      killed: 0,
+      events: 4,
+      periodStart: "",
+      periodEnd: "",
+      territorySpanDeg: 3.5,
+    },
+    {
+      id: "hapi-irn-tehran",
+      theaterId: "middle-east",
+      locationCode: "IRN",
+      locationName: "Iran (Islamic Republic of)",
+      admin1Name: "Tehran",
+      lat: 35.69,
+      lng: 51.39,
+      killed: 0,
+      events: 18,
+      periodStart: "",
+      periodEnd: "",
+      territorySpanDeg: 2.2,
+    },
+    {
+      id: "hapi-irn-khuzestan",
+      theaterId: "middle-east",
+      locationCode: "IRN",
+      locationName: "Iran (Islamic Republic of)",
+      admin1Name: "Khuzestan",
+      lat: 31.32,
+      lng: 48.67,
+      killed: 12,
+      events: 9,
+      periodStart: "",
+      periodEnd: "",
+      territorySpanDeg: 3.2,
     },
   ],
   fetchedAt: "",

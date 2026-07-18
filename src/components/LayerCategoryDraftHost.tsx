@@ -4,9 +4,14 @@ import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import {
   LayerCategoryPanel,
   type LayerCategory,
+  type LayerToggleItem,
 } from "@/components/LayerCategoryPanel";
 import type { LayerPrefs } from "@/lib/layerPrefs";
-import { LAYER_ITEM_PREF_KEYS, patchFromCategoryItems } from "@/lib/layerItemPrefKeys";
+import {
+  LAYER_ITEM_PREF_KEYS,
+  flattenLayerItemIds,
+  patchFromCategoryItems,
+} from "@/lib/layerItemPrefKeys";
 import {
   activeLayerCap,
   isLayerCapCountedKey,
@@ -15,12 +20,17 @@ import { isUltraLiteHeavyRenderKey } from "@/lib/ultraLiteMode";
 import { useLocale } from "@/contexts/LocaleContext";
 import { t } from "@/lib/uiStrings";
 
+function walkChecked(item: LayerToggleItem, map: Record<string, boolean>) {
+  map[item.id] = item.checked;
+  if (item.options?.length) {
+    for (const opt of item.options) walkChecked(opt, map);
+  }
+}
+
 function extractChecked(categories: LayerCategory[]): Record<string, boolean> {
   const map: Record<string, boolean> = {};
   for (const category of categories) {
-    for (const item of category.items) {
-      map[item.id] = item.checked;
-    }
+    for (const item of category.items) walkChecked(item, map);
   }
   return map;
 }
@@ -92,6 +102,41 @@ export const LayerCategoryDraftHost = memo(function LayerCategoryDraftHost({
     [checked, onPatch, showCapWarn, ultraLite],
   );
 
+  const wrapItem = useCallback(
+    (item: LayerToggleItem): LayerToggleItem => {
+      if (item.presentation === "dropdown" && item.options?.length) {
+        const wrappedOptions = item.options.map((opt) => wrapItem(opt));
+        const leafIds = flattenLayerItemIds([item]);
+        const anyOn = leafIds.some((id) => checked[id] ?? false);
+        return {
+          ...item,
+          checked: anyOn,
+          options: wrappedOptions,
+          onChange: (value: boolean) => {
+            for (const id of leafIds) applyItem(id, value);
+          },
+        };
+      }
+      const isOn = checked[item.id] ?? item.checked;
+      const key = LAYER_ITEM_PREF_KEYS[item.id];
+      const counted = key ? isLayerCapCountedKey(key) : false;
+      const blocked = !isOn && atCap && counted;
+      const heavy = ultraLite && isUltraLiteHeavyRenderKey(key);
+      return {
+        ...item,
+        checked: isOn,
+        disabled: item.disabled || blocked,
+        detail: blocked
+          ? `${item.detail.replace(/ · 상한.*/, "")} · 상한 ${activeCount}/${cap}`
+          : item.detail.replace(/ · 상한.*/, ""),
+        cautionTag: heavy ? t("layerClickCautionTag", lang) : item.cautionTag,
+        cautionHint: heavy ? t("layerClickCautionHint", lang) : item.cautionHint,
+        onChange: (value: boolean) => applyItem(item.id, value),
+      };
+    },
+    [activeCount, applyItem, atCap, cap, checked, lang, ultraLite],
+  );
+
   const wrappedCategories = useMemo<LayerCategory[]>(() => {
     return categories.map((category) => ({
       ...category,
@@ -99,11 +144,11 @@ export const LayerCategoryDraftHost = memo(function LayerCategoryDraftHost({
         ? (enabled: boolean) => {
             if (!enabled) {
               const patch = patchFromCategoryItems(category.items, false);
+              const ids = flattenLayerItemIds(category.items);
               setChecked((prev) => {
                 const next = { ...prev };
-                for (const item of category.items) {
-                  next[item.id] = false;
-                }
+                for (const id of ids) next[id] = false;
+                for (const item of category.items) next[item.id] = false;
                 return next;
               });
               onPatch(patch);
@@ -118,18 +163,19 @@ export const LayerCategoryDraftHost = memo(function LayerCategoryDraftHost({
                 return prev;
               }
               let enabledAny = false;
-              for (const item of category.items) {
-                if (next[item.id]) continue;
-                const key = LAYER_ITEM_PREF_KEYS[item.id];
+              const leafIds = flattenLayerItemIds(category.items);
+              for (const id of leafIds) {
+                if (next[id]) continue;
+                const key = LAYER_ITEM_PREF_KEYS[id];
                 if (!key) continue;
                 if (!isLayerCapCountedKey(key)) {
-                  next[item.id] = true;
+                  next[id] = true;
                   (patch as Record<string, boolean>)[key as string] = true;
                   enabledAny = true;
                   continue;
                 }
                 if (slots <= 0) break;
-                next[item.id] = true;
+                next[id] = true;
                 (patch as Record<string, boolean>)[key as string] = true;
                 slots -= 1;
                 enabledAny = true;
@@ -140,36 +186,15 @@ export const LayerCategoryDraftHost = memo(function LayerCategoryDraftHost({
             });
           }
         : undefined,
-      items: category.items.map((item) => {
-        const isOn = checked[item.id] ?? item.checked;
-        const key = LAYER_ITEM_PREF_KEYS[item.id];
-        const counted = key ? isLayerCapCountedKey(key) : false;
-        const blocked = !isOn && atCap && counted;
-        const heavy = ultraLite && isUltraLiteHeavyRenderKey(key);
-        return {
-          ...item,
-          checked: isOn,
-          disabled: item.disabled || blocked,
-          detail: blocked
-            ? `${item.detail.replace(/ · 상한.*/, "")} · 상한 ${activeCount}/${cap}`
-            : item.detail.replace(/ · 상한.*/, ""),
-          cautionTag: heavy ? t("layerClickCautionTag", lang) : item.cautionTag,
-          cautionHint: heavy ? t("layerClickCautionHint", lang) : item.cautionHint,
-          onChange: (value: boolean) => applyItem(item.id, value),
-        };
-      }),
+      items: category.items.map((item) => wrapItem(item)),
     }));
   }, [
-    activeCount,
     applyItem,
-    atCap,
-    cap,
     categories,
-    checked,
-    lang,
     onPatch,
     showCapWarn,
     ultraLite,
+    wrapItem,
   ]);
 
   const warnBody = t("layerCapWarnBody", lang).replace("{cap}", String(cap));

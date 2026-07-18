@@ -87,8 +87,8 @@ export const MEDIAZONA_CASUALTY_SEED: MediazonaCasualtySnapshot = {
   },
   marker: {
     ...MEDIAZONA_FRONT_MARKER,
-    killedLabelKo: "사망",
-    killedLabelEn: "KIA",
+    killedLabelKo: "오늘의 사망자",
+    killedLabelEn: "Today's fatalities",
     woundedLabelKo: "부상",
     woundedLabelEn: "WIA",
   },

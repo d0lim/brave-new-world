@@ -76,7 +76,7 @@ export function getCasualtyOverlayScale(
   // 전장 각크기 ≈ span/a 에 비례 — 넓은 전장은 같은 고도에서 약간 더 큼
   const territoryOnScreen = span / a;
   const raw = territoryOnScreen * 0.045;
-  // 하한 0.45 — 대륙 줌에서도 사망 숫자가 읽히게
+  // 하한 0.45 — 대륙 줌에서도 사망 숫자가 읽히게 (전선 호버 시에만 표시)
   return Math.min(1.35, Math.max(0.45, raw));
 }
 
@@ -126,7 +126,8 @@ export function applyCasualtyOverlayMetrics(
 
   const elegyPane = el.querySelector<HTMLElement>(".casualty-elegy-pane");
   if (elegyPane) {
-    elegyPane.style.width = `${Math.round(m.elegyPx * 16)}px`;
+    // 문장 2줄 고정 — 폭을 좁히면 둘째 줄이 감겨 3줄처럼 보임
+    elegyPane.style.width = "max-content";
     elegyPane.style.marginBottom = `${Math.max(4, Math.round(m.blockGapPx * 0.55))}px`;
   }
 
@@ -182,15 +183,14 @@ const CASUALTY_NUMBER_FONT =
   'var(--font-wanted), "Wanted Sans Variable", "Wanted Sans", ui-sans-serif, system-ui, sans-serif';
 
 /**
- * 흰색 두개골 SVG — 눈구멍·코구멍 뚫림, 턱·이빨 노출.
+ * 흰색 두개골 SVG — 둥근 두개 · 큰 원형 눈 · 역하트 코 · 윗니(아래턱 없음).
  */
 function skullSvg(iconPx: number) {
   const px = Math.max(14, Math.round(iconPx));
   return `<svg class="casualty-skull-svg" width="${px}" height="${px}" viewBox="0 0 64 64" aria-hidden="true" style="display:block;flex-shrink:0;filter:drop-shadow(0 1px 2px rgba(0,0,0,0.85))">
-  <path fill="#ffffff" fill-rule="evenodd" d="M32 3.5C18.2 3.5 8 13.8 8 27.2c0 8.6 4.1 14.8 9.8 18.6.5 1.6.8 3.2.8 4.6v2.4c0 1.3-.35 2.5-.95 3.6L15.4 61c-.25.7.25 1.45 1.05 1.45h5.5c.35 0 .68-.2.85-.52L26.4 54h11.2l3.6 7.93c.17.32.5.52.85.52h5.5c.8 0 1.3-.75 1.05-1.45l-2.25-5.2c-.6-1.1-.95-2.3-.95-3.6v-2.4c0-1.4.3-3 .8-4.6C51.9 42 56 35.8 56 27.2 56 13.8 45.8 3.5 32 3.5zm-10.8 18a5.9 6.5 0 1 0 11.8 0 5.9 6.5 0 1 0-11.8 0zm10 0a5.9 6.5 0 1 0 11.8 0 5.9 6.5 0 1 0-11.8 0zM32 28.6c-2.7 0-4.8 1.75-5.35 3.95-.12.55.32 1.05.9 1.05h8.9c.58 0 1.02-.5.9-1.05C36.8 30.35 34.7 28.6 32 28.6z"/>
-  <path fill="#ffffff" d="M21.6 41.2h20.8v9.2c0 1.2-.7 2.2-1.7 2.6-3.4.7-14 .7-17.4 0-1-.4-1.7-1.4-1.7-2.6v-9.2z"/>
-  <path fill="none" stroke="rgba(0,0,0,0.55)" stroke-width="1.15" d="M24.8 41.4v9.2M28 41.4v9.2M31.2 41.4v9.2M34.4 41.4v9.2M37.6 41.4v9.2M25.2 46h13.6"/>
-  <path fill="none" stroke="#ffffff" stroke-width="1.15" stroke-linecap="round" d="M17.6 29.4c2.5 2.1 5.5 3.2 8.7 3.2M46.4 29.4c-2.5 2.1-5.5 3.2-8.7 3.2"/>
+  <path fill="#ffffff" fill-rule="evenodd" d="M32 4C17.5 4 8 14.8 8 28c0 9.2 4.6 15.5 11.2 19.2v1.6c0 1 .4 1.9 1.1 2.55L24 56.2c.35.4.85.6 1.35.6h13.3c.5 0 1-.2 1.35-.6l3.7-4.85c.7-.65 1.1-1.55 1.1-2.55v-1.6C51.4 43.5 56 37.2 56 28 56 14.8 46.5 4 32 4zM20.2 23.5a6.6 7.1 0 1 0 13.2 0 6.6 7.1 0 1 0-13.2 0zm10.4 0a6.6 7.1 0 1 0 13.2 0 6.6 7.1 0 1 0-13.2 0zM32 31.5c-2.6 0-4.6 1.7-4.6 3.5 0 .55.2 1.05.55 1.45L32 41.2l4.05-4.75c.35-.4.55-.9.55-1.45 0-1.8-2-3.5-4.6-3.5z"/>
+  <path fill="#ffffff" d="M22 43.2h20v7.6c0 1.05-.6 1.95-1.5 2.25-3.1.9-13.9.9-17 0-.9-.3-1.5-1.2-1.5-2.25v-7.6z"/>
+  <path fill="none" stroke="rgba(0,0,0,0.5)" stroke-width="1.25" stroke-linecap="round" d="M25.4 43.5v8.5M28.7 43.5v8.5M32 43.5v8.5M35.3 43.5v8.5M38.6 43.5v8.5"/>
 </svg>`;
 }
 
@@ -256,7 +256,7 @@ export function createWarCasualtyOverlayElement(
         <div class="casualty-count-num" style="color:#ffffff;font-family:${numberFont};font-weight:700;font-size:${metrics.numPx}px;letter-spacing:0.01em;font-variant-numeric:tabular-nums;-webkit-text-stroke:0.25px rgba(0,0,0,0.35)">${escapeHtml(
           formatCasualtyCount(count),
         )}</div>
-        <div class="casualty-count-label" style="color:rgba(255,255,255,0.92);font-family:${numberFont};font-weight:700;font-size:${metrics.labelPx}px;letter-spacing:0.08em;text-transform:uppercase">${escapeHtml(
+        <div class="casualty-count-label" style="color:rgba(255,255,255,0.92);font-family:${numberFont};font-weight:700;font-size:${metrics.labelPx}px;letter-spacing:0.02em">${escapeHtml(
           label,
         )}</div>
       </div>`;
@@ -278,7 +278,7 @@ export function createWarCasualtyOverlayElement(
   elegyPane.style.bottom = "100%";
   elegyPane.style.transform = "translateX(-50%)";
   elegyPane.style.marginBottom = `${Math.max(4, Math.round(metrics.blockGapPx * 0.55))}px`;
-  elegyPane.style.width = `${Math.round(metrics.elegyPx * 16)}px`;
+  elegyPane.style.width = "max-content";
   elegyPane.style.pointerEvents = "none";
   elegyPane.style.zIndex = "2";
   elegyPane.style.textAlign = "center";
@@ -299,6 +299,8 @@ export function createWarCasualtyOverlayElement(
 
   const line1 = document.createElement("div");
   const line2 = document.createElement("div");
+  line1.style.whiteSpace = "nowrap";
+  line2.style.whiteSpace = "nowrap";
   line2.style.marginTop = "0.35em";
   elegy.append(line1, line2);
   elegyPane.append(elegy);

@@ -19,7 +19,8 @@ export function shouldShowViewerIntro(viewerMode: ViewerMode): boolean {
   }
 }
 
-function markViewerIntroDone(viewerMode: ViewerMode) {
+/** 첫 진입 연쇄 축소 — 도메인 선택만으로 인트로 스킵 */
+export function markViewerIntroDone(viewerMode: ViewerMode) {
   try {
     localStorage.setItem(INTRO_KEYS[viewerMode], "done");
   } catch {

@@ -8,7 +8,9 @@ const DEFAULT_SOURCE = "VIIRS_SNPP_NRT";
  */
 const FIRMS_SOURCES = ["VIIRS_NOAA20_NRT"];
 
-/** Conflict theaters — keep small for Worker CPU/time limits */
+/** Conflict theaters — keep small for Worker CPU/time limits.
+ * Keep in sync with `src/lib/firmsTheaters.ts` (client display filter).
+ */
 export const FIRMS_THEATERS: {
   id: string;
   west: number;
@@ -21,6 +23,8 @@ export const FIRMS_THEATERS: {
   { id: "taiwan", west: 116, south: 20, east: 125, north: 27 },
   { id: "korea", west: 123, south: 33, east: 132, north: 43 },
   { id: "red-sea", west: 32, south: 10, east: 48, north: 28 },
+  { id: "black-sea", west: 28, south: 41, east: 42, north: 47 },
+  { id: "south-china-sea", west: 105, south: 5, east: 122, north: 23 },
 ];
 
 export function buildFirmsAreaUrl(options: {

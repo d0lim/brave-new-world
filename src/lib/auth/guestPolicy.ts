@@ -32,6 +32,7 @@ export const GUEST_LOCAL_PREF_KEYS = [
   "geowatch-layers-v21",
   "geowatch-view-config-v1",
   "geowatch-watch-symbols-v1",
+  "geowatch-interest-v1",
   "cv-intel-dock-collapsed",
   // 등불·온보딩은 prefix 매칭으로 수집
 ] as const;

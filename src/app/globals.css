@@ -19,9 +19,17 @@
   --safe-left: env(safe-area-inset-left, 0px);
   /* Apple HIG / Material 최소 터치 타겟 */
   --tap-target-min: 44px;
-  /* Wanted Sans — UI·양피지 기본 (반서방 11대 현장만 RIDI Batang 유지) */
+  /* Wanted Sans — 한글 UI·양피지 기본 (반서방 11대 현장만 RIDI Batang 유지) */
   --font-wanted: "Wanted Sans Variable", "Wanted Sans", -apple-system, BlinkMacSystemFont,
     system-ui, "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", sans-serif;
+  /* 영문 Inter — next/font --font-inter 변수와 스택 (Intel UI·양피지 영문) */
+  --font-ui-en: var(--font-inter), var(--font-wanted), ui-sans-serif, system-ui, sans-serif;
+  --font-intel: var(--font-inter), var(--font-wanted), ui-sans-serif, system-ui, sans-serif;
+  /* 영문 양피지 장문(레터) Merriweather — 일일 뉴스 등불 기사는 --font-intel 사용 */
+  --font-parchment-en: var(--font-merriweather), var(--font-wanted), Georgia, "Times New Roman",
+    serif;
+  /* 좌표·수치 JetBrains Mono */
+  --font-data-mono: var(--font-jetbrains-mono), var(--font-geist-mono), ui-monospace, monospace;
 }
 
 body {
@@ -87,21 +95,41 @@ html[data-compact="0"] .cv-compact-only {
   letter-spacing: -0.02em;
 }
 
-/** 영문 UI — Wanted Sans (라틴·한글 동일 패밀리) */
+/** 영문 UI — Inter (라틴) + Wanted (한글 폴백) */
 .font-en,
 [data-ui-lang="en"] .font-news-headline,
 main[data-ui-lang="en"] {
-  --ui-latin-font: var(--font-wanted);
+  --ui-latin-font: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+}
+
+main[data-ui-lang="en"] {
+  font-family: var(--font-ui-en);
+  letter-spacing: -0.011em;
 }
 
 main[data-ui-lang="en"] .font-news-headline,
 .font-en {
-  font-family: var(--font-wanted);
+  font-family: var(--font-ui-en);
 }
 
 main[data-viewer="economy"] .font-en,
 .hover-nav--economy .font-en {
-  font-family: var(--font-wanted);
+  font-family: var(--font-ui-en);
+}
+
+/** 영문 양피지·긴 브리핑 — Merriweather (한글은 Wanted 폴백) */
+main[data-ui-lang="en"] .parchment-letter:not(.parchment-letter--history),
+main[data-ui-lang="en"] .econ-insight-parchment,
+main[data-ui-lang="en"] .welcome-parchment {
+  font-family: var(--font-parchment-en);
+  font-optical-sizing: auto;
+}
+
+/** 좌표·시각·티커 수치 — JetBrains Mono */
+.font-mono,
+.font-data-mono {
+  font-family: var(--font-data-mono) !important;
+  font-variant-numeric: tabular-nums;
 }
 
 .parchment-type-caret {
@@ -145,6 +173,44 @@ main[data-viewer="economy"] .font-en,
   box-shadow:
     inset 0 0 0 1px rgba(255, 250, 235, 0.35),
     inset 0 0 60px rgba(120, 80, 30, 0.08);
+}
+
+/* 양피지 우측 — 비슷한 톤의 글래스 투명 사이드 레일 */
+.welcome-letter-face--front.welcome-parchment::after {
+  content: "";
+  pointer-events: none;
+  position: absolute;
+  z-index: 4;
+  top: 14px;
+  right: 9px;
+  bottom: 14px;
+  width: 18px;
+  border-radius: 10px;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 250, 236, 0.42) 0%,
+    rgba(243, 228, 196, 0.18) 38%,
+    rgba(232, 212, 168, 0.22) 68%,
+    rgba(201, 168, 116, 0.32) 100%
+  );
+  border: 1px solid rgba(255, 248, 230, 0.48);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.5),
+    inset 0 -1px 0 rgba(120, 80, 30, 0.08),
+    inset 1px 0 0 rgba(255, 255, 255, 0.28),
+    inset -1px 0 0 rgba(139, 105, 20, 0.06),
+    0 0 0 1px rgba(139, 105, 20, 0.08);
+  backdrop-filter: blur(12px) saturate(1.12);
+  -webkit-backdrop-filter: blur(12px) saturate(1.12);
+  opacity: 0.9;
+}
+
+@media (min-width: 640px) {
+  .welcome-letter-face--front.welcome-parchment::after {
+    width: 22px;
+    right: 11px;
+    border-radius: 12px;
+  }
 }
 
 /* 옛 편지지 — 이중·삼중 금빛 테두리 */
@@ -267,7 +333,7 @@ main[data-viewer="economy"] .font-en,
   text-wrap: balance;
 }
 
-/* 편지지 본문 — 사이드 스크롤바 숨김 */
+/* 편지지 본문 — 사이드 스크롤바 숨김 (우측 글래스 레일과 겹침 방지) */
 .welcome-letter-body {
   scrollbar-width: none;
   -ms-overflow-style: none;
@@ -305,6 +371,11 @@ main[data-viewer="economy"] .font-en,
   perspective-origin: 50% 35%;
 }
 
+/** 지경학 시장 등불 — 뷰포트 거의 채우는 대형 양피지 */
+.welcome-letter-stage--economy-lamp {
+  max-width: min(96vw, 72rem);
+}
+
 .welcome-letter-card {
   position: relative;
   width: 100%;
@@ -312,6 +383,10 @@ main[data-viewer="economy"] .font-en,
   transform-style: preserve-3d;
   transform-origin: 50% 0%;
   will-change: transform, opacity;
+}
+
+.welcome-letter-card--economy-lamp {
+  max-width: min(96vw, 72rem);
 }
 
 .welcome-letter-face {
@@ -835,5 +910,13 @@ main[data-viewer="economy"] .font-en,
 .war-casualty-overlay .casualty-count-num,
 .war-casualty-overlay .casualty-count-label {
   font-family: var(--font-wanted);
-  font-weight: 700;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.war-casualty-overlay .casualty-count-num {
+  text-shadow:
+    0 0 2px rgba(0, 0, 0, 0.95),
+    0 1px 6px rgba(0, 0, 0, 0.85),
+    0 0 14px rgba(0, 0, 0, 0.55);
 }

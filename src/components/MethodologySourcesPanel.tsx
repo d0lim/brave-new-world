@@ -140,17 +140,21 @@ export function MethodologySourcesPanel({
 
           <section className="rounded-xl border border-rose-800/40 bg-rose-950/20 p-3">
             <h3 className="text-sm font-medium text-rose-100">
-              HDX HAPI · ACLED — 열린 전선 사망 (지정학)
+              HDX HAPI · ACLED — 전선 사망 · 중국·대만 · 이란 사건 (지정학)
             </h3>
             <p className="mt-2 text-[12px] leading-5 text-sky-100/80">
-              HDX HAPI conflict-events(ACLED)의 political_violence fatalities를
-              최근 창(약 4개월)으로 합산해, 실제로 교전이 열린 행정구역(전선)에만
-              사망 숫자를 표시합니다. 대만·한반도 등 개전 전 긴장 구간은 표시하지
-              않습니다. ACLED는 부상 필드를 제공하지 않습니다.
+              HDX HAPI conflict-events(ACLED)의 political_violence를 최근 창(약
+              4개월)으로 합산합니다. 우크라·중동은 열린 전선 행정구역의 사망을,
+              중국·대만·이란은 같은 API에{" "}
+              <code className="text-[11px]">location_code=CHN|TWN|IRN</code> 을
+              붙여 사건·사망 집계를 표시합니다(사망 0이어도 events&gt;0). 이란
+              NewFeeds 공격 위치는 하얀 네온 점·물결 파형으로 적시하고, 가까운
+              HAPI admin1을 태그합니다. ACLED는 부상 필드를 제공하지 않습니다.
             </p>
             <p className="mt-2 text-[11px] leading-5 text-sky-100/65">
               우크라 전선 주: Donetsk · Luhansk · Kharkiv · Zaporizhzhia · Kherson ·
-              Sumy · Dnipropetrovsk. 중동: Gaza · 남부 레바논 등.
+              Sumy · Dnipropetrovsk. 중동: Gaza · 남부 레바논 등. 이란: Tehran ·
+              Khuzestan · Hormozgan 등. 중국·대만: 국가 단위 앵커(대만해협 연안).
             </p>
             <p className="mt-2 text-[11px] leading-5 text-sky-100/65">
               인용: HDX HAPI · ACLED · OCHA HDX. (Mediazona 명의 RU KIA와는 정의가

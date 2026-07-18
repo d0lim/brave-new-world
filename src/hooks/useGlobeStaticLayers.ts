@@ -26,8 +26,16 @@ import {
 import { filterStaticPointsForView } from "@/lib/staticGlobe";
 import { LOGISTICS_RISK_POINTS } from "@/data/logisticsRiskPoints";
 import { criticalNodesAsStaticPoints } from "@/data/criticalNodes";
+import {
+  GEM_RESOURCE_LAYERS,
+  type GemResourceLayerId,
+  type GemResourcePrefKey,
+} from "@/lib/gemResourceCatalog";
+import type { ViewportPointLayer } from "@/lib/serverViewportPoints";
 
 const CRITICAL_NODE_STATIC_POINTS = criticalNodesAsStaticPoints();
+
+type GemShowFlags = Partial<Record<GemResourcePrefKey, boolean>>;
 
 type ViewState = { lat: number; lng: number; altitude: number };
 
@@ -121,6 +129,7 @@ export function useGlobeStaticLayers(options: {
   showOilPipelines: boolean;
   showGasPipelines: boolean;
   showLngTerminals: boolean;
+  gemShow?: GemShowFlags;
   showAirports: boolean;
   showPorts: boolean;
   showLogisticsRisk?: boolean;
@@ -148,6 +157,9 @@ export function useGlobeStaticLayers(options: {
   const [oilPipelinePaths, setOilPipelinePaths] = useState<TransportPath[]>([]);
   const [gasPipelinePaths, setGasPipelinePaths] = useState<TransportPath[]>([]);
   const [lngTerminals, setLngTerminals] = useState<StaticPoint[]>([]);
+  const [gemPointsByLayer, setGemPointsByLayer] = useState<
+    Partial<Record<GemResourceLayerId, StaticPoint[]>>
+  >({});
   const [airports, setAirports] = useState<StaticPoint[]>([]);
   const [ports, setPorts] = useState<StaticPoint[]>([]);
   const [militaryBases, setMilitaryBases] = useState<StaticPoint[]>([]);
@@ -427,6 +439,42 @@ export function useGlobeStaticLayers(options: {
   }, [
     fetchViewportPoints,
     options.showLngTerminals,
+    options.viewState.lat,
+    options.viewState.lng,
+    options.globeTier,
+    options.radiusDeg,
+    reloadToken,
+  ]);
+
+  useEffect(() => {
+    const gemShow = options.gemShow ?? {};
+    const timers: number[] = [];
+
+    for (const layer of GEM_RESOURCE_LAYERS) {
+      const enabled = Boolean(gemShow[layer.prefKey]);
+      if (!enabled) {
+        setGemPointsByLayer((prev) => {
+          if (!prev[layer.id]?.length) return prev;
+          const next = { ...prev };
+          delete next[layer.id];
+          return next;
+        });
+        continue;
+      }
+      const timer = window.setTimeout(() => {
+        void fetchViewportPoints(layer.id as ViewportPointLayer, (points) => {
+          setGemPointsByLayer((prev) => ({ ...prev, [layer.id]: points }));
+        });
+      }, 320);
+      timers.push(timer);
+    }
+
+    return () => {
+      for (const timer of timers) window.clearTimeout(timer);
+    };
+  }, [
+    fetchViewportPoints,
+    options.gemShow,
     options.viewState.lat,
     options.viewState.lng,
     options.globeTier,
@@ -764,6 +812,12 @@ export function useGlobeStaticLayers(options: {
     if (options.showSpaceLaunches) merged.push(...spaceLaunches);
     if (options.showIntelHotspots) merged.push(...intelHotspots);
     if (options.showLngTerminals) merged.push(...lngTerminals);
+    for (const layer of GEM_RESOURCE_LAYERS) {
+      if (options.gemShow?.[layer.prefKey]) {
+        const pts = gemPointsByLayer[layer.id];
+        if (pts?.length) merged.push(...pts);
+      }
+    }
     if (options.showLogisticsRisk) merged.push(...LOGISTICS_RISK_POINTS);
     if (options.showCriticalNodes) merged.push(...CRITICAL_NODE_STATIC_POINTS);
     if (options.showSubmarineTunnels) merged.push(...submarineTunnels);
@@ -778,11 +832,13 @@ export function useGlobeStaticLayers(options: {
     aiDataCenters,
     cableLandings,
     economicCenters,
+    gemPointsByLayer,
     intelHotspots,
     internetExchanges,
     lngTerminals,
     militaryBases,
     nuclearSites,
+    options.gemShow,
     options.globeTier,
     options.radiusDeg,
     options.showAiDataCenters,
@@ -893,6 +949,9 @@ export function useGlobeStaticLayers(options: {
       oilPipelines: oilPipelinePaths.length,
       gasPipelines: gasPipelinePaths.length,
       lngTerminals: lngTerminals.length,
+      gemResources: Object.fromEntries(
+        GEM_RESOURCE_LAYERS.map((l) => [l.id, gemPointsByLayer[l.id]?.length ?? 0]),
+      ) as Record<string, number>,
       airports: airports.length,
       ports: ports.length,
       militaryBases: militaryBases.length,

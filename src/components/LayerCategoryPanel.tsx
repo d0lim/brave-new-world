@@ -10,6 +10,7 @@ export type LayerToggleAccent =
   | "amber"
   | "fuchsia"
   | "blue"
+  | "cyan"
   | "white"
   | "green";
 
@@ -20,8 +21,10 @@ export type LayerToggleItem = {
   checked: boolean;
   onChange: (checked: boolean) => void;
   accent?: LayerToggleAccent;
-  /** checkbox(기본) | tag(위치 태그 칩) */
-  presentation?: "checkbox" | "tag";
+  /** checkbox(기본) | tag(위치 태그 칩) | dropdown(중첩 체크) */
+  presentation?: "checkbox" | "tag" | "dropdown";
+  /** presentation === "dropdown" 일 때 하위 체크 또는 중첩 드롭다운 */
+  options?: LayerToggleItem[];
   disabled?: boolean;
   /** Ultra-Lite 등 — 이름 옆 짧은 경고 태그 */
   cautionTag?: string | null;
@@ -55,6 +58,8 @@ function accentClass(accent: LayerToggleAccent) {
       return "accent-fuchsia-400";
     case "blue":
       return "accent-blue-400";
+    case "cyan":
+      return "accent-cyan-400";
     case "white":
       return "accent-slate-200";
     case "green":
@@ -79,6 +84,8 @@ function tagAccentClasses(accent: LayerToggleAccent, checked: boolean) {
       return "border-fuchsia-400/45 bg-fuchsia-500/15 text-fuchsia-100";
     case "blue":
       return "border-blue-400/45 bg-blue-500/15 text-blue-100";
+    case "cyan":
+      return "border-cyan-400/50 bg-cyan-500/15 text-cyan-50 shadow-[0_0_12px_rgba(34,211,238,0.14)]";
     default:
       return "border-sky-400/45 bg-sky-500/15 text-sky-100";
   }
@@ -227,6 +234,109 @@ export function LayerToggle({
   );
 }
 
+/** 드롭다운/중첩 포함 리프 체크 수 */
+export function countLayerLeaves(item: LayerToggleItem): { on: number; total: number } {
+  if (item.presentation === "dropdown" && item.options?.length) {
+    return item.options.reduce(
+      (acc, opt) => {
+        const c = countLayerLeaves(opt);
+        return { on: acc.on + c.on, total: acc.total + c.total };
+      },
+      { on: 0, total: 0 },
+    );
+  }
+  return { on: item.checked ? 1 : 0, total: 1 };
+}
+
+/** 하위 전장 체크를 접는 드롭다운 행 (중첩 드롭다운 지원) */
+export function LayerDropdownToggle({
+  label,
+  detail,
+  options,
+  accent = "emerald",
+}: {
+  label: string;
+  detail: string;
+  options: LayerToggleItem[];
+  accent?: LayerToggleAccent;
+}) {
+  const [open, setOpen] = useState(false);
+  const leaf = options.reduce(
+    (acc, o) => {
+      const c = countLayerLeaves(o);
+      return { on: acc.on + c.on, total: acc.total + c.total };
+    },
+    { on: 0, total: 0 },
+  );
+
+  return (
+    <div className="rounded-lg px-1 py-1">
+      <button
+        type="button"
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-center justify-between gap-3 rounded-lg py-1.5 text-left transition hover:bg-slate-900/40"
+      >
+        <span className="min-w-0">
+          <span className="block truncate text-slate-200">{label}</span>
+          <span className="block truncate text-xs text-slate-500">{detail}</span>
+        </span>
+        <span className="flex shrink-0 items-center gap-2 text-xs text-slate-500">
+          <span
+            className={
+              leaf.on > 0
+                ? `rounded-full px-2 py-0.5 ${
+                    accent === "fuchsia"
+                      ? "bg-fuchsia-500/15 text-fuchsia-200"
+                      : accent === "orange"
+                        ? "bg-orange-500/15 text-orange-200"
+                        : accent === "amber"
+                          ? "bg-amber-500/15 text-amber-200"
+                          : accent === "green"
+                            ? "bg-green-500/15 text-green-200"
+                            : "bg-sky-500/15 text-sky-200"
+                  }`
+                : ""
+            }
+          >
+            {leaf.on}/{leaf.total}
+          </span>
+          <span className="text-slate-400" aria-hidden>
+            {open ? "▾" : "▸"}
+          </span>
+        </span>
+      </button>
+      {open ? (
+        <div className="ml-2 space-y-0.5 border-l border-slate-700/70 pl-2.5">
+          {options.map((opt) =>
+            opt.presentation === "dropdown" && opt.options?.length ? (
+              <LayerDropdownToggle
+                key={opt.id}
+                label={opt.label}
+                detail={opt.detail}
+                options={opt.options}
+                accent={opt.accent ?? accent}
+              />
+            ) : (
+              <LayerToggle
+                key={opt.id}
+                label={opt.label}
+                detail={opt.detail}
+                checked={opt.checked}
+                onChange={opt.onChange}
+                accent={opt.accent ?? accent}
+                disabled={opt.disabled}
+                cautionTag={opt.cautionTag}
+                cautionHint={opt.cautionHint}
+              />
+            ),
+          )}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 export function LayerCategoryPanel({
   categories,
   batchStatus,
@@ -278,7 +388,7 @@ export function LayerCategoryPanel({
       let changed = false;
       const next = { ...prev };
       for (const category of categories) {
-        const hasActive = category.items.some((item) => item.checked);
+        const hasActive = category.items.some((item) => countLayerLeaves(item).on > 0);
         if (hasActive && prev[category.id] !== false && !next[category.id]) {
           next[category.id] = true;
           changed = true;
@@ -314,7 +424,8 @@ export function LayerCategoryPanel({
         </p>
       ) : null}
       {categories.map((category) => {
-        const activeCount = category.items.filter((item) => item.checked).length;
+        const activeCount = category.items.reduce((n, item) => n + countLayerLeaves(item).on, 0);
+        const totalCount = category.items.reduce((n, item) => n + countLayerLeaves(item).total, 0);
         const isOpen = openMap[category.id] ?? false;
 
         return (
@@ -367,7 +478,7 @@ export function LayerCategoryPanel({
                       activeCount > 0 ? "rounded-full bg-sky-500/15 px-2 py-0.5 text-sky-200" : ""
                     }
                   >
-                    {activeCount}/{category.items.length}
+                    {activeCount}/{totalCount}
                   </span>
                   <span className="text-slate-400" aria-hidden>
                     {isOpen ? "▾" : "▸"}
@@ -398,19 +509,29 @@ export function LayerCategoryPanel({
                 ) : null}
                 {category.items
                   .filter((item) => item.presentation !== "tag")
-                  .map((item) => (
-                    <LayerToggle
-                      key={item.id}
-                      label={item.label}
-                      detail={item.detail}
-                      checked={item.checked}
-                      onChange={item.onChange}
-                      accent={item.accent}
-                      disabled={item.disabled}
-                      cautionTag={item.cautionTag}
-                      cautionHint={item.cautionHint}
-                    />
-                  ))}
+                  .map((item) =>
+                    item.presentation === "dropdown" && item.options?.length ? (
+                      <LayerDropdownToggle
+                        key={item.id}
+                        label={item.label}
+                        detail={item.detail}
+                        options={item.options}
+                        accent={item.accent}
+                      />
+                    ) : (
+                      <LayerToggle
+                        key={item.id}
+                        label={item.label}
+                        detail={item.detail}
+                        checked={item.checked}
+                        onChange={item.onChange}
+                        accent={item.accent}
+                        disabled={item.disabled}
+                        cautionTag={item.cautionTag}
+                        cautionHint={item.cautionHint}
+                      />
+                    ),
+                  )}
                 {category.footer ? (
                   <div className="mt-2 border-t border-slate-800/60 pt-2">{category.footer}</div>
                 ) : null}

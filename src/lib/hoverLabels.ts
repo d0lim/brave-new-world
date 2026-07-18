@@ -28,6 +28,21 @@ const STATIC_KIND: Record<string, Bi> = {
   "logistics-hub": { ko: "핵심 물류 거점", en: "Logistics hub" },
   "submarine-tunnel": { ko: "해저터널", en: "Submarine tunnel" },
   "critical-node": { ko: "크리티컬 노드", en: "Critical node" },
+  "gem-coal-plant": { ko: "석탄 발전소 (GEM)", en: "Coal plant (GEM)" },
+  "gem-coal-mine": { ko: "석탄 광산 (GEM)", en: "Coal mine (GEM)" },
+  "gem-coal-terminal": { ko: "석탄 터미널 (GEM)", en: "Coal terminal (GEM)" },
+  "gem-nuclear": { ko: "원자력 (GEM)", en: "Nuclear (GEM)" },
+  "gem-solar": { ko: "태양광 (GEM)", en: "Solar (GEM)" },
+  "gem-wind": { ko: "풍력 (GEM)", en: "Wind (GEM)" },
+  "gem-hydro": { ko: "수력 (GEM)", en: "Hydro (GEM)" },
+  "gem-geothermal": { ko: "지열 (GEM)", en: "Geothermal (GEM)" },
+  "gem-bioenergy": { ko: "바이오에너지 (GEM)", en: "Bioenergy (GEM)" },
+  "gem-oil-gas-plant": { ko: "오일·가스 발전 (GEM)", en: "Oil & gas plant (GEM)" },
+  "gem-oil-gas-extraction": { ko: "오일·가스 채굴 (GEM)", en: "Oil & gas extraction (GEM)" },
+  "gem-iron-ore": { ko: "철광산 (GEM)", en: "Iron ore mine (GEM)" },
+  "gem-cement": { ko: "시멘트 (GEM)", en: "Cement (GEM)" },
+  "gem-steel": { ko: "철강 (GEM)", en: "Steel (GEM)" },
+  "gem-chemical": { ko: "화학 (GEM)", en: "Chemicals (GEM)" },
 };
 
 const PATH_KIND: Partial<Record<TransportPath["kind"], Bi>> = {

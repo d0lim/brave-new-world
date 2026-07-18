@@ -13,6 +13,7 @@ import {
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
 } from "react";
+import { InterestRecommendChips } from "@/components/InterestRecommendChips";
 import { emitBreakingDispatchSound } from "@/components/SoundEffectsBridge";
 import { MapLegend } from "@/components/MapLegend";
 import { HoverHint } from "@/components/HoverHint";
@@ -378,6 +379,8 @@ type IntelCompactBarProps = {
   onOpenSheet: (theater?: IntelTheaterFilter) => void;
   /** 오늘 핫한 곳 → 맵 fly-to */
   onFlyToTheater?: (theater: NewsTheater) => void;
+  /** 맞춤 칩 → 레이어 ON */
+  onEnableLayer?: (layerKey: string) => void;
 };
 
 function TodayHotspotChip({
@@ -532,6 +535,7 @@ export function DynamicIntelStack({
   fabOnly = false,
   onOpenSheet,
   onFlyToTheater,
+  onEnableLayer,
 }: IntelCompactBarProps) {
   const { lang, t } = useLocale();
   const { payload, preferEconomyNews } = useNewsStreamContext();
@@ -761,6 +765,15 @@ export function DynamicIntelStack({
         />
       ) : null}
 
+      {!fabOnly && !dockCollapsed ? (
+        <InterestRecommendChips
+          economy={isEconomy}
+          onFlyToTheater={onFlyToTheater}
+          onOpenSheet={onOpenSheet}
+          onEnableLayer={onEnableLayer}
+        />
+      ) : null}
+
       <div
         className={`intel-stack-panel pointer-events-auto flex flex-col overflow-hidden rounded-2xl border shadow-2xl backdrop-blur-md ${
           isAlert
@@ -858,22 +871,44 @@ export function DynamicIntelStack({
 /** @deprecated alias — use DynamicIntelStack */
 export const IntelCompactBar = DynamicIntelStack;
 
+function countVisibleByTheater(
+  payload: NewsStreamPayload | null,
+  includeTier3: boolean,
+): { all: number; byTheater: Partial<Record<NewsTheater, number>> } {
+  if (!payload) return { all: 0, byTheater: {} };
+  const items = includeTier3
+    ? [...payload.verified, ...payload.stateMedia]
+    : payload.verified;
+  const byTheater: Partial<Record<NewsTheater, number>> = {};
+  for (const item of items) {
+    byTheater[item.theater] = (byTheater[item.theater] ?? 0) + 1;
+  }
+  return { all: items.length, byTheater };
+}
+
 function TheaterChipBar({
   filter,
   onChange,
   payload,
+  includeTier3,
 }: {
   filter: IntelTheaterFilter;
   onChange: (v: IntelTheaterFilter) => void;
   payload: NewsStreamPayload | null;
+  /** Tier 3 토글 ON일 때만 stateMedia도 칩 숫자에 포함 (목록과 동일) */
+  includeTier3: boolean;
 }) {
   const { lang, t } = useLocale();
+  const visibleCounts = useMemo(
+    () => countVisibleByTheater(payload, includeTier3),
+    [payload, includeTier3],
+  );
   const chips: Array<{ id: IntelTheaterFilter; label: string; count?: number }> = [
-    { id: "all", label: t("hoverTheaterAll"), count: payload?.verified.length },
+    { id: "all", label: t("hoverTheaterAll"), count: visibleCounts.all || undefined },
     ...THEATER_CHIP_ORDER.map((id) => ({
       id,
       label: theaterLabel(id, lang),
-      count: payload?.stats.theaters[id],
+      count: visibleCounts.byTheater[id],
     })),
   ];
 
@@ -1534,7 +1569,12 @@ export const IntelNewsSheet = forwardRef<BottomIntelStackHandle, IntelNewsSheetP
         ) : null}
 
         {sheetTab === "news" && !preferEconomyNews ? (
-          <TheaterChipBar filter={theaterFilter} onChange={setTheaterFilter} payload={payload} />
+          <TheaterChipBar
+            filter={theaterFilter}
+            onChange={setTheaterFilter}
+            payload={payload}
+            includeTier3={showTier3}
+          />
         ) : null}
 
         {preferEconomyNews && economyTab === "news" ? (

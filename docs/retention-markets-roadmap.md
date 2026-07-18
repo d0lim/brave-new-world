@@ -64,6 +64,20 @@
 
 ---
 
+## 3.5 관심 프로필 · 맞춤 추천 (P0 로컬)
+
+> **상태:** P0 구현 — `geowatch-interest-v1` localStorage · For you 칩 · 로그인 이관 키 등록.
+
+| Phase | 내용 |
+|-------|------|
+| **P0 (지금)** | 클릭·모드·관심종목·등불/왜중요 신호를 기기 로컬에 적재. 하단 인텔 스택 **맞춤(For you)** 칩 2~4개. |
+| **P1** | 로그인 시 `InterestStore` → 계정 문서. `onFirstLoginMigrateLocal: ask` 로 로컬 merge. |
+| 이후 | 등불 기사 재정렬 · HoverNav 빈 입력 추천 (이번 범위 밖) |
+
+코드: `src/lib/interest/*` · `InterestRecommendChips` · `guestPolicy.GUEST_LOCAL_PREF_KEYS`.
+
+---
+
 ## 4. 전장 → 심볼 매핑 (해석 테이블)
 
 기존 `STOCK_TICKER_SYMBOLS` / `heroHighlightSymbols`를 **명시적 테이블**로 승격.
@@ -130,7 +144,9 @@ UI: Intel 관련 시장 패널 · 경제 허브 패널에 “왜 이 심볼?” 
 
 ## 9. 수용 기준 (재방문)
 
-- [ ] 재방문 시 저장된 전장/허브로 복귀
-- [ ] “오늘 핫한 곳”이 24h 내 갱신되거나 stale 표시
-- [ ] 기본 세션이 무음/저음으로도 사용 가능
-- [ ] 심볼 UI에 투자 권유 아님 고지
+  - [ ] 재방문 시 저장된 전장/허브로 복귀
+  - [ ] “오늘 핫한 곳”이 24h 내 갱신되거나 stale 표시
+  - [ ] 기본 세션이 무음/저음으로도 사용 가능
+  - [ ] 심볼 UI에 투자 권유 아님 고지
+  - [x] 로컬 관심 신호 → For you 칩 (게스 트 기기)
+  - [ ] 로그인 시 관심 프로필 계정 merge

@@ -44,7 +44,24 @@ export const GDELT_QUERIES: { tag: string; query: string }[] = [
   {
     tag: "maritime",
     query:
-      '(theme:MARITIME OR "freedom of navigation" OR FONOP OR warship OR "aircraft carrier" OR submarine OR "naval drill" OR "coast guard" OR EEZ OR chokepoint OR "shipping lane" OR piracy OR "sea mine" OR "submarine cable" OR Hormuz OR Malacca OR Suez OR Baltic OR "black sea")',
+      '(theme:MARITIME OR "freedom of navigation" OR FONOP OR warship OR "aircraft carrier" OR submarine OR "naval drill" OR "coast guard" OR EEZ OR chokepoint OR "shipping lane" OR piracy OR "sea mine" OR "submarine cable" OR Hormuz OR Malacca OR Suez OR Baltic OR "black sea" OR pacific OR atlantic OR arctic OR "indo-pacific")',
+  },
+
+  // —— 대양 지정학 경쟁·외교 ——
+  {
+    tag: "pacific",
+    query:
+      '(pacific OR "indo-pacific" OR AUKUS OR QUAD OR FONOP OR "philippine sea" OR guam OR "naval exercise" OR "great power" OR "strategic competition")',
+  },
+  {
+    tag: "atlantic",
+    query:
+      '(atlantic OR NATO OR "north atlantic" OR "giuk gap" OR "carrier strike" OR "undersea cable" OR "naval exercise")',
+  },
+  {
+    tag: "arctic",
+    query:
+      '(arctic OR "northern sea route" OR "northwest passage" OR "high north" OR icebreaker OR "arctic council" OR "polar silk")',
   },
 
   // —— 도메인: 공중·ADIZ ——
@@ -90,7 +107,15 @@ const TOTAL_HARD_CAP = 280;
 /** GDELT API 연타 방지 — 쿼리 사이 간격(ms) */
 const QUERY_STAGGER_MS = 150;
 /** 전장 핫스팟에 예산 가중 (나머지 도메인과 합쳐도 TOTAL 초과 안 함) */
-const HOTSPOT_TAGS = new Set(["ukraine", "middle-east", "taiwan", "korea"]);
+const HOTSPOT_TAGS = new Set([
+  "ukraine",
+  "middle-east",
+  "taiwan",
+  "korea",
+  "pacific",
+  "atlantic",
+  "arctic",
+]);
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));

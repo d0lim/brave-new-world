@@ -55,7 +55,8 @@ export function shouldShowQuickStart(viewerMode: ViewerMode = "conflict"): boole
   }
 }
 
-function markQuickStartDone(viewerMode: ViewerMode) {
+/** 자동 팝업 없이 도움말에서만 쓸 때 — 첫 진입 연쇄에서 건너뛰기 */
+export function markQuickStartDone(viewerMode: ViewerMode) {
   try {
     localStorage.setItem(QUICKSTART_KEYS[viewerMode], "done");
   } catch {

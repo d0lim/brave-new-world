@@ -16,7 +16,7 @@ const MAX_ANGULAR_POINT_RADIUS_PX = 48;
 const MAX_ANGULAR_LINE_WIDTH_PX = 26;
 
 /**
- * 해저 케이블 — 일반 path와 반대:
+ * 해저 케이블·송유관·가스관 — 일반 path와 반대:
  * 줌아웃(멀리) → 굵게, 줌인(가까이) → ~0.1px로 가늘어짐.
  */
 export function cableInverseLineWidth(zoom: number): number {
@@ -37,7 +37,10 @@ function angularToLineWidth(angular: number, zoom: number): number {
 }
 
 function resolvePathLineWidth(stroke: number, zoom: number, kind?: string): number {
-  if (kind === "submarine-cable") return cableInverseLineWidth(zoom);
+  // 해저 케이블·송유관·가스관: 줌아웃 시 굵고 줌인 시 가늘어짐
+  if (kind === "submarine-cable" || kind === "oil-pipeline" || kind === "gas-pipeline") {
+    return cableInverseLineWidth(zoom);
+  }
   return angularToLineWidth(stroke, zoom);
 }
 
@@ -48,23 +51,32 @@ export function buildPointsGeoJson<T>(
     lng: Accessor<T, number>;
     color: Accessor<T, string>;
     radius: Accessor<T, number>;
+    /** 정적 포인트 kind — GEM 시설은 symbol 아이콘용 */
+    kind?: Accessor<T, string | undefined>;
+    icon?: Accessor<T, string | undefined>;
   },
   zoom: number,
 ): FeatureCollection<Point> {
   return {
     type: "FeatureCollection",
-    features: items.map((item, index) => ({
-      type: "Feature",
-      geometry: {
-        type: "Point",
-        coordinates: [accessors.lng(item), accessors.lat(item)],
-      },
-      properties: {
-        index,
-        color: accessors.color(item),
-        radius: angularToPixelRadius(accessors.radius(item), zoom),
-      },
-    })),
+    features: items.map((item, index) => {
+      const kind = accessors.kind?.(item);
+      const icon = accessors.icon?.(item);
+      return {
+        type: "Feature" as const,
+        geometry: {
+          type: "Point" as const,
+          coordinates: [accessors.lng(item), accessors.lat(item)],
+        },
+        properties: {
+          index,
+          color: accessors.color(item),
+          radius: angularToPixelRadius(accessors.radius(item), zoom),
+          ...(kind ? { kind } : {}),
+          ...(icon ? { icon } : {}),
+        },
+      };
+    }),
   };
 }
 
@@ -167,7 +179,7 @@ export function buildRingsGeoJson<T>(
   };
 }
 
-/** NASA FIRMS — glow/ember/core 불꽃 레이어용 GeoJSON */
+/** NASA FIRMS — 불꽃·연기 symbol 레이어용 GeoJSON */
 export function buildFirmsFiresGeoJson<T>(
   items: T[],
   accessors: {
@@ -178,9 +190,7 @@ export function buildFirmsFiresGeoJson<T>(
     frp: Accessor<T, number | null | undefined>;
     /** 각도 반경 (기존 pointRadius와 동일 스케일) */
     angularRadius: Accessor<T, number>;
-    coreColor: Accessor<T, string>;
-    emberColor: Accessor<T, string>;
-    glowColor: Accessor<T, string>;
+    iconId: Accessor<T, string>;
   },
   zoom: number,
 ): FeatureCollection<Point> {
@@ -189,7 +199,9 @@ export function buildFirmsFiresGeoJson<T>(
     features: items.map((item, index) => {
       const corePx = angularToPixelRadius(accessors.angularRadius(item), zoom);
       const frp = accessors.frp(item) ?? 0;
-      const intensity = frp >= 50 ? 1.35 : frp >= 20 ? 1.15 : 1;
+      const intensity = frp >= 50 ? 1.2 : frp >= 20 ? 1.08 : 1;
+      /** 네온 점 크기 — 작되 FRP에 따라만 살짝 커짐 */
+      const iconSize = Math.min(0.72, Math.max(0.22, (corePx / 22) * intensity));
       return {
         type: "Feature" as const,
         geometry: {
@@ -200,14 +212,9 @@ export function buildFirmsFiresGeoJson<T>(
           index,
           cause: accessors.cause(item),
           phase: index % 3,
-          coreColor: accessors.coreColor(item),
-          emberColor: accessors.emberColor(item),
-          glowColor: accessors.glowColor(item),
-          coreRadius: Math.max(2.2, corePx * 0.55),
-          emberRadius: Math.max(3.5, corePx * 1.05 * intensity),
-          glowRadius: Math.max(5, corePx * 1.85 * intensity),
-          glowOpacity: 0.42 * intensity,
-          emberOpacity: 0.78,
+          icon: accessors.iconId(item),
+          iconSize,
+          iconOpacity: Math.min(0.82, 0.58 + intensity * 0.1),
         },
       };
     }),

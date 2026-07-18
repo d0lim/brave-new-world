@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import Fuse from "fuse.js";
 import { forwardRef, memo, startTransition, useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -267,7 +267,7 @@ import {
 } from "@/lib/firmsSoundClassify";
 import { useDataSync } from "@/hooks/useDataSync";
 import { useGlobeStaticLayers } from "@/hooks/useGlobeStaticLayers";
-import { GEM_RESOURCE_LAYERS } from "@/lib/gemResourceCatalog";
+import { GEM_RESOURCE_GROUPS, GEM_RESOURCE_LAYERS, gemLayerById } from "@/lib/gemResourceCatalog";
 import { useLayerPrefsController } from "@/hooks/useLayerPrefsController";
 import {
   applyViewPackages,
@@ -466,7 +466,6 @@ import {
 } from "@/data/asiaSituationSeed";
 import {
   CHINA_THEATER_DYAD_LABEL,
-  CHINA_THEATER_INCIDENTS,
   CHINA_THEATER_SEA_LABEL,
   type ChinaTheaterDyad,
   type ChinaTheaterIncident,
@@ -474,11 +473,15 @@ import {
 import { createChinaTheaterIncidentBadge } from "@/lib/chinaTheaterIncidentMarker";
 import {
   KOREA_MISSILE_ANCHOR_LABEL,
-  KOREA_MISSILE_INCIDENTS,
   KOREA_MISSILE_KIND_LABEL,
   type KoreaMissileIncident,
 } from "@/data/koreaMissileIncidentsSeed";
 import { createKoreaMissileIncidentBadge } from "@/lib/koreaMissileIncidentMarker";
+import {
+  activateChinaTheaterIncidents,
+  activateKoreaMissileIncidents,
+  isFreshNewfeedsAttack,
+} from "@/lib/neonIncidentActivation";
 import {
   createIranNewsNeonBadge,
   nearestIranHapiTag,
@@ -2101,6 +2104,15 @@ export function GlobeDashboard({
       showGdeltAlliance ||
       showGdeltProtests ||
       showGdeltOceanCompetition);
+  /** 대치·미사일 네온은 속보 GDELT가 있어야 점등 — 해당 레이어만 켜도 피드 유지 */
+  const fetchGdeltForNeonIncidents =
+    showChinaTaiwanIncidents ||
+    showChinaJapanIncidents ||
+    showChinaPhilippinesIncidents ||
+    showUsChinaIncidents ||
+    showNorthKoreaMissileTests;
+  const shouldFetchGdeltFeed =
+    viewerChromePreset.fetchGdelt && (showGdeltLayers || fetchGdeltForNeonIncidents);
   const setLabelLanguage = (v: LabelLanguage) => togglePref("labelLanguage", v);
 
   const [regionNavSelection, setRegionNavSelection] = useState<NavSelection | null>(null);
@@ -2691,8 +2703,15 @@ export function GlobeDashboard({
   const mapInteractiveLayerIds = useMemo(
     () =>
       isViinaCloseZoom && showUkraineControl
-        ? (["map-points", "map-paths", "map-rings", "firms-core"] as const)
-        : (["map-points", "map-paths", "map-polygons-fill", "map-rings", "firms-core"] as const),
+        ? (["map-points", "map-gem-facilities", "map-paths", "map-rings", "firms-flame"] as const)
+        : ([
+            "map-points",
+            "map-gem-facilities",
+            "map-paths",
+            "map-polygons-fill",
+            "map-rings",
+            "firms-flame",
+          ] as const),
     [isViinaCloseZoom, showUkraineControl],
   );
 
@@ -3675,12 +3694,14 @@ export function GlobeDashboard({
   const newfeedsAttackDisplayPoints = useMemo<NewfeedsAttackGlobePoint[]>(() => {
     if (!showNewfeedsIranAttacks) return [];
     const iranFronts = (hapiCasualties.fronts ?? []).filter((f) => f.locationCode === "IRN");
-    return newfeedsAttacks.map((attack) => ({
-      ...attack,
-      markerId: `newfeeds-${attack.id}`,
-      displayKind: "newfeeds-attack" as const,
-      hapiTag: nearestIranHapiTag(attack.lat, attack.lng, iranFronts),
-    }));
+    return newfeedsAttacks
+      .filter((attack) => isFreshNewfeedsAttack(attack))
+      .map((attack) => ({
+        ...attack,
+        markerId: `newfeeds-${attack.id}`,
+        displayKind: "newfeeds-attack" as const,
+        hapiTag: nearestIranHapiTag(attack.lat, attack.lng, iranFronts),
+      }));
   }, [hapiCasualties.fronts, newfeedsAttacks, showNewfeedsIranAttacks]);
 
   const chinaTheaterIncidentMarkers = useMemo<ChinaTheaterIncidentHtmlMarker[]>(() => {
@@ -3690,12 +3711,13 @@ export function GlobeDashboard({
     if (showChinaPhilippinesIncidents) enabled.add("china-philippines");
     if (showUsChinaIncidents) enabled.add("us-china");
     if (enabled.size === 0) return [];
-    return CHINA_THEATER_INCIDENTS.filter((item) => enabled.has(item.dyad)).map((item) => ({
+    return activateChinaTheaterIncidents(enabled, scoredEvents).map((item) => ({
       ...item,
       markerId: `china-incident-${item.id}`,
       displayKind: "china-theater-incident" as const,
     }));
   }, [
+    scoredEvents,
     showChinaJapanIncidents,
     showChinaPhilippinesIncidents,
     showChinaTaiwanIncidents,
@@ -3704,12 +3726,12 @@ export function GlobeDashboard({
 
   const koreaMissileIncidentMarkers = useMemo<KoreaMissileIncidentHtmlMarker[]>(() => {
     if (!showNorthKoreaMissileTests) return [];
-    return KOREA_MISSILE_INCIDENTS.map((item) => ({
+    return activateKoreaMissileIncidents(scoredEvents).map((item) => ({
       ...item,
       markerId: `nk-missile-${item.id}`,
       displayKind: "korea-missile-incident" as const,
     }));
-  }, [showNorthKoreaMissileTests]);
+  }, [scoredEvents, showNorthKoreaMissileTests]);
 
   const neptunHtmlMarkers = useMemo<NeptunHtmlMarker[]>(() => {
     if (!showNeptun || !neptunShowsMarkers(neptunRenderMode)) return [];
@@ -4080,7 +4102,7 @@ export function GlobeDashboard({
     if (!showGdeltWar) return [];
     const ukrFronts = (hapiCasualties.fronts ?? []).filter((f) => f.locationCode === "UKR");
     return gdeltTensionTags
-      .filter((event) => isUkraineTheaterGdeltWar(event))
+      .filter((event) => isUkraineTheaterGdeltWar(event) && isFreshEvent(event))
       .map((event) => ({
         ...event,
         markerId: `ua-gdelt-neon-${event.id}`,
@@ -5249,7 +5271,7 @@ export function GlobeDashboard({
   }, []);
 
   const refreshGdeltEvents = useCallback(async () => {
-    if (!viewerChromePreset.fetchGdelt || !showGdeltLayers) {
+    if (!viewerChromePreset.fetchGdelt || !shouldFetchGdeltFeed) {
       setGdeltLoading(false);
       return;
     }
@@ -5288,7 +5310,7 @@ export function GlobeDashboard({
     } finally {
       setGdeltLoading(false);
     }
-  }, [showGdeltLayers, viewerChromePreset.fetchGdelt]);
+  }, [shouldFetchGdeltFeed, viewerChromePreset.fetchGdelt]);
 
   const refreshFirmsFires = useCallback(async () => {
     if (!showFirmsFires) return;
@@ -5387,7 +5409,7 @@ export function GlobeDashboard({
   }, [refreshElectionEvents, showElectionEvents]);
 
   useEffect(() => {
-    if (!showGdeltLayers || !globeReady) {
+    if (!shouldFetchGdeltFeed || !globeReady) {
       // 레이어가 캡·토글로 잠깐 꺼져도 스냅샷은 유지 (다시 켜면 바로 표시)
       return;
     }
@@ -5395,15 +5417,15 @@ export function GlobeDashboard({
       void refreshGdeltEvents();
     });
     return cancel;
-  }, [globeReady, refreshGdeltEvents, showGdeltLayers]);
+  }, [globeReady, refreshGdeltEvents, shouldFetchGdeltFeed]);
 
   useEffect(() => {
-    if (!showGdeltLayers || !globeReady) return;
+    if (!shouldFetchGdeltFeed || !globeReady) return;
     const timer = window.setInterval(() => {
       void refreshGdeltEvents();
     }, liveGdeltPollMs());
     return () => window.clearInterval(timer);
-  }, [globeReady, refreshGdeltEvents, showGdeltLayers]);
+  }, [globeReady, refreshGdeltEvents, shouldFetchGdeltFeed]);
 
   const refreshTelegramAlerts = useCallback(async () => {
     if (!viewerChromePreset.fetchTelegram) {
@@ -5667,41 +5689,41 @@ export function GlobeDashboard({
       {
         id: "conflict",
         title: "분쟁 · 영토",
-        hint: "실측 궤적 · 발생지 네온 · 구역 · 중동 · 뉴스",
+        hint: "전선 · 공중위협 · 대치 지점 · 긴장 구역 · 중동 · 뉴스",
         items: [
           {
             id: "ukraine",
-            label: "우크라이나 점령·주장",
+            label: "우크라이나 전선·점령",
             detail:
               ukraineControlStatus === "loading"
                 ? "불러오는 중…"
                 : showUkraineControl &&
                     (ukraineMacroGeoJson.features.length > 0 ||
                       ukraineMicroGeoJson.features.length > 0)
-                  ? `거시 ${ukraineMacroGeoJson.features.length} · 미시 ${ukraineMicroGeoJson.features.length} · Zoom LOD`
+                  ? `전선 구역 ${ukraineMacroGeoJson.features.length} · 상세 ${ukraineMicroGeoJson.features.length}`
                   : showUkraineControl
                     ? viinaMeta?.available
                       ? ukraineControlStatus === "ok"
                         ? "켜짐"
                         : "로드 실패"
                       : "데이터 빌드 필요"
-                    : "꺼짐",
+                    : "꺼짐 · 점령·주장 경계",
             checked: layerPrefs.showUkraineControl,
             onChange: setShowUkraineControl,
             accent: "red",
           },
           {
             id: "neptun",
-            label: "(우크라) 실측 · 미사일·드론 현위치 + 궤적",
+            label: "우크라이나 공중위협 (실시간)",
             detail: showNeptun
               ? !neptunFetchEnabled
                 ? "우크라이나 근처로 이동 시 로드"
                 : neptunRenderMode === "hidden"
                   ? `${globeLod.label} · 우크라이나 근처로 이동`
                   : neptunRenderMode === "flat"
-                    ? `Shahed·미사일 ${visibleNeptunThreats.length.toLocaleString()}건 · 개요`
+                    ? `드론·미사일 ${visibleNeptunThreats.length.toLocaleString()}건 · 개요`
                     : neptunRenderMode === "low"
-                      ? `실시간 ${visibleNeptunThreats.length.toLocaleString()}건 · 예측 항로 포함`
+                      ? `실시간 ${visibleNeptunThreats.length.toLocaleString()}건 · 예상 항로 포함`
                       : neptunAlertCount > 0
                     ? `공습 경보 ${neptunAlertCount.toLocaleString()} · 추적 ${visibleNeptunThreats.length.toLocaleString()}건`
                     : neptunLive
@@ -5711,24 +5733,24 @@ export function GlobeDashboard({
                         : neptunStatus === "error"
                           ? "연결 오류"
                           : "연결 중"
-              : "유일한 실측 궤적·탄착 · Shahed · 순항 · 탄도 · KAB",
+              : "드론·순항·탄도 위치와 궤적 · 탄착 표시",
             checked: layerPrefs.showNeptun,
             onChange: setShowNeptun,
             accent: "orange",
           },
           {
             id: "east-asia-neon",
-            label: "동아시아 발생지 네온",
+            label: "동아시아 대치·발사 지점",
             detail:
               [
                 showChinaTaiwanIncidents && "대만",
                 showChinaJapanIncidents && "일본",
                 showChinaPhilippinesIncidents && "필리핀",
-                showUsChinaIncidents && "미중",
+                showUsChinaIncidents && "미·중",
                 showNorthKoreaMissileTests && "북한",
               ]
                 .filter(Boolean)
-                .join(" · ") || "꺼짐 · 대치·발사 발생지 (탄착 추정 없음)",
+                .join(" · ") || "꺼짐 · 대치·발사 위치 (탄착은 미표시)",
             checked:
               showChinaTaiwanIncidents ||
               showChinaJapanIncidents ||
@@ -5747,19 +5769,19 @@ export function GlobeDashboard({
             options: [
               {
                 id: "china-taiwan-incidents",
-                label: "중국↔대만 대치",
+                label: "중국–대만 대치",
                 detail: showChinaTaiwanIncidents
-                  ? `네온 ${chinaTheaterIncidentMarkers.filter((m) => m.dyad === "china-taiwan").length}곳`
-                  : "꺼짐 · 해협·남중국해",
+                  ? `지점 ${chinaTheaterIncidentMarkers.filter((m) => m.dyad === "china-taiwan").length}곳`
+                  : "꺼짐 · 대만해협·남중국해",
                 checked: layerPrefs.showChinaTaiwanIncidents,
                 onChange: setShowChinaTaiwanIncidents,
                 accent: "red",
               },
               {
                 id: "china-japan-incidents",
-                label: "중국↔일본 대치",
+                label: "중국–일본 대치",
                 detail: showChinaJapanIncidents
-                  ? `네온 ${chinaTheaterIncidentMarkers.filter((m) => m.dyad === "china-japan").length}곳`
+                  ? `지점 ${chinaTheaterIncidentMarkers.filter((m) => m.dyad === "china-japan").length}곳`
                   : "꺼짐 · 동중국해·센카쿠",
                 checked: layerPrefs.showChinaJapanIncidents,
                 onChange: setShowChinaJapanIncidents,
@@ -5767,9 +5789,9 @@ export function GlobeDashboard({
               },
               {
                 id: "china-philippines-incidents",
-                label: "중국↔필리핀 해상충돌",
+                label: "중국–필리핀 해상 충돌",
                 detail: showChinaPhilippinesIncidents
-                  ? `네온 ${chinaTheaterIncidentMarkers.filter((m) => m.dyad === "china-philippines").length}곳`
+                  ? `지점 ${chinaTheaterIncidentMarkers.filter((m) => m.dyad === "china-philippines").length}곳`
                   : "꺼짐 · 남중국해",
                 checked: layerPrefs.showChinaPhilippinesIncidents,
                 onChange: setShowChinaPhilippinesIncidents,
@@ -5777,9 +5799,9 @@ export function GlobeDashboard({
               },
               {
                 id: "us-china-incidents",
-                label: "미국↔중국 군사마찰",
+                label: "미국–중국 군사 마찰",
                 detail: showUsChinaIncidents
-                  ? `네온 ${chinaTheaterIncidentMarkers.filter((m) => m.dyad === "us-china").length}곳`
+                  ? `지점 ${chinaTheaterIncidentMarkers.filter((m) => m.dyad === "us-china").length}곳`
                   : "꺼짐 · 서태평양",
                 checked: layerPrefs.showUsChinaIncidents,
                 onChange: setShowUsChinaIncidents,
@@ -5787,10 +5809,10 @@ export function GlobeDashboard({
               },
               {
                 id: "nk-missile-tests",
-                label: "북한 미사일·무기시험",
+                label: "북한 미사일·무기 시험",
                 detail: showNorthKoreaMissileTests
-                  ? `주황 네온 ${koreaMissileIncidentMarkers.length}곳 · 발사·실험지`
-                  : "꺼짐 · 발사·실험 발생지",
+                  ? `발사·시험지 ${koreaMissileIncidentMarkers.length}곳`
+                  : "꺼짐 · 발사·실험 위치만",
                 checked: layerPrefs.showNorthKoreaMissileTests,
                 onChange: setShowNorthKoreaMissileTests,
                 accent: "orange",
@@ -5799,53 +5821,53 @@ export function GlobeDashboard({
           },
           {
             id: "war-zones",
-            label: "전쟁구역",
+            label: "전쟁·교전 구역",
             detail: showWarZones
-              ? `구역 ${disputeZoneOutlineCount.toLocaleString()}곳 · 빨강 빗금`
-              : "꺼짐 · 실전투·폭격급",
+              ? `구역 ${disputeZoneOutlineCount.toLocaleString()}곳 · 빨간 빗금`
+              : "꺼짐 · 실전투·폭격급 긴장",
             checked: layerPrefs.showWarZones,
             onChange: setShowWarZones,
             accent: "red",
           },
           {
             id: "diplomatic-tension",
-            label: "외교적 긴장구역",
+            label: "외교 긴장 구역",
             detail: showDiplomaticTension
               ? `구역 ${disputeZoneOutlineCount.toLocaleString()}곳 · 주황 빗금`
-              : "꺼짐 · 외교 긴장",
+              : "꺼짐 · 외교·영토 긴장",
             checked: layerPrefs.showDiplomaticTension,
             onChange: setShowDiplomaticTension,
             accent: "orange",
           },
           {
             id: "east-asia-adiz",
-            label: "동아시아 ADIZ",
+            label: "방공식별구역 (ADIZ)",
             detail: showEastAsiaAdiz
-              ? "KADIZ · JADIZ · TAIDIZ · 북한 · CADIZ"
-              : "꺼짐 · 줌인 시 빗금망",
+              ? "한·일·대만·북한·중국 ADIZ"
+              : "꺼짐 · 동아시아 방공 식별망",
             checked: layerPrefs.showEastAsiaAdiz,
             onChange: setShowEastAsiaAdiz,
             accent: "blue",
           },
           {
             id: "newfeeds-iran",
-            label: "NewFeeds 이란·공격",
+            label: "이란·중동 공격 소식",
             detail: showNewfeedsIranAttacks
               ? newfeedsStatus === "loading"
                 ? "불러오는 중…"
                 : newfeedsStatus === "error"
                   ? "피드 오류"
                   : newfeedsThreatLabel
-                    ? `${newfeedsThreatLabel} · 흰 네온 ${newfeedsAttacks.length}건`
-                    : `흰 네온 ${newfeedsAttacks.length}건 · HAPI 태그`
-              : "꺼짐 · NewFeeds MIT",
+                    ? `${newfeedsThreatLabel} · ${newfeedsAttacks.length}건`
+                    : `공격 지점 ${newfeedsAttacks.length}건`
+              : "꺼짐 · 중동 지역 보도 집계",
             checked: layerPrefs.showNewfeedsIranAttacks,
             onChange: setShowNewfeedsIranAttacks,
             accent: "orange",
           },
           {
             id: "tzeva-adom",
-            label: "이스라엘 공습 경보",
+            label: "이스라엘 로켓·공습 경보",
             detail: showTzevaAdom
               ? tzevaAdomActive.length > 0
                 ? `지금 경보 ${tzevaAdomActive.length.toLocaleString()}건`
@@ -5855,48 +5877,48 @@ export function GlobeDashboard({
                     ? "지역 제한"
                     : tzevaAdomHistory.length > 0
                       ? `이력 ${tzevaAdomHistory.length.toLocaleString()}건`
-                      : "폴러 대기"
-              : "꺼짐",
+                      : "대기 중"
+              : "꺼짐 · 이스라엘 민방위(Oref)",
             checked: layerPrefs.showTzevaAdom,
             onChange: setShowTzevaAdom,
             accent: "red",
           },
           {
             id: "axis-network",
-            label: "축 관계망 (이란·중·러·북)",
+            label: "이란·중국·러시아·북한 관계망",
             detail: showAxisNetwork
-              ? `호 ${axisNetworkPaths.length.toLocaleString()} · 외교·군수·하이브리드`
-              : "꺼짐 · 외교·군수·하이브리드",
+              ? `연결 ${axisNetworkPaths.length.toLocaleString()} · 외교·군수·하이브리드`
+              : "꺼짐 · 외교·군수 연계",
             checked: layerPrefs.showAxisNetwork,
             onChange: setShowAxisNetwork,
             accent: "emerald",
           },
           {
             id: "conflict-zones",
-            label: "AI 전쟁지역 (데모)",
+            label: "추정 전쟁지역 (데모)",
             detail: showConflictZones
-              ? `${visibleConflictZones.length.toLocaleString()}곳 · 휴리스틱 · ${zoom}`
-              : "꺼짐 · 외부 AI API 없음",
+              ? `${visibleConflictZones.length.toLocaleString()}곳 · ${zoom}`
+              : "꺼짐 · 참고용 휴리스틱",
             checked: layerPrefs.showConflictZones,
             onChange: setShowConflictZones,
             accent: "red",
           },
           {
             id: "arms-embargo",
-            label: "무기 금수",
+            label: "무기 금수 국가",
             detail: showArmsEmbargo
               ? `구역 ${armsEmbargoFramePaths.length.toLocaleString()}곳`
-              : "꺼짐",
+              : "꺼짐 · 유엔 등 금수",
             checked: layerPrefs.showArmsEmbargo,
             onChange: setShowArmsEmbargo,
             accent: "fuchsia",
           },
           {
             id: "ucdp",
-            label: "분쟁 사건",
+            label: "분쟁 사건 기록",
             detail: showUcdpEvents
               ? `세계 분쟁·전쟁 기록 · ${UCDP_ATTRIBUTION_SHORT}`
-              : "꺼짐",
+              : "꺼짐 · UCDP 세계 분쟁 DB",
             checked: layerPrefs.showUcdpEvents,
             onChange: setShowUcdpEvents,
             accent: "red",
@@ -5908,8 +5930,8 @@ export function GlobeDashboard({
               ? gdeltLoading
                 ? "불러오는 중…"
                 : ukraineGdeltNeonMarkers.length > 0
-                  ? `알림 ${layerPanelGdeltCounts.war.toLocaleString()}건 · 우크라 시안 네온 ${ukraineGdeltNeonMarkers.length}`
-                  : `알림 ${layerPanelGdeltCounts.war.toLocaleString()}건`
+                  ? `${layerPanelGdeltCounts.war.toLocaleString()}건 · 우크라 ${ukraineGdeltNeonMarkers.length}`
+                  : `${layerPanelGdeltCounts.war.toLocaleString()}건`
               : "꺼짐",
             checked: layerPrefs.showGdeltWar,
             onChange: setShowGdeltWar,
@@ -5922,7 +5944,7 @@ export function GlobeDashboard({
             detail: showGdeltDiplomatic
               ? gdeltLoading
                 ? "불러오는 중…"
-                : `알림 ${layerPanelGdeltCounts.diplomatic.toLocaleString()}건`
+                : `${layerPanelGdeltCounts.diplomatic.toLocaleString()}건`
               : "꺼짐",
             checked: layerPrefs.showGdeltDiplomatic,
             onChange: setShowGdeltDiplomatic,
@@ -5931,12 +5953,12 @@ export function GlobeDashboard({
           },
           {
             id: "gdelt-ocean",
-            label: "대양 지정학 뉴스",
+            label: "뉴스 · 대양 경쟁",
             detail: showGdeltOceanCompetition
               ? gdeltLoading
                 ? "불러오는 중…"
-                : "태평양 · 대서양 · 북극 · 경쟁·외교"
-              : "꺼짐 · 태평양·대서양·북극해",
+                : "태평양 · 대서양 · 북극"
+              : "꺼짐 · 대양 지정학",
             checked: layerPrefs.showGdeltOceanCompetition,
             onChange: setShowGdeltOceanCompetition,
             accent: "blue",
@@ -5946,7 +5968,7 @@ export function GlobeDashboard({
             id: "gdelt-alliance",
             label: "뉴스 · 동맹 갈등",
             detail: showGdeltAlliance
-              ? `알림 ${layerPanelGdeltCounts.alliance.toLocaleString()}건`
+              ? `${layerPanelGdeltCounts.alliance.toLocaleString()}건`
               : "꺼짐",
             checked: layerPrefs.showGdeltAlliance,
             onChange: setShowGdeltAlliance,
@@ -5956,7 +5978,7 @@ export function GlobeDashboard({
             id: "gdelt-protest",
             label: "뉴스 · 시위",
             detail: showGdeltProtests
-              ? `알림 ${layerPanelGdeltCounts.protest.toLocaleString()}건`
+              ? `${layerPanelGdeltCounts.protest.toLocaleString()}건`
               : "꺼짐",
             checked: layerPrefs.showGdeltProtests,
             onChange: setShowGdeltProtests,
@@ -5965,7 +5987,7 @@ export function GlobeDashboard({
           },
           {
             id: "telegram-osint",
-            label: "텔레그램 채널",
+            label: "텔레그램 전장 소식",
             detail: showTelegramOsint
               ? telegramStatus === "loading"
                 ? `불러오는 중 · ${TELEGRAM_CHANNEL_COUNT}채널`
@@ -5980,7 +6002,7 @@ export function GlobeDashboard({
                       : telegramEmbedMode
                         ? `공개 ${TELEGRAM_CHANNEL_COUNT}채널`
                         : "대기 중"
-              : "꺼짐",
+              : "꺼짐 · 공개 채널",
             checked: layerPrefs.showTelegramOsint,
             onChange: setShowTelegramOsint,
             accent: "blue",
@@ -6053,82 +6075,156 @@ export function GlobeDashboard({
       {
         id: "energy",
         title: "에너지·자원",
-        hint: "GEM · 기름 · 가스 · 발전 · 광물",
+        hint: "원유·가스 수송 · 발전·채굴 · 광물",
         items: [
           {
-            id: "oil-pipelines",
-            label: "송유관",
-            detail: showOilPipelines
-              ? `${visibleOilPipelines.length.toLocaleString()}개`
-              : off(staticCounts.oilPipelines),
-            checked: layerPrefs.showOilPipelines,
-            onChange: setShowOilPipelines,
+            id: "energy-pipelines",
+            label: "원유·가스 수송망",
+            detail:
+              [
+                showOilPipelines && "송유관",
+                showGasPipelines && "가스관",
+                showLngTerminals && "LNG",
+              ]
+                .filter(Boolean)
+                .join(" · ") || "꺼짐 · 파이프라인·터미널",
+            checked: showOilPipelines || showGasPipelines || showLngTerminals,
+            onChange: (enabled) => {
+              setShowOilPipelines(enabled);
+              setShowGasPipelines(enabled);
+              setShowLngTerminals(enabled);
+            },
             accent: "orange",
+            presentation: "dropdown",
+            options: [
+              {
+                id: "oil-pipelines",
+                label: "송유관",
+                detail: showOilPipelines
+                  ? `${visibleOilPipelines.length.toLocaleString()}개`
+                  : off(staticCounts.oilPipelines),
+                checked: layerPrefs.showOilPipelines,
+                onChange: setShowOilPipelines,
+                accent: "orange",
+              },
+              {
+                id: "gas-pipelines",
+                label: "가스관",
+                detail: showGasPipelines
+                  ? `${visibleGasPipelines.length.toLocaleString()}개`
+                  : off(staticCounts.gasPipelines),
+                checked: layerPrefs.showGasPipelines,
+                onChange: setShowGasPipelines,
+                accent: "green",
+              },
+              {
+                id: "lng-terminals",
+                label: "LNG(액화가스) 터미널",
+                detail: showLngTerminals
+                  ? `${visibleStaticPoints.filter((p) => p.kind === "lng-terminal").length.toLocaleString()}곳`
+                  : off(staticCounts.lngTerminals),
+                checked: layerPrefs.showLngTerminals,
+                onChange: setShowLngTerminals,
+                accent: "orange",
+              },
+            ],
           },
           {
-            id: "gas-pipelines",
-            label: "가스관",
-            detail: showGasPipelines
-              ? `${visibleGasPipelines.length.toLocaleString()}개`
-              : off(staticCounts.gasPipelines),
-            checked: layerPrefs.showGasPipelines,
-            onChange: setShowGasPipelines,
-            accent: "green",
+            id: "gem-resources",
+            label: "발전·채굴·산업 시설",
+            detail: (() => {
+              const on = GEM_RESOURCE_LAYERS.filter((l) => Boolean(layerPrefs[l.prefKey])).length;
+              return on > 0
+                ? `${on}/${GEM_RESOURCE_LAYERS.length} 켜짐 · GEM`
+                : "꺼짐 · 석탄·재생·석유가스·산업 (GEM)";
+            })(),
+            checked: GEM_RESOURCE_LAYERS.some((l) => Boolean(layerPrefs[l.prefKey])),
+            onChange: (enabled) => {
+              for (const layer of GEM_RESOURCE_LAYERS) {
+                togglePref(layer.prefKey, enabled);
+              }
+            },
+            accent: "amber",
+            presentation: "dropdown",
+            options: GEM_RESOURCE_GROUPS.map((group) => {
+              const layers = group.layerIds
+                .map((id) => gemLayerById(id))
+                .filter((l): l is NonNullable<typeof l> => Boolean(l));
+              const onCount = layers.filter((l) => Boolean(layerPrefs[l.prefKey])).length;
+              return {
+                id: group.id,
+                label: group.labelKo,
+                detail:
+                  onCount > 0
+                    ? `${onCount}/${layers.length} 켜짐`
+                    : `꺼짐 · ${layers.map((l) => l.labelKo).join(" · ")}`,
+                checked: onCount > 0,
+                onChange: (enabled: boolean) => {
+                  for (const layer of layers) togglePref(layer.prefKey, enabled);
+                },
+                accent: "orange" as const,
+                presentation: "dropdown" as const,
+                options: layers.map((layer) => {
+                  const checked = Boolean(layerPrefs[layer.prefKey]);
+                  const total = staticCounts.gemResources?.[layer.id] ?? 0;
+                  const visible = visibleStaticPoints.filter((p) => p.kind === layer.kind).length;
+                  return {
+                    id: layer.id,
+                    label: layer.labelKo,
+                    detail: checked ? `${visible.toLocaleString()}곳` : off(total),
+                    checked,
+                    onChange: (v: boolean) => togglePref(layer.prefKey, v),
+                    accent: "orange" as const,
+                  };
+                }),
+              };
+            }),
           },
           {
-            id: "lng-terminals",
-            label: "액화가스 터미널",
-            detail: showLngTerminals
-              ? `${visibleStaticPoints.filter((p) => p.kind === "lng-terminal").length.toLocaleString()}곳`
-              : off(staticCounts.lngTerminals),
-            checked: layerPrefs.showLngTerminals,
-            onChange: setShowLngTerminals,
+            id: "energy-other",
+            label: "광물 매장지·원자력 시설",
+            detail:
+              [showResources && "광물", showNuclearSites && "원자력"]
+                .filter(Boolean)
+                .join(" · ") || "꺼짐 · 매장지·원전·연구시설",
+            checked: showResources || showNuclearSites,
+            onChange: (enabled) => {
+              setShowResources(enabled);
+              setShowNuclearSites(enabled);
+            },
             accent: "orange",
-          },
-          ...GEM_RESOURCE_LAYERS.map((layer) => {
-            const checked = Boolean(layerPrefs[layer.prefKey]);
-            const total = staticCounts.gemResources?.[layer.id] ?? 0;
-            const visible = visibleStaticPoints.filter((p) => p.kind === layer.kind).length;
-            const onChange = (v: boolean) => togglePref(layer.prefKey, v);
-            return {
-              id: layer.id,
-              label: layer.labelKo,
-              detail: checked
-                ? `${visible.toLocaleString()}곳`
-                : off(total),
-              checked,
-              onChange,
-              accent: "orange" as const,
-            };
-          }),
-          {
-            id: "resources",
-            label: "광물·자원지",
-            detail: showResources ? "광물·자원 매장지" : off(staticCounts.resources),
-            checked: layerPrefs.showResources,
-            onChange: setShowResources,
-            accent: "orange",
-          },
-          {
-            id: "nuclear",
-            label: "원자력 시설",
-            detail: showNuclearSites ? "발전소·연구시설" : "꺼짐",
-            checked: layerPrefs.showNuclearSites,
-            onChange: setShowNuclearSites,
-            accent: "orange",
+            presentation: "dropdown",
+            options: [
+              {
+                id: "resources",
+                label: "광물·자원 매장지",
+                detail: showResources ? "광물·자원 매장지" : off(staticCounts.resources),
+                checked: layerPrefs.showResources,
+                onChange: setShowResources,
+                accent: "orange",
+              },
+              {
+                id: "nuclear",
+                label: "원자력 시설",
+                detail: showNuclearSites ? "발전소·연구시설" : "꺼짐",
+                checked: layerPrefs.showNuclearSites,
+                onChange: setShowNuclearSites,
+                accent: "orange",
+              },
+            ],
           },
           {
             id: "newfeeds-iran",
-            label: "NewFeeds 이란·공격",
+            label: "이란·중동 공격 소식",
             detail: showNewfeedsIranAttacks
               ? newfeedsStatus === "loading"
                 ? "불러오는 중…"
                 : newfeedsStatus === "error"
                   ? "피드 오류"
                   : newfeedsThreatLabel
-                    ? `${newfeedsThreatLabel} · 흰 네온 ${newfeedsAttacks.length}건`
-                    : `흰 네온 ${newfeedsAttacks.length}건 · HAPI 태그`
-              : "꺼짐 · 유가 민감 · NewFeeds MIT",
+                    ? `${newfeedsThreatLabel} · ${newfeedsAttacks.length}건`
+                    : `공격 지점 ${newfeedsAttacks.length}건 · 유가 민감`
+              : "꺼짐 · 유가 민감 · 중동 보도 집계",
             checked: layerPrefs.showNewfeedsIranAttacks,
             onChange: setShowNewfeedsIranAttacks,
             accent: "orange",
@@ -6162,11 +6258,11 @@ export function GlobeDashboard({
       {
         id: "transport",
         title: "운송 · 통신",
-        hint: "항로, 해저 케이블, 공항·항구, 초크포인트",
+        hint: "항로 · 해저 케이블 · 공항·항구 · 요충지",
         items: [
           {
             id: "shipping",
-            label: "항로",
+            label: "해상 항로",
             detail: showShippingLanes
               ? `${visibleShipping.length.toLocaleString()}개 · ${zoom}`
               : off(staticCounts.shipping),
@@ -6246,9 +6342,9 @@ export function GlobeDashboard({
           },
           {
             id: "logistics-risk",
-            label: "초크포인트 · 물류 거점",
+            label: "해상 요충·물류 거점",
             detail: showLogisticsRisk
-              ? `${visibleStaticPoints.filter((p) => p.kind === "chokepoint" || p.kind === "logistics-hub").length.toLocaleString()}곳 · 전역`
+              ? `${visibleStaticPoints.filter((p) => p.kind === "chokepoint" || p.kind === "logistics-hub").length.toLocaleString()}곳 · 해협·운하 등`
               : off(staticCounts.logisticsRisk),
             checked: layerPrefs.showLogisticsRisk,
             onChange: setShowLogisticsRisk,
@@ -6256,9 +6352,9 @@ export function GlobeDashboard({
           },
           {
             id: "critical-nodes",
-            label: "크리티컬 노드",
+            label: "핵심 인프라 노드",
             detail: showCriticalNodes
-              ? `${visibleStaticPoints.filter((p) => p.kind === "critical-node").length.toLocaleString()}곳 · MIT`
+              ? `${visibleStaticPoints.filter((p) => p.kind === "critical-node").length.toLocaleString()}곳 · 전략 인프라`
               : off(staticCounts.criticalNodes ?? 31),
             checked: layerPrefs.showCriticalNodes,
             onChange: setShowCriticalNodes,
@@ -6315,7 +6411,7 @@ export function GlobeDashboard({
             id: "military-air",
             label: "군사 항공기",
             detail: showMilitaryActivity
-              ? `비행기 ${milAircraft.length.toLocaleString()}대 · 탑다운 실루엣`
+              ? `비행기 ${milAircraft.length.toLocaleString()}대 · 실시간 항적`
               : "꺼짐",
             checked: layerPrefs.showMilitaryActivity,
             onChange: setShowMilitaryActivity,
@@ -6366,7 +6462,7 @@ export function GlobeDashboard({
         items: [
           {
             id: "firms",
-            label: "전쟁뉴스 근처 화재경보",
+            label: "위성 화재 (NASA FIRMS)",
             detail: showFirmsFires
               ? `열감지 ${visibleFirmsFires.length.toLocaleString()} · 폭격추정 ${firmsCombatFireIds.length.toLocaleString()}`
               : firmsError || "꺼짐 · GDELT 전쟁뉴스 교차",
@@ -9373,11 +9469,14 @@ export function GlobeDashboard({
                 if (path.kind === "dispute-hatch") return 0.55;
                 if (path.kind === "conflict-hatch") return 0.62;
                 if (path.kind === "shipping-lane") return 0.48;
-                // 해저 케이블: mapGlobeLayers.cableInverseLineWidth가 실제 px 결정
-                // (줌아웃↑굵게 · 줌인→~0.1). stroke 값은 미사용 sentinel.
-                if (path.kind === "submarine-cable") return 0.1;
-                if (path.kind === "oil-pipeline") return 0.52;
-                if (path.kind === "gas-pipeline") return 0.5;
+                // 해저 케이블·송유관·가스관: cableInverseLineWidth (줌아웃↑굵게 · 줌인→~0.1)
+                if (
+                  path.kind === "submarine-cable" ||
+                  path.kind === "oil-pipeline" ||
+                  path.kind === "gas-pipeline"
+                ) {
+                  return 0.1;
+                }
                 if (path.kind === "arms-embargo") return ARMS_EMBARGO_STROKE_WIDTH;
                 if (path.kind === "msr") return 0.55;
                 if (

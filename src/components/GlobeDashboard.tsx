@@ -3955,7 +3955,7 @@ export function GlobeDashboard({
       lng: front.lng,
       killed: front.killed,
       wounded: 0,
-      killedLabel: en ? "KIA" : "사망",
+      killedLabel: en ? "Today's fatalities" : "오늘의 사망자",
       woundedLabel: en ? "WIA" : "부상",
       asOf: front.periodEnd || hapiCasualties.windowEnd || "",
       sourceHint: en

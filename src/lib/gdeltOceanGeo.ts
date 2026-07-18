@@ -47,7 +47,6 @@ function toEvent(
   lng: number,
   name: string | null,
   url: string | null,
-  mentions: number | null,
 ): ConflictEvent {
   const label =
     tag === "pacific"
@@ -95,17 +94,7 @@ async function fetchOne(tag: string, query: string, maxpoints: number): Promise<
     if (!Number.isFinite(lat) || !Number.isFinite(lng)) continue;
     const name = feature.properties?.name?.trim() || null;
     const link = feature.properties?.url?.trim() || null;
-    const count = feature.properties?.count;
-    out.push(
-      toEvent(
-        tag,
-        lat,
-        lng,
-        name,
-        link,
-        typeof count === "number" ? count : null,
-      ),
-    );
+    out.push(toEvent(tag, lat, lng, name, link));
   }
   return out;
 }

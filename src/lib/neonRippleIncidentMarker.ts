@@ -63,18 +63,13 @@ const ACCENT_CSS: Record<
   },
 };
 
-let stylesReady = false;
 const STYLE_VERSION = "cyan-v1";
 
 function ensureStyles() {
   if (typeof document === "undefined") return;
   const existing = document.querySelector(`style[data-neon-ripple-incident-markers="${STYLE_VERSION}"]`);
-  if (existing) {
-    stylesReady = true;
-    return;
-  }
+  if (existing) return;
   document.querySelectorAll("style[data-neon-ripple-incident-markers]").forEach((el) => el.remove());
-  stylesReady = true;
   const style = document.createElement("style");
   style.setAttribute("data-neon-ripple-incident-markers", STYLE_VERSION);
   style.textContent = `

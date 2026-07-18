@@ -179,7 +179,6 @@ export const VIEW_PACKAGES: ViewPackageDef[] = [
     description: "레이어 패널에서 직접 선택",
     layers: {
       ...DEFAULT_LAYER_PREFS,
-      showUkraineControl: false,
     },
     ui: {
       showTicker: true,
@@ -329,10 +328,8 @@ export function capLayerCountForMode(layers: LayerPrefs, mode: ViewerMode): Laye
 }
 
 function mergeLayersRaw(ids: ViewPackageId[]): LayerPrefs {
-  const layers: LayerPrefs = {
-    ...DEFAULT_LAYER_PREFS,
-    showUkraineControl: false,
-  };
+  // DEFAULT_LAYER_PREFS already includes showUkraineControl: false
+  const layers: LayerPrefs = { ...DEFAULT_LAYER_PREFS };
 
   for (const id of ids) {
     const pkg = PACKAGE_BY_ID[id];

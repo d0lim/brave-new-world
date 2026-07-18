@@ -24,7 +24,6 @@ import { type LayerCategory, type LayerToggleItem } from "@/components/LayerCate
 import { LayerCategoryDraftHost } from "@/components/LayerCategoryDraftHost";
 import { LayerPanelLanguagePicker } from "@/components/LayerPanelLanguagePicker";
 import { CompactPresetChips } from "@/components/CompactPresetChips";
-import { MapGlobeView } from "@/components/MapGlobeView";
 import { HoverNav } from "@/components/HoverNav";
 import { HoverHint } from "@/components/HoverHint";
 import { ParchmentProTipChip } from "@/components/ParchmentProTipChip";
@@ -216,7 +215,6 @@ import {
   type NeptunLiveThreat,
 } from "@/lib/neptun";
 import { createNeptunImpactFlashElement } from "@/lib/neptunImpactFlash";
-import type { NeptunImpactFlash } from "@/lib/neptunImpactFlash";
 import { useNeptunStream } from "@/hooks/useNeptunStream";
 import {
   buildArchivedNeptunTrackPaths,
@@ -263,7 +261,6 @@ import {
   firmsCauseHint,
   firmsCauseTitle,
   firmsFireSoundLabel,
-  type FirmsSoundKind,
 } from "@/lib/firmsSoundClassify";
 import { filterFirmsToTheaters } from "@/lib/firmsTheaters";
 import { useDataSync } from "@/hooks/useDataSync";
@@ -350,9 +347,6 @@ import { useLazyJsonObject } from "@/hooks/useLazyJson";
 import type { FeatureCollection } from "geojson";
 import { lookupOceanName } from "@/lib/oceanNames";
 import { getGlobeTextures } from "@/lib/mapStyles";
-import {
-  CYBER_WAR_ROOM_THEME,
-} from "@/lib/cyberWarRoomTheme";
 import { getZoomOutScale } from "@/lib/zoomScale";
 import {
   clampGlobeAltitude,
@@ -467,13 +461,11 @@ import {
   CHINA_THEATER_DYAD_LABEL,
   CHINA_THEATER_SEA_LABEL,
   type ChinaTheaterDyad,
-  type ChinaTheaterIncident,
 } from "@/data/chinaTheaterIncidentsSeed";
 import { createChinaTheaterIncidentBadge } from "@/lib/chinaTheaterIncidentMarker";
 import {
   KOREA_MISSILE_ANCHOR_LABEL,
   KOREA_MISSILE_KIND_LABEL,
-  type KoreaMissileIncident,
 } from "@/data/koreaMissileIncidentsSeed";
 import { createKoreaMissileIncidentBadge } from "@/lib/koreaMissileIncidentMarker";
 import {
@@ -519,16 +511,12 @@ import type {
   CountryFeature,
   DisputeArea,
   FirmsFire,
-  GeoJsonGeometry,
   MilitaryAircraft,
-  MilitaryBaseArea,
   SearchPlace,
-  StaticPoint,
   TransportPath,
   UkraineControlData,
   UkraineControlZone,
   UkraineSettlement,
-  ViinaRenderMeta,
   UsCarrier,
 } from "@/data/geoTypes";
 import {
@@ -7699,6 +7687,7 @@ export function GlobeDashboard({
     [
       activeFrictionEpisode?.id,
       flyTo,
+      handleAirRaidFocus,
       handleCarrierSelect,
       handleCivAircraftSelect,
       handleHtmlMarkerHover,

@@ -102,7 +102,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^5.20260712.1",
+    "@cloudflare/workers-types": "^5.20260718.1",
     "@opennextjs/cloudflare": "1.15.1",
     "@types/adm-zip": "^0.5.8",
     "@types/node": "^20",

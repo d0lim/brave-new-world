@@ -1,4 +1,4 @@
-/** 등불 「왜 중요?」 — 외교학 교수 톤 해설 (BYOK 심층 / 서버·템플릿 간단) */
+/** 등불 「왜 중요?」 — 이 헤드라인의 인과(원인→결과)만 짧게 설명 */
 
 export type WhyMattersArticleInput = {
   title: string;
@@ -9,27 +9,34 @@ export type WhyMattersArticleInput = {
   lang?: "ko" | "en";
 };
 
+const CAUSAL_RULES_KO = [
+  "역할: 외교·안보 브리핑. 독자는 지도를 보는 비전공자.",
+  "오직 이 헤드라인의 인과관계를 설명한다: 원인(무엇이 일어났는지/왜 터졌는지) → 결과(그래서 왜 중요한지).",
+  "금지: 일반론 강의, 교과서식 국제정치 개론, 기사와 무관한 주변 이슈, 장황한 배경사, 매매 권유, 예언, SNS 단정.",
+  "기사·발췌에 없는 사실을 지어내지 말 것. 추론이면 ‘분석적 판단’, 모르면 ‘불확실’이라고 쓸 것.",
+  "문장은 짧고 직접적으로. 군더더기·수사·메타 코멘트(‘키를 넣으면…’ 등) 금지.",
+].join(" ");
+
+const CAUSAL_RULES_EN = [
+  "Role: IR brief for non-specialist map users.",
+  "Explain ONLY the causal chain for THIS headline: cause (what happened / why it fired) → effect (why it matters).",
+  "Forbidden: general IR lectures, textbook digressions, unrelated side topics, long history primers, trading advice, prophecy, unverified social claims.",
+  "Do not invent facts absent from the title/excerpt. Label inference as judgment; label unknowns clearly.",
+  "Short, direct sentences. No filler or meta commentary.",
+].join(" ");
+
 export function buildWhyMattersSystem(lang: "ko" | "en"): string {
   if (lang === "en") {
     return [
-      "You are a senior professor of international relations briefing non-specialist map users.",
-      "Explain why THIS event matters now: what changed vs the prior status quo, timing variables,",
-      "alliance/rivalry realignment, and plausible second-order effects of cooperation or rupture.",
-      "Weigh many interacting factors (domestic politics, sanctions, energy, military balance, elections,",
-      "great-power rivalry, regional intermediaries) — but do not invent unstated facts.",
-      "Mark inference as analytical judgment; mark unknowns clearly.",
-      "No trading advice. No Telegram-as-fact. No breathless prophecy.",
-      "Write 4–6 short paragraphs (or labeled sections). Dense but readable. English only.",
+      CAUSAL_RULES_EN,
+      "Format: 3 short paragraphs — (1) Cause, (2) Mechanism (how A leads to B), (3) Map-level effect + one caveat.",
+      "Stay glued to this event. English only.",
     ].join(" ");
   }
   return [
-    "당신은 외교학·국제정치학 교수다. 지정학 지도를 보는 비전공 이용자에게 브리핑한다.",
-    "핵심: 왜 지금 이 사건인가. 기존 질서·관계에서 무엇이 바뀌는지, 시기적 변수,",
-    "협력·균열이 앞으로 끼칠 파급(동맹·제재·에너지·전장·국내정치)을 연결해 설명하라.",
-    "수만 가지 변수 중 이 헤드라인에 실제로 걸리는 요인만 골라 ‘캐치’해서 서술하라.",
-    "기사에 없는 사실을 단정하지 말고, 해석은 ‘분석적 판단’, 모르는 것은 명시하라.",
-    "매매 권유·선정 예언·미검증 SNS 사실화 금지.",
-    "문단 4~6개(또는 소제목). 밀도 있게, 그러나 읽기 쉽게. 한국어만.",
+    CAUSAL_RULES_KO,
+    "형식: 짧은 문단 3개 — (1) 원인 (2) 연결(어떻게 A가 B로 이어지는지) (3) 지도·전장에 끼치는 결과 + 주의 한 줄.",
+    "이 사건만 다룰 것. 한국어만.",
   ].join(" ");
 }
 
@@ -37,15 +44,15 @@ export function buildWhyMattersSystem(lang: "ko" | "en"): string {
 export function buildWhyMattersQuickSystem(lang: "ko" | "en"): string {
   if (lang === "en") {
     return [
-      "You are an IR professor giving a 90-second briefing for map users without specialist background.",
-      "Exactly 2 short paragraphs: (1) what may have changed and why now; (2) likely map-level effects + one caveat.",
-      "Do not invent facts. Mark judgment vs unknown. No trading advice. English only.",
+      CAUSAL_RULES_EN,
+      "Exactly 2 short paragraphs: (1) Cause — what drove this; (2) Effect — why it matters on the map, plus one caveat.",
+      "No bullets. No intro/outro. English only.",
     ].join(" ");
   }
   return [
-    "외교학 교수가 비전공 지도 이용자에게 90초 브리핑한다.",
-    "문단 정확히 2개: (1) 무엇이 바뀐 것으로 보이며 왜 지금인지 (2) 지도·전장에 끼칠 영향 + 주의 한 줄.",
-    "사실 단정·환각 금지. 해석은 판단으로 표시. 매매 권유 금지. 한국어만.",
+    CAUSAL_RULES_KO,
+    "문단 정확히 2개: (1) 원인 — 무엇이 이걸 만들었는지 (2) 결과 — 그래서 지도·전장에서 왜 중요한지 + 주의 한 줄.",
+    "불릿·서론·맺음말 금지. 한국어만.",
   ].join(" ");
 }
 
@@ -57,11 +64,11 @@ export function buildWhyMattersUserMessage(
   const lines = [
     lang === "en"
       ? mode === "quick"
-        ? "Quick IR brief for map users:"
-        : "Brief this diplomacy / geopolitics item like a seminar for map users:"
+        ? "Causal brief only (cause → effect). Do not digress."
+        : "Causal brief only (cause → mechanism → effect). Do not digress."
       : mode === "quick"
-        ? "등불 「왜 중요?」 간단 브리핑:"
-        : "등불 뉴스 「왜 중요?」 세미나 브리핑 요청:",
+        ? "인과만 설명 (원인 → 결과). 딴소리 금지."
+        : "인과만 설명 (원인 → 연결 → 결과). 딴소리 금지.",
     `Title: ${input.title}`,
   ];
   if (input.source) lines.push(`Source: ${input.source}`);
@@ -73,45 +80,55 @@ export function buildWhyMattersUserMessage(
   if (mode === "quick") {
     lines.push(
       lang === "en"
-        ? "Reply with exactly two short paragraphs. No bullet list."
-        : "문단 두 개만. 불릿 목록 금지.",
+        ? [
+            "Answer shape:",
+            "P1 — Cause: what happened and what likely drove it.",
+            "P2 — Effect: why that matters now on the map/theater + one caveat.",
+            "Do not discuss unrelated theaters, markets, or general theory.",
+          ].join("\n")
+        : [
+            "답 형식:",
+            "문단1 — 원인: 무슨 일이고, 무엇이 이걸 만들었는지.",
+            "문단2 — 결과: 그래서 지금 지도·전장에서 왜 중요한지 + 주의 한 줄.",
+            "다른 전장·시장·일반 이론 얘기 금지.",
+          ].join("\n"),
     );
   } else {
     lines.push(
       lang === "en"
         ? [
-            "Cover at least:",
-            "1) What appears to have changed (status quo → this move).",
-            "2) Why this timing (structural + proximate variables).",
-            "3) Likely effects of deeper cooperation / rupture on the map.",
-            "4) Caveats / what we cannot know from the headline alone.",
+            "Answer shape:",
+            "P1 — Cause: the triggering move / pressure.",
+            "P2 — Mechanism: how that cause produces a concrete consequence.",
+            "P3 — Effect + caveat: map-level stakes; what we cannot know from the headline alone.",
+            "Do not pad with general IR commentary.",
           ].join("\n")
         : [
-            "반드시 다룰 것:",
-            "1) 무엇이 바뀐 것으로 보이는가 (기존 관계·질서 → 이번 움직임).",
-            "2) 왜 이 시기인가 (구조적·촉발 변수).",
-            "3) 협력 심화 또는 균열이 앞으로 지도·전장·시장에 끼칠 영향.",
-            "4) 헤드라인만으로는 알 수 없는 한계·주의.",
+            "답 형식:",
+            "문단1 — 원인: 촉발된 움직임·압력.",
+            "문단2 — 연결: 그 원인이 어떤 구체적 결과로 이어지는지.",
+            "문단3 — 결과 + 주의: 지도·전장에서의 중요성; 헤드라인만으로 알 수 없는 점.",
+            "일반론·딴소리로 분량을 채우지 말 것.",
           ].join("\n"),
     );
   }
   return lines.join("\n");
 }
 
-/** 서버 키·스텁도 없을 때 — 항상 읽히는 템플릿 */
+/** 서버 키·스텁도 없을 때 — 항상 읽히는 템플릿 (인과 골격) */
 export function templateWhyMattersText(input: WhyMattersArticleInput): string {
   const lang = input.lang === "en" ? "en" : "ko";
   const focus = input.focusLabel?.trim() || (lang === "en" ? "this theater" : "이 전장");
   const shortTitle = input.title.slice(0, 80);
   if (lang === "en") {
     return [
-      `「${shortTitle}」 may signal a shift around ${focus}: who meets whom, and on what terms, often matters more than the ceremony itself.`,
-      `Why now usually tracks overlapping pressures — rivalry, sanctions, energy, elections, or a nearby battlefield. Treat cooperation claims as provisional until confirmed by high-trust sources. Add your Anthropic key for a full seminar-length brief.`,
+      `Cause: 「${shortTitle}」 points to a concrete move or pressure around ${focus}. What matters is who acted, under what constraint — not ceremony alone.`,
+      `Effect: That shift can change local deterrence, supply lines, or diplomatic room for maneuver. Treat details as provisional until high-trust sources confirm; add your Anthropic key for a fuller causal brief.`,
     ].join("\n\n");
   }
   return [
-    `「${shortTitle}」는 ${focus} 축에서 ‘누가·어떤 조건으로’ 만나는지가 의식보다 중요한 신호일 수 있습니다.`,
-    `왜 지금인지는 대개 경쟁·제재·에너지·선거·인접 전장이 겹칠 때입니다. 협력 주장은 고신뢰 매체가 교차 확인할 때까지 잠정으로 두세요. 본인 Anthropic 키를 넣으면 세미나 분량으로 풀어 드립니다.`,
+    `원인: 「${shortTitle}」는 ${focus}에서 누가·어떤 압력으로 움직였는지가 핵심입니다. 의식·수사보다 ‘무엇이 바뀌었는지’를 먼저 보세요.`,
+    `결과: 그 변화가 현지 억지·보급·외교 여지를 흔들면 지도에서 중요해집니다. 세부 사실은 고신뢰 매체가 교차 확인할 때까지 잠정으로 두세요. 본인 Anthropic 키를 넣으면 인과를 더 풀어 드립니다.`,
   ].join("\n\n");
 }
 

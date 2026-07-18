@@ -19,7 +19,7 @@ type Props = {
 
 /**
  * 등불 뉴스 「왜 중요?」
- * - 키 있음: 심층 세미나 (BYOK)
+ * - 키 있음: 심층 인과 (BYOK)
  * - 키 없음: 서버 간단 / 템플릿 폴백
  */
 export function LampWhyMattersButton({
@@ -100,8 +100,8 @@ export function LampWhyMattersButton({
               : "간단 해설"
             : data.mode === "deep"
               ? lang === "en"
-                ? "seminar"
-                : "심층 세미나"
+                ? "causal brief"
+                : "심층 인과"
               : data.mode === "template"
                 ? lang === "en"
                   ? "starter brief"
@@ -184,8 +184,8 @@ export function LampWhyMattersButton({
           {loading && !text ? (
             <p className="text-[13px] leading-relaxed text-[#5a4428]/75">
               {lang === "en"
-                ? "Weighing timing, realignment, and second-order effects…"
-                : "시기·관계 재편·파급을 정리하는 중…"}
+                ? "Tracing cause → effect…"
+                : "원인 → 결과를 정리하는 중…"}
             </p>
           ) : null}
           {text ? (

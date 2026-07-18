@@ -22,9 +22,10 @@
   /* Wanted Sans — 한글 UI·양피지 기본 (반서방 11대 현장만 RIDI Batang 유지) */
   --font-wanted: "Wanted Sans Variable", "Wanted Sans", -apple-system, BlinkMacSystemFont,
     system-ui, "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", sans-serif;
-  /* 영문 Inter — next/font --font-inter 변수와 스택 */
+  /* 영문 Inter — next/font --font-inter 변수와 스택 (Intel UI·양피지 영문) */
   --font-ui-en: var(--font-inter), var(--font-wanted), ui-sans-serif, system-ui, sans-serif;
-  /* 영문 양피지 본문 Merriweather */
+  --font-intel: var(--font-inter), var(--font-wanted), ui-sans-serif, system-ui, sans-serif;
+  /* 영문 양피지 장문(레터) Merriweather — 일일 뉴스 등불 기사는 --font-intel 사용 */
   --font-parchment-en: var(--font-merriweather), var(--font-wanted), Georgia, "Times New Roman",
     serif;
   /* 좌표·수치 JetBrains Mono */

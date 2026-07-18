@@ -30,6 +30,10 @@ export function getGlobeLod(altitude: number): GlobeLod {
   else if (altitude > 0.28) tier = "near";
   else tier = "village";
 
+  return globeLodFromTier(tier);
+}
+
+export function globeLodFromTier(tier: GlobeLodTier): GlobeLod {
   return { tier, label: LABELS[tier], radiusDeg: RADIUS_DEG[tier] };
 }
 

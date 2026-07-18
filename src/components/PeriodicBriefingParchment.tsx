@@ -58,8 +58,11 @@ function PhotoNewsLampParchment({
   const [isNarrow, setIsNarrow] = useState(false);
   const parchmentStack =
     lang === "en"
-      ? "var(--font-parchment-en)"
+      ? "var(--font-intel)"
       : 'var(--font-wanted), "Wanted Sans Variable", "Wanted Sans", sans-serif';
+  /** 기사 본문·메타 — 검정 통일 */
+  const articleInk = "#000000";
+  const articleInkMuted = "rgba(0,0,0,0.72)";
   const exiting = phase === "folding" || phase === "done";
   const news = briefing.featuredNews ?? [];
   const macroRows = briefing.macroTable ?? [];
@@ -275,29 +278,44 @@ function PhotoNewsLampParchment({
                             ) : null}
                           </div>
                           <div className="flex items-stretch gap-3 px-4 py-4 sm:gap-4 sm:px-5 sm:py-5">
-                            <div className="min-w-0 flex-1">
-                              <div className="flex flex-wrap items-center gap-2 text-[10px] uppercase tracking-[0.16em] text-[#6b4a22]/65">
+                            <div className="min-w-0 flex-1" style={{ color: articleInk }}>
+                              <div
+                                className="flex flex-wrap items-center gap-2 text-[10px] uppercase tracking-[0.16em]"
+                                style={{ color: articleInkMuted }}
+                              >
                                 <span>{item.source}</span>
                                 <span aria-hidden>·</span>
                                 <span>T{item.trustTier}</span>
                                 {item.focusLabel ? (
                                   <>
                                     <span aria-hidden>·</span>
-                                    <span className="normal-case tracking-[0.04em] text-[#5a3d1c]/9">
+                                    <span
+                                      className="normal-case tracking-[0.04em]"
+                                      style={{ color: articleInk }}
+                                    >
                                       {item.focusLabel}
                                     </span>
                                   </>
                                 ) : null}
                               </div>
-                              <h2 className="mt-2 text-[1.2rem] leading-snug tracking-[0.02em] text-[#3d2a18] sm:text-[1.45rem] sm:leading-snug">
+                              <h2
+                                className="mt-2 text-[1.2rem] leading-snug tracking-[0.02em] sm:text-[1.45rem] sm:leading-snug"
+                                style={{ color: articleInk, fontFamily: parchmentStack }}
+                              >
                                 {item.title}
                               </h2>
                               {item.matterHook ? (
-                                <p className="mt-2 text-[12px] leading-snug text-[#6b4a22]/85 sm:text-[13px]">
+                                <p
+                                  className="mt-2 text-[12px] leading-snug sm:text-[13px]"
+                                  style={{ color: articleInkMuted, fontFamily: parchmentStack }}
+                                >
                                   {item.matterHook}
                                 </p>
                               ) : null}
-                              <p className="mt-3 text-[0.98rem] leading-[1.75] text-[#5a4428]/92 sm:text-[1.08rem] sm:leading-[1.8]">
+                              <p
+                                className="mt-3 text-[0.98rem] leading-[1.75] sm:text-[1.08rem] sm:leading-[1.8]"
+                                style={{ color: articleInk, fontFamily: parchmentStack }}
+                              >
                                 {item.summary}
                               </p>
                               {!isEconomy ? (

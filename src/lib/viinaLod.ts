@@ -1,6 +1,6 @@
 import type { GeoJsonGeometry, UkraineControlZone } from "@/data/geoTypes";
 import { EXTREME_ZOOM_ALTITUDE } from "@/lib/globeCamera";
-import { getGlobeLod, type GlobeLod, type GlobeLodTier } from "@/lib/globeLod";
+import { getGlobeLod, globeLodFromTier, type GlobeLod, type GlobeLodTier } from "@/lib/globeLod";
 import { haversineDistanceKm } from "@/lib/viewportCull";
 
 export type ViinaLod = GlobeLod & {
@@ -231,8 +231,8 @@ function simplifyGeometry(geometry: GeoJsonGeometry, maxPoints = 6): GeoJsonGeom
   return geometry;
 }
 
-export function getViinaLod(altitude: number): ViinaLod {
-  const base = getGlobeLod(altitude);
+export function getViinaLod(altitude: number, tier?: GlobeLodTier): ViinaLod {
+  const base = tier ? globeLodFromTier(tier) : getGlobeLod(altitude);
   let mode: ViinaLod["mode"];
   if (base.tier === "global") mode = "overview";
   else if (base.tier === "continent") mode = "overview";
@@ -304,8 +304,9 @@ export function selectViinaPolygons(
   overview: UkraineControlZone[],
   view: ViewState,
   altitude: number,
+  lodTier?: GlobeLodTier,
 ): ViinaPolygonLayers {
-  const lod = getViinaLod(altitude);
+  const lod = getViinaLod(altitude, lodTier);
 
   if (lod.mode === "hidden") {
     return {

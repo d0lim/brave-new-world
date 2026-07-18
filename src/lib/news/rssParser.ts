@@ -44,7 +44,10 @@ function stripHtml(html: string): string {
   );
 }
 
-function truncateSummary(text: string, max = 140): string {
+/** RSS 본문 스니펫 — 심층 기사 판별용 (등불 카드 요약 길이와 별개) */
+const RSS_BODY_SNIPPET_MAX = 1000;
+
+function truncateSummary(text: string, max = RSS_BODY_SNIPPET_MAX): string {
   const clean = text.trim();
   if (clean.length <= max) return clean;
   return `${clean.slice(0, max - 1).trim()}…`;
@@ -74,17 +77,19 @@ function extractImageUrl(block: string, description: string): string | undefined
 }
 
 function extractSummary(block: string, title: string): string | undefined {
+  // content:encoded 우선 — 심층 본문 스니펫
   const description =
-    tagContent(block, "description") ||
-    tagContent(block, "summary") ||
     tagContent(block, "content:encoded") ||
-    tagContent(block, "content");
+    tagContent(block, "content") ||
+    tagContent(block, "description") ||
+    tagContent(block, "summary");
 
   if (!description) return undefined;
 
   const plain = stripHtml(description);
   if (!plain || plain.toLowerCase() === title.toLowerCase()) return undefined;
-  return truncateSummary(plain);
+  // 긴 content:encoded를 남겨 심층 본문 후보를 가림 (UI 요약은 등불 picker에서 축약)
+  return truncateSummary(plain, RSS_BODY_SNIPPET_MAX);
 }
 
 export function parseRssXml(xml: string): RawRssItem[] {

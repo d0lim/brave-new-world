@@ -69,14 +69,33 @@ import {
 } from "@/components/AirRaidOnboardingCoach";
 import { PeriodicBriefingParchment } from "@/components/PeriodicBriefingParchment";
 import {
+  AirRaidBriefingParchment,
+  type AirRaidBriefingContent,
+} from "@/components/AirRaidBriefingParchment";
+import {
+  AirRaidOfferBanner,
+  type AirRaidOffer,
+  markAirRaidFlyBriefDone,
+  shouldOfferAirRaidFlyBrief,
+} from "@/components/AirRaidOfferBanner";
+import { matchCasualtyFrontIdsFromHover } from "@/lib/casualtyFrontHover";
+import { geocodeUkraineAlertRegion } from "@/lib/ukraineAlertZones";
+import {
   buildBriefingFromStats,
+  buildLampMacroTable,
   buildPeriodicBriefing,
   hasSeenPeriod,
   lampSeenKey,
   markPeriodSeen,
+  pickConflictLampNews,
+  pickEconomyLampNews,
   resolveLampPeriod,
+  shortenEconomyLampParagraphs,
+  CONFLICT_LAMP_NEWS_MIN,
+  ECONOMY_LAMP_NEWS_MIN,
   type PeriodicBriefing,
 } from "@/lib/news/periodicBriefing";
+import type { NewsStreamItem, NewsStreamPayload } from "@/lib/news/types";
 import type { BriefingPeriodStats } from "@/lib/briefingPeriodStats";
 import { useLocalCalendarDayKey } from "@/hooks/useLocalCalendarDayKey";
 import { EntryCautionOverlay } from "@/components/EntryCautionOverlay";
@@ -1512,8 +1531,14 @@ export function GlobeDashboard({
   const frictionCoachListAckRef = useRef(false);
   const [showAirRaidCoach, setShowAirRaidCoach] = useState(false);
   const [periodicBriefing, setPeriodicBriefing] = useState<PeriodicBriefing | null>(null);
+  /** 오늘 등불 파이프라인 종료 여부(표시·스킵·이미 봄). false면 공습/이슈 UI 보류 */
+  const [dailyLampSettled, setDailyLampSettled] = useState(false);
+  const [airRaidBriefing, setAirRaidBriefing] = useState<AirRaidBriefingContent | null>(null);
+  const [airRaidOffer, setAirRaidOffer] = useState<AirRaidOffer | null>(null);
   /** 로컬 자정에 바뀜 — 매일 등불 재점화 트리거 */
   const calendarDayKey = useLocalCalendarDayKey();
+  /** 등불 양피지가 떠 있거나 아직 오늘 등불이 끝나지 않으면 공습·이슈 UI 정지 */
+  const issueUiPausedForLamp = Boolean(periodicBriefing) || !dailyLampSettled;
   const battlefieldSoftZoneRef = useRef<BattlefieldZone | null>(null);
   const battlefieldManualUntilRef = useRef(0);
   const [showViewerIntro, setShowViewerIntro] = useState(false);
@@ -1567,6 +1592,10 @@ export function GlobeDashboard({
   const [airRaidFocusPaths, setAirRaidFocusPaths] = useState<TransportPath[]>([]);
   const [airRaidFocusBox, setAirRaidFocusBox] = useState<AirRaidFocusBox | null>(null);
   const airRaidFocusClearRef = useRef<number | null>(null);
+  /** 첫 스냅샷은 seen만 채우고 자동 fly 금지 */
+  const seenAirRaidKeysRef = useRef<Set<string> | null>(null);
+  const airRaidAutoBusyRef = useRef(false);
+  const airRaidAutoSeqRef = useRef(0);
 
   const parseEastAsiaAdiz = useCallback(
     (raw: unknown) => raw as FeatureCollection,
@@ -3494,16 +3523,13 @@ export function GlobeDashboard({
 
   const tzevaAdomDisplayPoints = useMemo<TzevaAdomGlobePoint[]>(() => {
     if (!showTzevaAdom) return [];
-    const source =
-      tzevaAdomActive.length > 0
-        ? tzevaAdomActive
-        : tzevaAdomHistory.filter((alert) => alert.active).slice(0, 24);
-    return source.map((alert) => ({
+    // 활성 경보만 — history fallback은 해제 후에도 빨간 마커가 남는 원인
+    return tzevaAdomActive.map((alert) => ({
       ...alert,
       markerId: `tzeva-${alert.id}`,
       displayKind: "tzeva-adom" as const,
     }));
-  }, [showTzevaAdom, tzevaAdomActive, tzevaAdomHistory]);
+  }, [showTzevaAdom, tzevaAdomActive]);
 
   const newfeedsAttackDisplayPoints = useMemo<NewfeedsAttackGlobePoint[]>(() => {
     if (!showNewfeedsIranAttacks) return [];
@@ -3969,6 +3995,71 @@ export function GlobeDashboard({
     }));
   }, [hapiCasualties, isCompactUi, isEconomyViewer, labelLanguage]);
 
+  /** 평소 숨김 — 전선(VIINA adm1 / conflict-zone) 호버 시에만 표시 */
+  const visibleCasualtySkullMarkers = useMemo(() => {
+    if (casualtySkullMarkers.length === 0) return [];
+
+    let hover:
+      | {
+          kind: "ukraine-adm1" | "conflict-zone" | "near-point";
+          adm1?: string | null;
+          name?: string | null;
+          lat?: number;
+          lng?: number;
+        }
+      | null = null;
+
+    if (hoveredPolygon) {
+      if (isUkraineViinaPolygonLayer(hoveredPolygon.polygonLayer)) {
+        const zone = hoveredPolygon as UkraineControlZone & {
+          polygonLayer: "ukraine-ru" | "ukraine-ua" | "ukraine-contested";
+        };
+        hover = {
+          kind: "ukraine-adm1",
+          adm1: zone.adm1 || zone.name || zone.nameLong,
+        };
+      } else if (hoveredPolygon.polygonLayer === "conflict-zone") {
+        hover = {
+          kind: "conflict-zone",
+          name: hoveredPolygon.name,
+          lat: hoveredPolygon.center.lat,
+          lng: hoveredPolygon.center.lng,
+        };
+      }
+    } else if (
+      hoveredPath &&
+      (hoveredPath.kind === "ukraine-ru-front" ||
+        hoveredPath.kind === "ukraine-ua-front" ||
+        hoveredPath.kind === "ukraine-contested-front" ||
+        hoveredPath.kind === "ukraine-combat-zone")
+    ) {
+      const pts = hoveredPath.points;
+      if (pts.length > 0) {
+        const mid = pts[Math.floor(pts.length / 2)];
+        hover = {
+          kind: "near-point",
+          name: hoveredPath.name,
+          lat: mid.lat,
+          lng: mid.lng,
+        };
+      }
+    }
+
+    const ids = new Set(
+      matchCasualtyFrontIdsFromHover(
+        casualtySkullMarkers.map((m) => ({
+          id: m.id,
+          admin1Name: m.admin1Name,
+          lat: m.lat,
+          lng: m.lng,
+        })),
+        hover,
+      ),
+    );
+    if (ids.size === 0) return [];
+    return casualtySkullMarkers.filter((m) => ids.has(m.id));
+  }, [casualtySkullMarkers, hoveredPath, hoveredPolygon]);
+
   /**
    * OWID 핵탄두 보유량 — 각국 좌표 위 ICBM 아이콘 + 탄두 수 (지정학 뷰 자동 표시).
    * 전장 사상자 마커와 좌표가 겹치면(예: 이스라엘 ↔ 가자·남레바논) 사상자 군집에서
@@ -4075,7 +4166,7 @@ export function GlobeDashboard({
       ...globePoints,
       ...airportPortHtmlMarkers,
       ...situationCalloutMarkers,
-      ...casualtySkullMarkers,
+      ...visibleCasualtySkullMarkers,
       ...nuclearStockpileMarkers,
       ...ukraineSettlementHtmlMarkers,
       ...usCarrierHtmlMarkers,
@@ -4092,7 +4183,7 @@ export function GlobeDashboard({
   }, [
       aisHtmlMarkers,
       airportPortHtmlMarkers,
-      casualtySkullMarkers,
+      visibleCasualtySkullMarkers,
       frictionPinMarkers,
       frictionStageMarkers,
       gdeltTagHtmlMarkers,
@@ -6977,9 +7068,10 @@ export function GlobeDashboard({
     viewerMode,
   ]);
 
-  /** 공습경보 칩이 처음 보일 때 1회 설명 */
+  /** 공습경보 칩이 처음 보일 때 1회 설명 — 등불 양피지가 닫힌 뒤에만 */
   useEffect(() => {
     if (isEconomyViewer) return;
+    if (issueUiPausedForLamp) return;
     if (isLoading || loadError || !globeReady) return;
     if (entryGate !== null || showModePicker || chromeCoachStep) return;
     if (shouldOfferChromeCoach()) return;
@@ -6993,6 +7085,7 @@ export function GlobeDashboard({
     entryGate,
     globeReady,
     isEconomyViewer,
+    issueUiPausedForLamp,
     isLoading,
     loadError,
     neptunAlertCount,
@@ -7019,6 +7112,7 @@ export function GlobeDashboard({
 
     if (periodicBriefing?.key === lampKey) return;
     if (hasSeenPeriod(lampKey)) {
+      setDailyLampSettled(true);
       // 오늘 등불 이미 봄 → 첫 방문 크롬 코치만 이어서
       if (shouldOfferChromeCoach() && !chromeCoachStep) {
         const coachTimer = window.setTimeout(() => setChromeCoachStep("nav"), 900);
@@ -7033,36 +7127,126 @@ export function GlobeDashboard({
         let content: PeriodicBriefing | null = null;
         if (viewerMode === "economy") {
           try {
-            const lampRes = await fetch(
-              `/api/world-stats/market-lamp?dayKey=${encodeURIComponent(dayPart)}&lang=${labelLanguage === "en" ? "en" : "ko"}`,
-              { cache: "no-store" },
-            );
+            const langQs = labelLanguage === "en" ? "en" : "ko";
+            const [lampRes, newsRes] = await Promise.all([
+              fetch(
+                `/api/world-stats/market-lamp?dayKey=${encodeURIComponent(dayPart)}&lang=${langQs}`,
+                { cache: "no-store" },
+              ),
+              fetch(`/api/news-stream?packages=geo-trader&lang=${langQs}`, { cache: "no-store" }),
+            ]);
+
+            const kicker =
+              labelLanguage === "en"
+                ? tier === "monthly"
+                  ? "This month's market lamp"
+                  : tier === "weekly"
+                    ? "This week's market lamp"
+                    : "Today's market lamp"
+                : tier === "monthly"
+                  ? "이번 달 시장 등불"
+                  : tier === "weekly"
+                    ? "이번 주 시장 등불"
+                    : "오늘의 시장 등불";
+
+            let focusTitle =
+              labelLanguage === "en" ? "Markets in focus" : "시장이 주목하는 뉴스";
+            let paragraphs: string[] = [];
+            let macroTable = buildLampMacroTable([], labelLanguage);
+
             if (lampRes.ok) {
               const lamp = (await lampRes.json()) as {
                 disabled?: boolean;
                 focusTitle?: string;
                 paragraphs?: string[];
+                macros?: Array<{
+                  name?: string | null;
+                  id?: string | null;
+                  inflationPct?: number | null;
+                  gdpGrowthPct?: number | null;
+                  unemploymentPct?: number | null;
+                  gdpPerCapitaUsd?: number | null;
+                  gdpUsd?: number | null;
+                }>;
               };
-              if (!lamp.disabled && lamp.paragraphs && lamp.paragraphs.length > 0) {
-                const kicker =
-                  labelLanguage === "en"
-                    ? tier === "monthly"
-                      ? "This month's market lamp"
-                      : tier === "weekly"
-                        ? "This week's market lamp"
-                        : "Today's market lamp"
-                    : tier === "monthly"
-                      ? "이번 달 시장 등불"
-                      : tier === "weekly"
-                        ? "이번 주 시장 등불"
-                        : "오늘의 시장 등불";
-                content = {
-                  tier,
-                  key: lampKey,
-                  title: `${kicker}\n${lamp.focusTitle ?? (labelLanguage === "en" ? "Macro pulse" : "거시 펄스")}`,
-                  paragraphs: lamp.paragraphs,
-                };
+              if (!lamp.disabled) {
+                if (lamp.focusTitle) focusTitle = lamp.focusTitle;
+                paragraphs = shortenEconomyLampParagraphs(lamp.paragraphs ?? [], 1);
+                if (lamp.macros && lamp.macros.length > 0) {
+                  macroTable = buildLampMacroTable(lamp.macros, labelLanguage);
+                }
               }
+            }
+
+            let featuredNews = pickEconomyLampNews([], ECONOMY_LAMP_NEWS_MIN, langQs);
+            if (newsRes.ok) {
+              const newsPayload = (await newsRes.json()) as NewsStreamPayload;
+              const pool: NewsStreamItem[] = [
+                ...(newsPayload.hero ? [newsPayload.hero] : []),
+                ...(newsPayload.verified ?? []),
+                ...(newsPayload.stateMedia ?? []),
+              ];
+              featuredNews = pickEconomyLampNews(pool, ECONOMY_LAMP_NEWS_MIN, langQs);
+            }
+
+            if (macroTable.length > 0 || featuredNews.length > 0 || paragraphs.length > 0) {
+              content = {
+                tier,
+                key: lampKey,
+                title: `${kicker}\n${focusTitle}`,
+                // 지경학은 표·뉴스가 본문 — 긴 서술 브리핑은 쓰지 않음
+                paragraphs: [],
+                macroTable,
+                featuredNews,
+              };
+            }
+          } catch {
+            // fall through
+          }
+        } else {
+          // 지정학 — 전장 사진 뉴스 등불 (브리핑 서술 대신)
+          try {
+            const langQs = labelLanguage === "en" ? "en" : "ko";
+            const newsRes = await fetch(
+              `/api/news-stream?packages=conflict-watch&lang=${langQs}`,
+              { cache: "no-store" },
+            );
+            const kicker =
+              labelLanguage === "en"
+                ? tier === "monthly"
+                  ? "This month's theater lamp"
+                  : tier === "weekly"
+                    ? "This week's theater lamp"
+                    : "Today's theater lamp"
+                : tier === "monthly"
+                  ? "이번 달 전장 등불"
+                  : tier === "weekly"
+                    ? "이번 주 전장 등불"
+                    : "오늘의 전장 등불";
+            const focusTitle =
+              labelLanguage === "en"
+                ? "High-trust photo desk"
+                : "고신뢰 사진 데스크";
+
+            let featuredNews = pickConflictLampNews([], CONFLICT_LAMP_NEWS_MIN, langQs);
+            if (newsRes.ok) {
+              const newsPayload = (await newsRes.json()) as NewsStreamPayload;
+              const pool: NewsStreamItem[] = [
+                ...(newsPayload.hero ? [newsPayload.hero] : []),
+                ...(newsPayload.verified ?? []),
+                ...(newsPayload.stateMedia ?? []),
+              ];
+              featuredNews = pickConflictLampNews(pool, CONFLICT_LAMP_NEWS_MIN, langQs);
+            }
+
+            if (featuredNews.length > 0) {
+              content = {
+                tier,
+                key: lampKey,
+                title: `${kicker}\n${focusTitle}`,
+                paragraphs: [],
+                featuredNews,
+              };
             }
           } catch {
             // fall through
@@ -7098,7 +7282,66 @@ export function GlobeDashboard({
           content = buildPeriodicBriefing(viewerMode, labelLanguage);
           if (content) content = { ...content, key: lampKey };
         }
-        if (!cancelled && content) setPeriodicBriefing(content);
+        // 사진 뉴스 폴백 — 모드별 picker
+        if (content) {
+          const langQs = labelLanguage === "en" ? "en" : "ko";
+          const needNews = !content.featuredNews || content.featuredNews.length === 0;
+          if (viewerMode === "economy") {
+            if (needNews) {
+              try {
+                const newsRes = await fetch(
+                  `/api/news-stream?packages=geo-trader&lang=${langQs}`,
+                  { cache: "no-store" },
+                );
+                if (newsRes.ok) {
+                  const newsPayload = (await newsRes.json()) as NewsStreamPayload;
+                  const pool: NewsStreamItem[] = [
+                    ...(newsPayload.hero ? [newsPayload.hero] : []),
+                    ...(newsPayload.verified ?? []),
+                    ...(newsPayload.stateMedia ?? []),
+                  ];
+                  content = {
+                    ...content,
+                    paragraphs: [],
+                    featuredNews: pickEconomyLampNews(pool, ECONOMY_LAMP_NEWS_MIN, langQs),
+                  };
+                }
+              } catch {
+                /* keep content */
+              }
+            } else {
+              content = { ...content, paragraphs: [] };
+            }
+          } else if (needNews) {
+            try {
+              const newsRes = await fetch(
+                `/api/news-stream?packages=conflict-watch&lang=${langQs}`,
+                { cache: "no-store" },
+              );
+              if (newsRes.ok) {
+                const newsPayload = (await newsRes.json()) as NewsStreamPayload;
+                const pool: NewsStreamItem[] = [
+                  ...(newsPayload.hero ? [newsPayload.hero] : []),
+                  ...(newsPayload.verified ?? []),
+                  ...(newsPayload.stateMedia ?? []),
+                ];
+                content = {
+                  ...content,
+                  paragraphs: [],
+                  featuredNews: pickConflictLampNews(pool, CONFLICT_LAMP_NEWS_MIN, langQs),
+                };
+              }
+            } catch {
+              /* keep content */
+            }
+          } else if (content.featuredNews && content.featuredNews.length > 0) {
+            content = { ...content, paragraphs: [] };
+          }
+        }
+        if (!cancelled) {
+          if (content) setPeriodicBriefing(content);
+          setDailyLampSettled(true);
+        }
       })();
     }, 1400);
 
@@ -7123,10 +7366,20 @@ export function GlobeDashboard({
     viewerMode,
   ]);
 
-  // 모드 전환 시 다른 모드 등불을 위해 현재 양피지 상태 리셋
+  // 모드·일자 전환 시 등불 게이트 재시작 (공습·이슈 UI는 settled 전까지 보류)
   useEffect(() => {
     setPeriodicBriefing(null);
-  }, [viewerMode]);
+    setDailyLampSettled(false);
+    setAirRaidOffer(null);
+    setShowAirRaidCoach(false);
+  }, [viewerMode, calendarDayKey]);
+
+  // 등불 양피지가 뜨면 진행 중이던 공습 배너·코치 즉시 중단
+  useEffect(() => {
+    if (!periodicBriefing) return;
+    setAirRaidOffer(null);
+    setShowAirRaidCoach(false);
+  }, [periodicBriefing]);
 
   const layerDebugPrevRef = useRef<{
     labels: number;
@@ -7287,15 +7540,27 @@ export function GlobeDashboard({
   }
 
   const handleAirRaidFocus = useCallback(
-    (target: AirRaidFocusTarget, kind: AirRaidSirenKind) => {
+    (
+      target: AirRaidFocusTarget,
+      kind: AirRaidSirenKind,
+      options?: { deferSirenUntilArrive?: boolean; skipSiren?: boolean },
+    ) => {
       flyTo(target.lat, target.lng, AIR_RAID_FLY_ALTITUDE, AIR_RAID_FLY_MS);
       // 공습경보 레이어 OFF면 사이렌 없음 (시각 포커스·빗금만)
-      playAirRaidSirenAfterFly(kind, AIR_RAID_SIREN_DELAY_MS, () => {
-        const prefs = layerPrefsLiveRef.current;
-        if (kind === "tzeva") return prefs.showTzevaAdom;
-        if (kind === "neptun") return prefs.showNeptun;
-        return false;
-      });
+      // 자동 fly: 도착 직후 재생 (delay ≈ fly duration)
+      if (!options?.skipSiren) {
+        const sirenDelay = options?.deferSirenUntilArrive
+          ? AIR_RAID_FLY_MS
+          : AIR_RAID_SIREN_DELAY_MS;
+        playAirRaidSirenAfterFly(kind, sirenDelay, () => {
+          // 자동 개입: 레이어 OFF여도 도착 직후 사이렌 (newfeeds 제외)
+          if (options?.deferSirenUntilArrive) return kind !== "newfeeds";
+          const prefs = layerPrefsLiveRef.current;
+          if (kind === "tzeva") return prefs.showTzevaAdom;
+          if (kind === "neptun") return prefs.showNeptun;
+          return false;
+        });
+      }
       if (airRaidFocusClearRef.current != null) {
         window.clearTimeout(airRaidFocusClearRef.current);
         airRaidFocusClearRef.current = null;
@@ -7313,6 +7578,215 @@ export function GlobeDashboard({
     },
     [flyTo],
   );
+
+  /** 신규 공습경보 — 최초 1회만 선택 배너 (이후 칩으로만 이동). 등불 닫힌 뒤에만 */
+  useEffect(() => {
+    if (isEconomyViewer || entryGate !== null || showModePicker) {
+      return;
+    }
+    if (issueUiPausedForLamp) {
+      return;
+    }
+    if (!shouldOfferAirRaidFlyBrief()) {
+      return;
+    }
+
+    const keys: string[] = [];
+    const candidates: AirRaidOffer[] = [];
+
+    for (const alert of tzevaAdomActive) {
+      const key = `tzeva:${alert.id}`;
+      keys.push(key);
+      candidates.push({
+        key,
+        kind: "tzeva",
+        target: {
+          lat: alert.lat,
+          lng: alert.lng,
+          label: translateOrefRegion(alert.region || "", labelLanguage) || alert.region,
+        },
+        title: translateOrefTitle(alert.title || "", labelLanguage) || alert.title,
+        since: alert.alertDate,
+        activeCount: tzevaAdomActive.length,
+      });
+    }
+
+    for (const region of neptunAlerts?.raions ?? []) {
+      const key = `neptun:r:${region.key}`;
+      keys.push(key);
+      const coords = geocodeUkraineAlertRegion(region.name, region.oblast, region.key);
+      candidates.push({
+        key,
+        kind: "neptun",
+        target: {
+          lat: coords.lat,
+          lng: coords.lng,
+          label: region.name || region.oblast || region.key,
+        },
+        title: region.oblast,
+        since: region.since,
+        activeCount:
+          (neptunAlerts?.raions?.length ?? 0) + (neptunAlerts?.oblasts?.length ?? 0),
+      });
+    }
+    for (const region of neptunAlerts?.oblasts ?? []) {
+      const key = `neptun:o:${region.key}`;
+      keys.push(key);
+      const coords = geocodeUkraineAlertRegion(region.name, region.oblast, region.key);
+      candidates.push({
+        key,
+        kind: "neptun",
+        target: {
+          lat: coords.lat,
+          lng: coords.lng,
+          label: region.name || region.oblast || region.key,
+        },
+        title: region.oblast,
+        since: region.since,
+        activeCount:
+          (neptunAlerts?.raions?.length ?? 0) + (neptunAlerts?.oblasts?.length ?? 0),
+      });
+    }
+
+    if (seenAirRaidKeysRef.current === null) {
+      seenAirRaidKeysRef.current = new Set(keys);
+      return;
+    }
+
+    const seen = seenAirRaidKeysRef.current;
+    const fresh = candidates.find((c) => !seen.has(c.key));
+    for (const k of keys) seen.add(k);
+    if (
+      !fresh ||
+      airRaidAutoBusyRef.current ||
+      airRaidOffer ||
+      airRaidBriefing ||
+      periodicBriefing
+    ) {
+      return;
+    }
+
+    setAirRaidOffer(fresh);
+  }, [
+    airRaidBriefing,
+    airRaidOffer,
+    entryGate,
+    isEconomyViewer,
+    issueUiPausedForLamp,
+    labelLanguage,
+    neptunAlerts,
+    periodicBriefing,
+    showModePicker,
+    tzevaAdomActive,
+  ]);
+
+  /** 폴링 데이터가 해제이면 배너·빗금 포커스도 즉시 끔 */
+  useEffect(() => {
+    const tzevaOn = tzevaAdomActive.length > 0;
+    const neptunOn =
+      (neptunAlerts?.raions?.length ?? 0) + (neptunAlerts?.oblasts?.length ?? 0) > 0;
+
+    if (airRaidOffer) {
+      if (airRaidOffer.kind === "tzeva" && !tzevaOn) setAirRaidOffer(null);
+      else if (airRaidOffer.kind === "neptun" && !neptunOn) setAirRaidOffer(null);
+    }
+
+    if (!tzevaOn && !neptunOn) {
+      if (airRaidFocusClearRef.current != null) {
+        window.clearTimeout(airRaidFocusClearRef.current);
+        airRaidFocusClearRef.current = null;
+      }
+      setAirRaidFocusPaths([]);
+      setAirRaidFocusBox(null);
+    }
+  }, [airRaidOffer, neptunAlerts, tzevaAdomActive]);
+
+  const acceptAirRaidOffer = useCallback(() => {
+    const offer = airRaidOffer;
+    if (!offer || airRaidAutoBusyRef.current) return;
+
+    markAirRaidFlyBriefDone();
+    airRaidAutoBusyRef.current = true;
+    setAirRaidOffer(null);
+    const seq = ++airRaidAutoSeqRef.current;
+    const lang = labelLanguage === "en" ? "en" : "ko";
+    const regionLabel = offer.target.label || (lang === "en" ? "Alert zone" : "경보 구역");
+
+    handleAirRaidFocus(offer.target, offer.kind, { deferSirenUntilArrive: true });
+
+    void (async () => {
+      try {
+        const res = await fetch("/api/air-raid-brief", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            kind: offer.kind,
+            lang,
+            region: regionLabel,
+            title: offer.title,
+            lat: offer.target.lat,
+            lng: offer.target.lng,
+            since: offer.since,
+            activeCount: offer.activeCount,
+          }),
+        });
+        const data = (await res.json().catch(() => null)) as {
+          title?: string;
+          paragraphs?: string[];
+        } | null;
+        if (seq !== airRaidAutoSeqRef.current) return;
+        const title =
+          data?.title?.trim() ||
+          (lang === "en" ? `Air-raid alert · ${regionLabel}` : `공습경보 · ${regionLabel}`);
+        const paragraphs =
+          Array.isArray(data?.paragraphs) && data.paragraphs.length > 0
+            ? data.paragraphs
+            : lang === "en"
+              ? [
+                  `An air-raid alert was received for ${regionLabel}.`,
+                  "Attacker and munition type are not confirmed by this alert feed alone.",
+                ]
+              : [
+                  `${regionLabel} 일대에 공습경보가 수신되었습니다.`,
+                  "공격 주체·무기 유형은 이 경보 피드만으로 확정할 수 없습니다.",
+                ];
+
+        window.setTimeout(() => {
+          if (seq !== airRaidAutoSeqRef.current) return;
+          setAirRaidBriefing({
+            kind: offer.kind,
+            title,
+            paragraphs,
+          });
+        }, AIR_RAID_FLY_MS);
+      } catch {
+        if (seq !== airRaidAutoSeqRef.current) return;
+        window.setTimeout(() => {
+          if (seq !== airRaidAutoSeqRef.current) return;
+          setAirRaidBriefing({
+            kind: offer.kind,
+            title: lang === "en" ? `Air-raid alert · ${regionLabel}` : `공습경보 · ${regionLabel}`,
+            paragraphs:
+              lang === "en"
+                ? [
+                    `An air-raid alert was received for ${regionLabel}.`,
+                    "Further details are unverified.",
+                  ]
+                : [
+                    `${regionLabel} 일대에 공습경보가 수신되었습니다.`,
+                    "추가 전언은 미확인으로 취급합니다.",
+                  ],
+          });
+        }, AIR_RAID_FLY_MS);
+      }
+    })();
+  }, [airRaidOffer, handleAirRaidFocus, labelLanguage]);
+
+  const dismissAirRaidOffer = useCallback(() => {
+    markAirRaidFlyBriefDone();
+    setAirRaidOffer(null);
+    airRaidAutoBusyRef.current = false;
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -8074,7 +8548,7 @@ export function GlobeDashboard({
               htmlLat={(point: HtmlOverlayMarker) => point.lat}
               htmlLng={(point: HtmlOverlayMarker) => point.lng}
               htmlAltitude={(point: HtmlOverlayMarker) =>
-                point.displayKind === "casualty-skull" ? 0.002 : 0.004
+                point.displayKind === "casualty-skull" ? 0.0008 : 0.004
               }
               htmlElement={createHtmlOverlayElement}
               htmlRotation={(point: HtmlOverlayMarker) => {
@@ -8275,10 +8749,10 @@ export function GlobeDashboard({
               }}
               onPolygonClick={(feature: PolygonLayerFeature) => handlePolygonClick(feature)}
               onPolygonHover={
-                isCompactUi || (isViinaCloseZoom && showUkraineControl)
+                isCompactUi
                   ? undefined
                   : (feature: PolygonLayerFeature | null) => {
-                setHoveredPolygon(feature);
+                      setHoveredPolygon(feature);
                     }
               }
               pathsData={globePaths}
@@ -8415,7 +8889,9 @@ export function GlobeDashboard({
                 if (path.kind === "dispute-hatch") return 0.55;
                 if (path.kind === "conflict-hatch") return 0.62;
                 if (path.kind === "shipping-lane") return 0.48;
-                if (path.kind === "submarine-cable") return 0.55;
+                // 해저 케이블: mapGlobeLayers.cableInverseLineWidth가 실제 px 결정
+                // (줌아웃↑굵게 · 줌인→~0.1). stroke 값은 미사용 sentinel.
+                if (path.kind === "submarine-cable") return 0.1;
                 if (path.kind === "oil-pipeline") return 0.52;
                 if (path.kind === "gas-pipeline") return 0.5;
                 if (path.kind === "arms-embargo") return ARMS_EMBARGO_STROKE_WIDTH;
@@ -8830,6 +9306,7 @@ export function GlobeDashboard({
           />
         ) : null}
         {!isCompactUi &&
+        !issueUiPausedForLamp &&
         ((!isEconomyViewer &&
           (showNeptun || neptunAlertCount > 0 || showTzevaAdom || showNewfeedsIranAttacks)) ||
           (isEconomyViewer && showNewfeedsIranAttacks)) ? (
@@ -8918,9 +9395,10 @@ export function GlobeDashboard({
       </div>
       ) : null}
 
-      {/* 모바일: 공습 경보는 하단 아이콘 — 상단 허브·주요전장 메뉴를 가리지 않음 */}
+      {/* 모바일: 공습 경보는 하단 아이콘 — 상단 허브·주요전장 메뉴를 가리지 않음. 등불 중에는 숨김 */}
       {!intelSheetOpen &&
       isCompactUi &&
+      !issueUiPausedForLamp &&
       ((!isEconomyViewer &&
         (showNeptun || neptunAlertCount > 0 || showTzevaAdom || showNewfeedsIranAttacks)) ||
         (isEconomyViewer && showNewfeedsIranAttacks)) ? (
@@ -9447,6 +9925,7 @@ export function GlobeDashboard({
       ) : null}
 
       {showAirRaidCoach &&
+      !issueUiPausedForLamp &&
       entryGate === null &&
       !showModePicker &&
       !chromeCoachStep &&
@@ -9475,6 +9954,26 @@ export function GlobeDashboard({
             if (shouldOfferChromeCoach()) {
               window.setTimeout(() => setChromeCoachStep("nav"), 500);
             }
+          }}
+        />
+      ) : null}
+
+      {airRaidOffer && !airRaidBriefing && !issueUiPausedForLamp ? (
+        <AirRaidOfferBanner
+          offer={airRaidOffer}
+          lang={labelLanguage}
+          onAccept={acceptAirRaidOffer}
+          onDismiss={dismissAirRaidOffer}
+        />
+      ) : null}
+
+      {airRaidBriefing ? (
+        <AirRaidBriefingParchment
+          briefing={airRaidBriefing}
+          lang={labelLanguage}
+          onDismiss={() => {
+            setAirRaidBriefing(null);
+            airRaidAutoBusyRef.current = false;
           }}
         />
       ) : null}

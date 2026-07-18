@@ -86,16 +86,21 @@ export async function GET() {
   });
 
   const store = getTzevaAdomStore();
+  // 업스트림이 빈 active를 주면 해제로 신뢰한다. store fallback은
+  // 경보가 꺼진 뒤에도 UI·마커가 남는 원인이다.
+  const nextActive = result.active;
+  const nextHistory = result.history.length > 0 ? result.history : store.history;
   const payload: TzevaAdomPayload = {
     fetchedAt: new Date().toISOString(),
-    live: result.active.length > 0 || result.history.length > 0,
-    active: result.active.length > 0 ? result.active : store.active,
-    history: result.history.length > 0 ? result.history : store.history,
+    live: !result.error && !result.geoRestricted,
+    active: nextActive,
+    history: nextHistory,
     geoRestricted: result.geoRestricted,
     error: result.error,
   };
 
-  if (result.history.length > 0 || result.active.length > 0) {
+  // 성공 응답(빈 active 포함)은 항상 store에 반영해 해제를 고정한다.
+  if (!result.error) {
     replaceTzevaAdomData(payload.active, payload.history, payload.fetchedAt);
   }
 

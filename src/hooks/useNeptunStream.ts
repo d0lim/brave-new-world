@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { isClientApiStubMode, isClientNeptunEnabled } from "@/lib/runtimeConfig.client";
 import { readResponseBodyText } from "@/lib/fetchJsonStream";
-import { readNeptunCache, prefetchNeptun } from "@/lib/neptunPrefetch";
+import { prefetchNeptun, writeNeptunCache, clearNeptunCache } from "@/lib/neptunPrefetch";
 import { NEPTUN_PUBLISH_THROTTLE_MS } from "@/lib/globePerformance";
 import {
   isNeptunThreatVisible,
@@ -35,6 +35,8 @@ type StreamEnvelope =
 
 const EMPTY_ALERTS: NeptunAlerts = { raions: [], oblasts: [] };
 const STUB_POLL_MS = 120_000;
+/** WS 모드에서도 경보 해제를 놓치지 않도록 REST alerts 주기 확인 */
+const ALERTS_REST_POLL_MS = 30_000;
 const RECONNECT_BASE_MS = 2000;
 const RECONNECT_MAX_MS = 30000;
 const MAX_ARCHIVED_TRAILS = 96;
@@ -234,12 +236,7 @@ export function useNeptunStream(enabled: boolean, options: NeptunStreamOptions =
     if (!enabled || !neptunClientLoadEnabled()) return;
     setStatus((prev) => (prev === "idle" ? "loading" : prev));
     try {
-      const cached = readNeptunCache();
-      if (cached) {
-        ingestPayload(cached);
-        return;
-      }
-
+      // 캐시 hit로 return 하면 alerts가 비어 있어도 이전 경보가 남는다 → 항상 재fetch
       const payload = await prefetchNeptun();
       if (payload) {
         ingestPayload(payload);
@@ -256,6 +253,8 @@ export function useNeptunStream(enabled: boolean, options: NeptunStreamOptions =
       } else {
         next = (await res.json()) as NeptunPayload;
       }
+      if (!next.alerts) next.alerts = EMPTY_ALERTS;
+      writeNeptunCache(next);
       ingestPayload(next);
     } catch (err) {
       setStatus("error");
@@ -419,6 +418,7 @@ export function useNeptunStream(enabled: boolean, options: NeptunStreamOptions =
       setStatus("idle");
       setError(null);
       setServerTime(null);
+      clearNeptunCache();
       stopAnimationLoop();
       cleanupWs();
       if (pollTimerRef.current != null) {
@@ -436,8 +436,15 @@ export function useNeptunStream(enabled: boolean, options: NeptunStreamOptions =
     } else if (neptunWsEnabled()) {
       connectWebSocket();
       void refreshRest();
+      // WS alerts 프레임이 비어 오지 않아도 REST로 해제를 반영
+      pollTimerRef.current = window.setInterval(() => {
+        void refreshRest();
+      }, ALERTS_REST_POLL_MS);
     } else {
       void refreshRest();
+      pollTimerRef.current = window.setInterval(() => {
+        void refreshRest();
+      }, ALERTS_REST_POLL_MS);
     }
 
     return () => {

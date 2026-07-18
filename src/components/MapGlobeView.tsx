@@ -321,6 +321,10 @@ export const MapGlobeView = forwardRef<MapGlobeMethods, MapGlobeViewProps>(funct
         stroke: a.pathStroke,
         dashLength: a.pathDashLength,
         dashGap: a.pathDashGap,
+        kind: (item) =>
+          item && typeof item === "object" && "kind" in item
+            ? String((item as { kind?: string }).kind ?? "")
+            : undefined,
       },
       mapZoom,
     );
@@ -339,6 +343,10 @@ export const MapGlobeView = forwardRef<MapGlobeMethods, MapGlobeViewProps>(funct
         stroke: a.pathStroke,
         dashLength: a.pathDashLength,
         dashGap: a.pathDashGap,
+        kind: (item) =>
+          item && typeof item === "object" && "kind" in item
+            ? String((item as { kind?: string }).kind ?? "")
+            : undefined,
       },
       mapZoom,
     );

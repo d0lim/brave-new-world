@@ -16,6 +16,22 @@ export type LayerPrefs = {
   showOilPipelines: boolean;
   showGasPipelines: boolean;
   showLngTerminals: boolean;
+  /** GEM 자원 트래커 — 지구본 체크박스 */
+  showGemCoalPlants: boolean;
+  showGemCoalMines: boolean;
+  showGemCoalTerminals: boolean;
+  showGemNuclear: boolean;
+  showGemSolar: boolean;
+  showGemWind: boolean;
+  showGemHydro: boolean;
+  showGemGeothermal: boolean;
+  showGemBioenergy: boolean;
+  showGemOilGasPlants: boolean;
+  showGemOilGasExtraction: boolean;
+  showGemIronOre: boolean;
+  showGemCement: boolean;
+  showGemSteel: boolean;
+  showGemChemicals: boolean;
   showAirports: boolean;
   showPorts: boolean;
   /** 해상 초크포인트 · 핵심 물류 거점(터널·교량) */
@@ -50,6 +66,8 @@ export type LayerPrefs = {
   showGdeltDiplomatic: boolean;
   showGdeltAlliance: boolean;
   showGdeltProtests: boolean;
+  /** 태평양·대서양·북극해 지정학 경쟁·외교 GDELT */
+  showGdeltOceanCompetition: boolean;
   showTelegramOsint: boolean;
   /** 이스라엘 Tzeva Adom (Pikud HaOref) 실시간 경보 */
   showTzevaAdom: boolean;
@@ -58,6 +76,16 @@ export type LayerPrefs = {
    * @see https://github.com/ktoetotam/NewFeeds
    */
   showNewfeedsIranAttacks: boolean;
+  /** 중국↔대만 대치 (대만해협·남중국해·서태평양 · 네온 리플) */
+  showChinaTaiwanIncidents: boolean;
+  /** 중국↔일본 대치 (동중국해·센카쿠 · 네온 리플) */
+  showChinaJapanIncidents: boolean;
+  /** 중국↔필리핀 해상충돌 (남중국해 · 네온 리플) */
+  showChinaPhilippinesIncidents: boolean;
+  /** 미국↔중국 군사마찰 (서태평양·남중국해 · 네온 리플) */
+  showUsChinaIncidents: boolean;
+  /** 북한 미사일·무기실험 (주황 네온 · 발사·실험 발생지) */
+  showNorthKoreaMissileTests: boolean;
   /** NEPTUN — 우크라이나 드론·미사일·탄도미사일 실시간 궤적 (neptun.in.ua) */
   showNeptun: boolean;
   /** 사라진 드론·미사일의 지나간 이동 경로 */
@@ -77,8 +105,8 @@ export type LayerPrefs = {
 
 export type MobileHomeView = "alerts" | "globe";
 
-/** v21: 분쟁 → 전쟁구역 / 외교적 긴장 분리 */
-export const LAYER_PREFS_KEY = "geowatch-layers-v21";
+/** v27: 추정 탄착 포물선 제거 — NEPTUN(실측) + 발사/대치 네온만 */
+export const LAYER_PREFS_KEY = "geowatch-layers-v27";
 
 /** 토글 가능 레이어는 기본 OFF. 활성 전장(이란·우크라) 전쟁구역만 기본 ON */
 export const DEFAULT_LAYER_PREFS: LayerPrefs = {
@@ -93,6 +121,21 @@ export const DEFAULT_LAYER_PREFS: LayerPrefs = {
   showOilPipelines: false,
   showGasPipelines: false,
   showLngTerminals: false,
+  showGemCoalPlants: false,
+  showGemCoalMines: false,
+  showGemCoalTerminals: false,
+  showGemNuclear: false,
+  showGemSolar: false,
+  showGemWind: false,
+  showGemHydro: false,
+  showGemGeothermal: false,
+  showGemBioenergy: false,
+  showGemOilGasPlants: false,
+  showGemOilGasExtraction: false,
+  showGemIronOre: false,
+  showGemCement: false,
+  showGemSteel: false,
+  showGemChemicals: false,
   showAirports: false,
   showPorts: false,
   showLogisticsRisk: false,
@@ -121,9 +164,15 @@ export const DEFAULT_LAYER_PREFS: LayerPrefs = {
   showGdeltDiplomatic: false,
   showGdeltAlliance: false,
   showGdeltProtests: false,
+  showGdeltOceanCompetition: true,
   showTelegramOsint: true,
   showTzevaAdom: false,
   showNewfeedsIranAttacks: true,
+  showChinaTaiwanIncidents: false,
+  showChinaJapanIncidents: false,
+  showChinaPhilippinesIncidents: false,
+  showUsChinaIncidents: false,
+  showNorthKoreaMissileTests: false,
   showNeptun: true,
   showNeptunPreviousTrails: false,
   showEastAsiaAdiz: false,
@@ -136,6 +185,11 @@ export const DEFAULT_LAYER_PREFS: LayerPrefs = {
 };
 
 const LEGACY_LAYER_KEYS = [
+  "geowatch-layers-v26",
+  "geowatch-layers-v25",
+  "geowatch-layers-v24",
+  "geowatch-layers-v23",
+  "geowatch-layers-v22",
   "geowatch-layers-v20",
   "geowatch-layers-v19",
   "geowatch-layers-v18",

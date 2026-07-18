@@ -1,3 +1,5 @@
+import { recordInterestSymbol } from "@/lib/interest/recordInterest";
+
 /**
  * 관심종목 localStorage — 서버/로그인 없이 재방문용.
  * @see docs/retention-markets-roadmap.md
@@ -39,10 +41,12 @@ export function toggleWatchSymbol(symbol: string): string[] {
   const id = symbol.trim();
   if (!id) return loadWatchSymbols();
   const current = loadWatchSymbols();
-  const next = current.includes(id)
-    ? current.filter((s) => s !== id)
-    : [...current, id].slice(0, WATCHLIST_MAX);
+  const adding = !current.includes(id);
+  const next = adding
+    ? [...current, id].slice(0, WATCHLIST_MAX)
+    : current.filter((s) => s !== id);
   saveWatchSymbols(next);
+  if (adding) recordInterestSymbol(id);
   return next;
 }
 

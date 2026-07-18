@@ -19,9 +19,16 @@
   --safe-left: env(safe-area-inset-left, 0px);
   /* Apple HIG / Material 최소 터치 타겟 */
   --tap-target-min: 44px;
-  /* Wanted Sans — UI·양피지 기본 (반서방 11대 현장만 RIDI Batang 유지) */
+  /* Wanted Sans — 한글 UI·양피지 기본 (반서방 11대 현장만 RIDI Batang 유지) */
   --font-wanted: "Wanted Sans Variable", "Wanted Sans", -apple-system, BlinkMacSystemFont,
     system-ui, "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", sans-serif;
+  /* 영문 Inter — next/font --font-inter 변수와 스택 */
+  --font-ui-en: var(--font-inter), var(--font-wanted), ui-sans-serif, system-ui, sans-serif;
+  /* 영문 양피지 본문 Merriweather */
+  --font-parchment-en: var(--font-merriweather), var(--font-wanted), Georgia, "Times New Roman",
+    serif;
+  /* 좌표·수치 JetBrains Mono */
+  --font-data-mono: var(--font-jetbrains-mono), var(--font-geist-mono), ui-monospace, monospace;
 }
 
 body {
@@ -87,21 +94,41 @@ html[data-compact="0"] .cv-compact-only {
   letter-spacing: -0.02em;
 }
 
-/** 영문 UI — Wanted Sans (라틴·한글 동일 패밀리) */
+/** 영문 UI — Inter (라틴) + Wanted (한글 폴백) */
 .font-en,
 [data-ui-lang="en"] .font-news-headline,
 main[data-ui-lang="en"] {
-  --ui-latin-font: var(--font-wanted);
+  --ui-latin-font: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+}
+
+main[data-ui-lang="en"] {
+  font-family: var(--font-ui-en);
+  letter-spacing: -0.011em;
 }
 
 main[data-ui-lang="en"] .font-news-headline,
 .font-en {
-  font-family: var(--font-wanted);
+  font-family: var(--font-ui-en);
 }
 
 main[data-viewer="economy"] .font-en,
 .hover-nav--economy .font-en {
-  font-family: var(--font-wanted);
+  font-family: var(--font-ui-en);
+}
+
+/** 영문 양피지·긴 브리핑 — Merriweather (한글은 Wanted 폴백) */
+main[data-ui-lang="en"] .parchment-letter:not(.parchment-letter--history),
+main[data-ui-lang="en"] .econ-insight-parchment,
+main[data-ui-lang="en"] .welcome-parchment {
+  font-family: var(--font-parchment-en);
+  font-optical-sizing: auto;
+}
+
+/** 좌표·시각·티커 수치 — JetBrains Mono */
+.font-mono,
+.font-data-mono {
+  font-family: var(--font-data-mono) !important;
+  font-variant-numeric: tabular-nums;
 }
 
 .parchment-type-caret {

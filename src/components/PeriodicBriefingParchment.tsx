@@ -57,7 +57,9 @@ function PhotoNewsLampParchment({
   const [expandedNews, setExpandedNews] = useState(false);
   const [isNarrow, setIsNarrow] = useState(false);
   const parchmentStack =
-    'var(--font-wanted), "Wanted Sans Variable", "Wanted Sans", sans-serif';
+    lang === "en"
+      ? "var(--font-parchment-en)"
+      : 'var(--font-wanted), "Wanted Sans Variable", "Wanted Sans", sans-serif';
   const exiting = phase === "folding" || phase === "done";
   const news = briefing.featuredNews ?? [];
   const macroRows = briefing.macroTable ?? [];

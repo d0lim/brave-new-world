@@ -117,7 +117,9 @@ export function ParchmentLetter({
   const programmaticScrollRef = useRef(false);
   const parchmentStack = historyHandFont
     ? 'var(--font-letter-hand), "RIDI Batang", "Gowun Batang", "Nanum Myeongjo", "Batang", serif'
-    : 'var(--font-wanted), "Wanted Sans Variable", "Wanted Sans", sans-serif';
+    : lang === "en"
+      ? "var(--font-parchment-en)"
+      : 'var(--font-wanted), "Wanted Sans Variable", "Wanted Sans", sans-serif';
   const bodyFont = parchmentStack;
   const titleFont = parchmentStack;
   const resolvedBackMark = backMark ?? (lang === "en" ? BRAND_NAME.en : BRAND_NAME.ko);

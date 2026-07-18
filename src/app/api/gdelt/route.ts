@@ -4,10 +4,62 @@ import { fetchGdeltThemeCached, type GdeltTheme } from "@/lib/gdeltTheme";
 import { apiStubResponse } from "@/lib/apiStub";
 import { readGdeltPointsFromD1, readGdeltFromIngestWorker } from "@/lib/d1LiveSnapshots";
 import { gdeltQuerySchema, parseSearchParams } from "@/lib/apiQuerySchemas";
+import { fetchOceanGeopoliticsGdelt } from "@/lib/gdeltOceanGeo";
+import type { ConflictEvent, EventTier } from "@/data/geoTypes";
+import { isOceanGeopoliticsTag } from "@/lib/oceanGeopoliticsTheaters";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
+
+function tierFromQueryTag(tag: string | null): EventTier {
+  const t = (tag || "").toLowerCase();
+  if (t.includes("alliance") || t.includes("axis-network")) return "alliance";
+  if (t.includes("land-war")) return "war";
+  if (t.includes("protest")) return "protest";
+  // 대양·해상·전장 tension → 외교·경쟁 태그
+  return "diplomatic";
+}
+
+function mapPoint(point: {
+  id: string;
+  lat: number;
+  lng: number;
+  name: string | null;
+  url: string | null;
+  mentionCount: number | null;
+  queryTag: string | null;
+}): ConflictEvent {
+  const title = point.name || point.queryTag || "GDELT";
+  return {
+    id: point.id,
+    globalEventId: point.id,
+    eventDate: null,
+    country: null,
+    lat: point.lat,
+    lng: point.lng,
+    category: "Strategic developments",
+    severity: 2,
+    goldsteinScale: -2,
+    sourceUrl: point.url,
+    title,
+    createdAt: null,
+    eventTier: isOceanGeopoliticsTag(point.queryTag || title)
+      ? "diplomatic"
+      : tierFromQueryTag(point.queryTag),
+  };
+}
+
+function mergeUnique(base: ConflictEvent[], extra: ConflictEvent[]): ConflictEvent[] {
+  const seen = new Set(base.map((e) => e.id));
+  const out = [...base];
+  for (const ev of extra) {
+    if (seen.has(ev.id)) continue;
+    seen.add(ev.id);
+    out.push(ev);
+  }
+  return out;
+}
 
 export async function GET(request: Request) {
   const stub = apiStubResponse("gdelt", request);
@@ -26,7 +78,6 @@ export async function GET(request: Request) {
     const preferLive = Boolean(parsed.data.live);
 
     if (theme === "cyber" || theme === "election") {
-      // Theme Geo는 D1 미적재 — 기본은 빈 응답, ?live=1 만 외부 호출
       if (!preferLive) {
         return NextResponse.json({
           theme,
@@ -47,57 +98,47 @@ export async function GET(request: Request) {
       });
     }
 
-    // Cron Geo 스냅샷 우선 — ZIP/CSV는 ?live=1 일 때만
+    // Cron 스냅샷 + 대양(태평양·대서양·북극) Geo 보강
     if (!preferLive) {
-      const mapPoint = (point: {
-        id: string;
-        lat: number;
-        lng: number;
-        name: string | null;
-        url: string | null;
-        mentionCount: number | null;
-        queryTag: string | null;
-      }) => ({
-        id: point.id,
-        kind: "gdelt-geo",
-        name: point.name || point.queryTag || "GDELT",
-        lat: point.lat,
-        lng: point.lng,
-        url: point.url,
-        mentionCount: point.mentionCount,
-        queryTag: point.queryTag,
-        severity: 2,
-        eventTier: "diplomatic" as const,
-      });
+      let events: ConflictEvent[] = [];
+      let fetchedAt = new Date().toISOString();
+      let source: "d1" | "ingest-worker" | "ocean-geo" = "d1";
+      let cached = false;
 
       const fromD1 = await readGdeltPointsFromD1(1200);
       if (fromD1 && fromD1.count > 0) {
-        return NextResponse.json({
-          fetchedAt: fromD1.fetchedAt,
-          cached: true,
-          source: "d1",
-          events: fromD1.events.map(mapPoint),
-          attribution: "GDELT Project (via Cloudflare D1 cron ingest)",
-        });
+        events = fromD1.events.map(mapPoint);
+        fetchedAt = fromD1.fetchedAt;
+        cached = true;
+        source = "d1";
+      } else {
+        const fromWorker = await readGdeltFromIngestWorker(1200);
+        if (fromWorker && fromWorker.count > 0) {
+          events = fromWorker.events.map(mapPoint);
+          fetchedAt = fromWorker.fetchedAt;
+          cached = true;
+          source = "ingest-worker";
+        }
       }
-      // D1 바인딩이 없으면(Vercel 등) cron 워커 공개 엔드포인트로 폴백
-      const fromWorker = await readGdeltFromIngestWorker(1200);
-      if (fromWorker && fromWorker.count > 0) {
-        return NextResponse.json({
-          fetchedAt: fromWorker.fetchedAt,
-          cached: true,
-          source: "ingest-worker",
-          events: fromWorker.events.map(mapPoint),
-          attribution: "GDELT Project (via Cloudflare cron worker)",
-        });
+
+      try {
+        const ocean = await fetchOceanGeopoliticsGdelt(72);
+        if (ocean.length > 0) {
+          events = mergeUnique(events, ocean);
+          if (events.length === ocean.length) source = "ocean-geo";
+        }
+      } catch {
+        /* ocean geo optional */
       }
+
       return NextResponse.json({
-        fetchedAt: new Date().toISOString(),
-        cached: false,
-        source: "d1",
-        waiting: true,
-        events: [],
-        attribution: "GDELT — D1 empty; wait for cron or ?live=1",
+        fetchedAt,
+        cached,
+        source,
+        waiting: events.length === 0,
+        events,
+        attribution:
+          "GDELT Project · land theaters + Pacific/Atlantic/Arctic competition",
       });
     }
 
@@ -106,7 +147,15 @@ export async function GET(request: Request) {
     const payload = await fetchLatestGdeltEvents(
       sliceCount && sliceCount > 0 ? { sliceCount } : undefined,
     );
-    return NextResponse.json(payload);
+    try {
+      const ocean = await fetchOceanGeopoliticsGdelt(48);
+      return NextResponse.json({
+        ...payload,
+        events: mergeUnique((payload.events as ConflictEvent[]) || [], ocean),
+      });
+    } catch {
+      return NextResponse.json(payload);
+    }
   } catch (error) {
     return NextResponse.json(
       {

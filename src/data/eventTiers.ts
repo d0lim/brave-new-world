@@ -90,6 +90,13 @@ const DIPLOMATIC_HOTSPOTS: Hotspot[] = [
   { minLat: 51, maxLat: 57, minLng: 23, maxLng: 35 },
   /** 중앙아시아 */
   { minLat: 35, maxLat: 56, minLng: 50, maxLng: 87 },
+  /** 북태평양·인태 (날짜선 wrap 근사: 동·서 박스 분리) */
+  { minLat: 0, maxLat: 55, minLng: 130, maxLng: 180 },
+  { minLat: 0, maxLat: 55, minLng: -180, maxLng: -120 },
+  /** 북대서양 */
+  { minLat: 20, maxLat: 70, minLng: -70, maxLng: 10 },
+  /** 북극해 */
+  { minLat: 66, maxLat: 90, minLng: -180, maxLng: 180 },
 ];
 
 export const GREAT_POWERS = new Set([

@@ -16,12 +16,33 @@ export const LAYER_ITEM_PREF_KEYS: Partial<Record<string, keyof LayerPrefs>> = {
   "gdelt-diplomatic": "showGdeltDiplomatic",
   "gdelt-alliance": "showGdeltAlliance",
   "gdelt-protest": "showGdeltProtests",
+  "gdelt-ocean": "showGdeltOceanCompetition",
   "telegram-osint": "showTelegramOsint",
   "tzeva-adom": "showTzevaAdom",
   "newfeeds-iran": "showNewfeedsIranAttacks",
+  "china-taiwan-incidents": "showChinaTaiwanIncidents",
+  "china-japan-incidents": "showChinaJapanIncidents",
+  "china-philippines-incidents": "showChinaPhilippinesIncidents",
+  "us-china-incidents": "showUsChinaIncidents",
+  "nk-missile-tests": "showNorthKoreaMissileTests",
   "oil-pipelines": "showOilPipelines",
   "gas-pipelines": "showGasPipelines",
   "lng-terminals": "showLngTerminals",
+  "gem-coal-plants": "showGemCoalPlants",
+  "gem-coal-mines": "showGemCoalMines",
+  "gem-coal-terminals": "showGemCoalTerminals",
+  "gem-nuclear": "showGemNuclear",
+  "gem-solar": "showGemSolar",
+  "gem-wind": "showGemWind",
+  "gem-hydro": "showGemHydro",
+  "gem-geothermal": "showGemGeothermal",
+  "gem-bioenergy": "showGemBioenergy",
+  "gem-oil-gas-plants": "showGemOilGasPlants",
+  "gem-oil-gas-extraction": "showGemOilGasExtraction",
+  "gem-iron-ore": "showGemIronOre",
+  "gem-cement": "showGemCement",
+  "gem-steel": "showGemSteel",
+  "gem-chemicals": "showGemChemicals",
   resources: "showResources",
   nuclear: "showNuclearSites",
   shipping: "showShippingLanes",
@@ -52,11 +73,18 @@ export const LAYER_ITEM_PREF_KEYS: Partial<Record<string, keyof LayerPrefs>> = {
 };
 
 export function patchFromCategoryItems(
-  items: Array<{ id: string }>,
+  items: Array<{ id: string; options?: Array<{ id: string }> }>,
   enabled: boolean,
 ): Partial<LayerPrefs> {
   const patch: Partial<LayerPrefs> = {};
   for (const item of items) {
+    if (item.options?.length) {
+      for (const opt of item.options) {
+        const key = LAYER_ITEM_PREF_KEYS[opt.id];
+        if (key) (patch as Record<string, boolean>)[key] = enabled;
+      }
+      continue;
+    }
     const key = LAYER_ITEM_PREF_KEYS[item.id];
     if (key) {
       (patch as Record<string, boolean>)[key] = enabled;

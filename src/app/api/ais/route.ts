@@ -2,8 +2,7 @@ import { NextResponse } from "next/server";
 import type { AisVessel } from "@/data/geoTypes";
 import { apiStubResponse } from "@/lib/apiStub";
 import {
-  aisShipTypeLabel,
-  classifyAisVessel,
+  enrichAisClassification,
   matchesAisClassFilter,
   parseAisClassFilter,
   type AisClassFilter,
@@ -58,18 +57,19 @@ function parseNumber(value: unknown) {
 }
 
 function buildVessel(
-  partial: Omit<AisVessel, "shipType" | "shipTypeLabel" | "category"> & {
+  partial: Omit<AisVessel, "shipType" | "shipTypeLabel" | "category" | "militaryKind"> & {
     shipType?: number | null;
   },
 ): AisVessel {
   const shipType = partial.shipType ?? null;
   const shipName = partial.shipName;
-  const category = classifyAisVessel({ shipType, shipName });
+  const classified = enrichAisClassification({ shipType, shipName });
   return {
     ...partial,
     shipType,
-    shipTypeLabel: aisShipTypeLabel(shipType),
-    category,
+    shipTypeLabel: classified.shipTypeLabel,
+    category: classified.category,
+    militaryKind: classified.militaryKind,
   };
 }
 

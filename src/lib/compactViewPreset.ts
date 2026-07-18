@@ -25,6 +25,7 @@ export const COMPACT_CONFLICT_PRESETS: CompactChipDef[] = [
     labelEn: "Front",
     layers: {
       showUkraineControl: true,
+      showWarZones: true,
       showNeptun: true,
       showTzevaAdom: true,
       showUsCarriers: true,
@@ -37,6 +38,7 @@ export const COMPACT_CONFLICT_PRESETS: CompactChipDef[] = [
     labelEn: "News",
     layers: {
       showUkraineControl: true,
+      showWarZones: true,
       showGdeltWar: true,
       showTelegramOsint: true,
       showNewfeedsIranAttacks: true,

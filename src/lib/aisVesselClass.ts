@@ -7,8 +7,25 @@ export type AisVesselCategory = "military" | "commercial" | "other";
 
 export type AisClassFilter = "military" | "commercial" | "all";
 
+/**
+ * 항모 레이어에 안 잡힌 군함의 함종.
+ * 선명·헐넘버 휴리스틱 — AIS type 35만으로는 세분 불가.
+ */
+export type AisMilitaryKind =
+  | "destroyer"
+  | "frigate"
+  | "corvette"
+  | "cruiser"
+  | "submarine"
+  | "amphibious"
+  | "carrier"
+  | "patrol"
+  | "auxiliary"
+  | "law-enforcement"
+  | "unknown";
+
 const MILITARY_NAME =
-  /\b(USS|HMS|HMAS|HMCS|HNLMS|HDMS|HSWMS|FS\s|FGS|ITS\s|ORP\s|ROKS|INS\s|JS\s|KRI\s|BRP\s|BNS\s|PLAN|PLANS|WARSHIP|NAVAL|DESTROYER|FRIGATE|CORVETTE|SUBMARINE|CARRIER|CVN)\b/i;
+  /\b(USS|HMS|HMAS|HMCS|HNLMS|HDMS|HSWMS|FS\s|FGS|ITS\s|ORP\s|ROKS|INS\s|JS\s|KRI\s|BRP\s|BNS\s|PLAN|PLANS|WARSHIP|NAVAL|DESTROYER|FRIGATE|CORVETTE|SUBMARINE|CARRIER|CVN|DDG|FFG|CG\s*\d)\b/i;
 
 /** AIS Type 35 = Military ops; 55 = Law enforcement (군/치안으로 지정학에 포함) */
 export function aisGenericClass(shipType: number | null | undefined): number | null {
@@ -33,6 +50,159 @@ export function classifyAisVessel(input: {
   if (g === 3) return "other";
   // 9 Other / 0–1 reserved → other
   return "other";
+}
+
+/**
+ * 군함 함종 — 비군함이면 null.
+ * 우선순위: 잠수함 → 상륙 → 항모 → 순양 → 구축 → 호위 → 초계 → 순찰 → 보급 → 치안 → unknown
+ */
+export function classifyMilitaryKind(input: {
+  shipType?: number | null;
+  shipName?: string | null;
+}): AisMilitaryKind | null {
+  if (classifyAisVessel(input) !== "military") return null;
+
+  if (input.shipType === 55) return "law-enforcement";
+
+  const name = (input.shipName || "").trim();
+  if (!name) return "unknown";
+
+  if (
+    /\b(SUBMARINE|SUBMARIN)\b/i.test(name) ||
+    /\bSSBN\b|\bSSN\b|\bSSK\b|\bSSGN\b/i.test(name) ||
+    /\b(SORYU|TAIGEI|VIRGINIA|COLUMBIA|ASTUTE|BARRACUDA)\b/i.test(name)
+  ) {
+    return "submarine";
+  }
+
+  if (
+    /\b(LHD|LHA|LPD|LSD|LST|LPH)\b/i.test(name) ||
+    /\b(AMPHIBIOUS|ASSAULT\s*SHIP|LANDING\s*SHIP|DOCK\s*LANDING)\b/i.test(name)
+  ) {
+    return "amphibious";
+  }
+
+  if (
+    /\b(AIRCRAFT\s*CARRIER|SUPER\s*CARRIER)\b/i.test(name) ||
+    /\bCVN[-\s]?\d+\b|\bCVW\b|\bCV[-\s]?\d+\b/i.test(name) ||
+    /\b(NIMITZ|FORD|ABRAHAM\s*LINCOLN|GEORGE\s*WASHINGTON|THEODORE\s*ROOSEVELT|RONALD\s*REAGAN|CARL\s*VINSON|HARRY\s*S\.?\s*TRUMAN|JOHN\s*C\.?\s*STENNIS|GEORGE\s*H\.?\s*W\.?\s*BUSH|GERALD\s*R\.?\s*FORD|QUEEN\s*ELIZABETH|CHARLES\s*DE\s*GAULLE|LIAONING|SHANDONG|FUJIAN)\b/i.test(
+      name,
+    )
+  ) {
+    return "carrier";
+  }
+
+  if (/\b(CRUISER|CGN)\b/i.test(name) || /\bCG[-\s]?\d+\b/i.test(name)) {
+    return "cruiser";
+  }
+
+  if (
+    /\bDESTROYER\b/i.test(name) ||
+    /\bDDG\b/i.test(name) ||
+    /\bDDG[-\s]?\d+\b/i.test(name) ||
+    /\bDD[-\s]?\d+\b/i.test(name) ||
+    /\b(ARLEIGH\s*BURKE|SEJONG|KONGO|ATAGO|MAYA|TYPE\s*052|TYPE\s*055|HOBART|DARING|HORIZON)\b/i.test(
+      name,
+    )
+  ) {
+    return "destroyer";
+  }
+
+  if (
+    /\bFRIGATE\b/i.test(name) ||
+    /\bFFG\b/i.test(name) ||
+    /\bFFG[-\s]?\d+\b/i.test(name) ||
+    /\bFF[-\s]?\d+\b/i.test(name) ||
+    /\b(TYPE\s*054|TYPE\s*26|TYPE\s*31|FREMM|MEKO|INCHEON|DAEGU)\b/i.test(name)
+  ) {
+    return "frigate";
+  }
+
+  if (/\bCORVETTE\b/i.test(name) || /\b(POHANG|GUMDOKSEORI|VISBY|STEREGUSHCHIY)\b/i.test(name)) {
+    return "corvette";
+  }
+
+  if (
+    /\b(PATROL|OPV|COAST\s*GUARD|CUTTER|PCG)\b/i.test(name) ||
+    /\bPC[-\s]?\d+\b/i.test(name) ||
+    /\bWHEC\b|\bWMSL\b/i.test(name)
+  ) {
+    return "patrol";
+  }
+
+  if (
+    /\b(AUXILIARY|REPLENISHMENT|SUPPLY\s*SHIP|OILER|TANKER\s*SHIP)\b/i.test(name) ||
+    /\b(T-AO|T-AKE|AOR|AOE|AKR)\b/i.test(name)
+  ) {
+    return "auxiliary";
+  }
+
+  return "unknown";
+}
+
+const MILITARY_KIND_LABEL: Record<AisMilitaryKind, { ko: string; en: string }> = {
+  destroyer: { ko: "수상전투함", en: "Surface combatant" },
+  frigate: { ko: "수상전투함", en: "Surface combatant" },
+  corvette: { ko: "수상전투함", en: "Surface combatant" },
+  cruiser: { ko: "수상전투함", en: "Surface combatant" },
+  submarine: { ko: "잠수함", en: "Submarine" },
+  amphibious: { ko: "상륙함", en: "Amphibious" },
+  carrier: { ko: "항공모함", en: "Aircraft carrier" },
+  patrol: { ko: "고속정·순찰", en: "Patrol" },
+  auxiliary: { ko: "군수지원함", en: "Auxiliary" },
+  "law-enforcement": { ko: "해경·치안", en: "Law enforcement" },
+  unknown: { ko: "군함(미분류)", en: "Warship (unspecified)" },
+};
+
+/** 구축·호위·초계·순양 — 동일 3D(俯視) 표지 */
+export const AIS_SURFACE_COMBATANT_KINDS = [
+  "destroyer",
+  "frigate",
+  "corvette",
+  "cruiser",
+] as const satisfies ReadonlyArray<AisMilitaryKind>;
+
+export type AisSurfaceCombatantKind = (typeof AIS_SURFACE_COMBATANT_KINDS)[number];
+
+export function isAisSurfaceCombatant(
+  kind: AisMilitaryKind | null | undefined,
+): kind is AisSurfaceCombatantKind {
+  return (
+    kind === "destroyer" ||
+    kind === "frigate" ||
+    kind === "corvette" ||
+    kind === "cruiser"
+  );
+}
+
+/** 8방위 실루엣 표지 (수상전투함·잠수함) */
+export function isAisAspectHullMarker(kind: AisMilitaryKind | null | undefined): boolean {
+  return isAisSurfaceCombatant(kind) || kind === "submarine";
+}
+
+export function militaryKindLabel(
+  kind: AisMilitaryKind | null | undefined,
+  lang: "ko" | "en" = "ko",
+): string | null {
+  if (!kind) return null;
+  return lang === "en" ? MILITARY_KIND_LABEL[kind].en : MILITARY_KIND_LABEL[kind].ko;
+}
+
+/** UI 표시용 — 군함이면 함종, 아니면 AIS shipType 라벨 */
+export function aisDisplayTypeLabel(
+  vessel: {
+    category: AisVesselCategory;
+    shipTypeLabel?: string | null;
+    militaryKind?: AisMilitaryKind | null;
+  },
+  lang: "ko" | "en" = "ko",
+): string | null {
+  if (vessel.category === "military") {
+    return (
+      militaryKindLabel(vessel.militaryKind ?? "unknown", lang) || vessel.shipTypeLabel || null
+    );
+  }
+  return vessel.shipTypeLabel ?? null;
 }
 
 export function aisShipTypeLabel(shipType: number | null | undefined): string | null {
@@ -102,7 +272,46 @@ export function aisCommercialPointColor(shipType: number | null | undefined): st
   }
 }
 
+/** 함종별 포인트 틴트 (군함 점·마커) */
+export function aisMilitaryKindColor(kind: AisMilitaryKind | null | undefined): string {
+  if (isAisSurfaceCombatant(kind)) return "#ef4444";
+  switch (kind) {
+    case "submarine":
+      return "#7c3aed";
+    case "amphibious":
+      return "#eab308";
+    case "carrier":
+      return "#fbbf24";
+    case "patrol":
+      return "#f43f5e";
+    case "auxiliary":
+      return "#94a3b8";
+    case "law-enforcement":
+      return "#38bdf8";
+    default:
+      return "#ef4444";
+  }
+}
+
 export function parseAisClassFilter(raw: string | null): AisClassFilter {
   if (raw === "military" || raw === "commercial" || raw === "all") return raw;
   return "all";
+}
+
+/** category / militaryKind / labels 한 번에 */
+export function enrichAisClassification(input: {
+  shipType?: number | null;
+  shipName?: string | null;
+}): {
+  category: AisVesselCategory;
+  shipTypeLabel: string | null;
+  militaryKind: AisMilitaryKind | null;
+} {
+  const shipType = input.shipType ?? null;
+  const category = classifyAisVessel(input);
+  return {
+    category,
+    shipTypeLabel: aisShipTypeLabel(shipType),
+    militaryKind: category === "military" ? classifyMilitaryKind(input) : null,
+  };
 }

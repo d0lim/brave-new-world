@@ -185,7 +185,22 @@ export type StaticPointKind =
   | "logistics-hub"
   | "submarine-tunnel"
   /** Critical Node Atlas (MIT) — maritime/cables/energy/financial/tech */
-  | "critical-node";
+  | "critical-node"
+  | "gem-coal-plant"
+  | "gem-coal-mine"
+  | "gem-coal-terminal"
+  | "gem-nuclear"
+  | "gem-solar"
+  | "gem-wind"
+  | "gem-hydro"
+  | "gem-geothermal"
+  | "gem-bioenergy"
+  | "gem-oil-gas-plant"
+  | "gem-oil-gas-extraction"
+  | "gem-iron-ore"
+  | "gem-cement"
+  | "gem-steel"
+  | "gem-chemical";
 
 export type StaticPoint = {
   id: string;
@@ -252,6 +267,8 @@ export type AisVessel = {
   shipTypeLabel: string | null;
   /** 지정학=military · 지경학=commercial */
   category: "military" | "commercial" | "other";
+  /** 군함 함종 (비군함 null). 선명·헐넘버 휴리스틱 */
+  militaryKind?: import("@/lib/aisVesselClass").AisMilitaryKind | null;
 };
 
 export type MilitaryAircraft = {

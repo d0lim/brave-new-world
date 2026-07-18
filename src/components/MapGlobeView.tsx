@@ -72,8 +72,11 @@ export const MapGlobeView = forwardRef<MapGlobeMethods, MapGlobeViewProps>(funct
   >(onGlobeMouseMove);
   const [mapZoom, setMapZoom] = useState(2);
   const [mapLoaded, setMapLoaded] = useState(false);
+  /** 수상전투함 8방위 실루엣용 — 5° 양자화 */
+  const [mapBearingDeg, setMapBearingDeg] = useState(0);
   /** onMove는 프레임마다 오므로 zoom→GeoJSON 재빌드는 idle 시에만 */
   const mapZoomRef = useRef(2);
+  const mapBearingRef = useRef(0);
   const lastZoomPublishAtRef = useRef(0);
   const pendingZoomPublishRef = useRef<number | null>(null);
   const moveIdleTimerRef = useRef<number | null>(null);
@@ -437,8 +440,15 @@ export const MapGlobeView = forwardRef<MapGlobeMethods, MapGlobeViewProps>(funct
   }, []);
 
   const handleMove = useCallback(
-    (event: { viewState: { zoom: number } }) => {
+    (event: { viewState: { zoom: number; bearing?: number } }) => {
       mapZoomRef.current = event.viewState.zoom;
+      const rawBearing = event.viewState.bearing ?? mapRef.current?.getMap()?.getBearing() ?? 0;
+      const quantized =
+        Math.round((((rawBearing % 360) + 360) % 360) / 5) * 5;
+      if (quantized !== mapBearingRef.current) {
+        mapBearingRef.current = quantized;
+        setMapBearingDeg(quantized);
+      }
       movingRef.current = true;
       if (moveIdleTimerRef.current != null) {
         window.clearTimeout(moveIdleTimerRef.current);
@@ -1044,13 +1054,35 @@ export const MapGlobeView = forwardRef<MapGlobeMethods, MapGlobeViewProps>(funct
                 (item as { markerId?: string; id?: string }).markerId ??
                 (item as { id?: string }).id ??
                 index;
-              const rotation = htmlRotation(item);
-              const alignment = htmlRotationAlignment(item);
+              const enriched =
+                (item as { displayKind?: string }).displayKind === "ais-html"
+                  ? { ...(item as object), mapBearingDeg }
+                  : item;
+              const rotation = htmlRotation(enriched);
+              const alignment = htmlRotationAlignment(enriched);
               const rotKey =
                 alignment === "map" ? Math.round((((rotation % 360) + 360) % 360) / 5) * 5 : 0;
+              const surface =
+                (enriched as { category?: string }).category === "military" &&
+                ["destroyer", "frigate", "corvette", "cruiser", "submarine"].includes(
+                  String((enriched as { militaryKind?: string }).militaryKind ?? ""),
+                );
+              const headingRaw = Number(
+                (enriched as { courseOverGround?: number; trueHeading?: number })
+                  .courseOverGround ??
+                  (enriched as { trueHeading?: number }).trueHeading ??
+                  0,
+              );
+              const relHeading = (((headingRaw - mapBearingDeg) % 360) + 360) % 360;
+              const headingKey = surface
+                ? String(Math.round(relHeading / 45) * 45)
+                : alignment === "map"
+                  ? String(rotKey)
+                  : "0";
+              const bearingKey = surface ? String(mapBearingDeg) : "0";
               return (
               <Marker
-                key={`html-marker-${id}-r${rotKey}`}
+                key={`html-marker-${id}-r${rotKey}-b${bearingKey}-h${headingKey}`}
                 longitude={htmlLng(item)}
                 latitude={htmlLat(item)}
                 anchor="center"
@@ -1062,13 +1094,17 @@ export const MapGlobeView = forwardRef<MapGlobeMethods, MapGlobeViewProps>(funct
                   ref={(node) => {
                     if (!node) return;
                     // killed/label 등이 바뀌면 DOM을 다시 그려 사망 숫자가 갱신되게 함
-                    const typed = item as {
+                    const typed = enriched as {
                       displayKind?: string;
                       killed?: number;
                       wounded?: number;
                       warheads?: number;
                       labelLanguage?: string;
                       killedLabel?: string;
+                      mapBearingDeg?: number;
+                      courseOverGround?: number | null;
+                      trueHeading?: number | null;
+                      militaryKind?: string | null;
                     };
                     const sig = [
                       typed.displayKind ?? "",
@@ -1076,10 +1112,14 @@ export const MapGlobeView = forwardRef<MapGlobeMethods, MapGlobeViewProps>(funct
                       typed.wounded ?? "",
                       typed.warheads ?? "",
                       typed.killedLabel ?? "",
+                      typed.mapBearingDeg ?? "",
+                      typed.courseOverGround ?? "",
+                      typed.trueHeading ?? "",
+                      typed.militaryKind ?? "",
                     ].join("|");
                     if (node.dataset.markerSig === sig && node.childElementCount > 0) return;
                     node.replaceChildren();
-                    const el = htmlElement(item);
+                    const el = htmlElement(enriched);
                     node.appendChild(el);
                     node.dataset.markerSig = sig;
                   }}

@@ -437,6 +437,28 @@ export const NEWS_LAYER_SOURCE_CATALOG: NewsLayerSourceNote[] = [
     ingest: "cached-api",
   },
   {
+    layerId: "korea-missile-incidents",
+    source: "DPRK missile / weapons-test dens (launch / event site only)",
+    url: "src/data/koreaMissileIncidentsSeed.ts",
+    cadence: "Curated dens · layer toggle",
+    attribution: "Open reporting / known launch & event anchors",
+    notes:
+      "주황 네온 점+물결. 탄착군 미확정 — 발사·실험 발생지만. 실시간 궤적·탄착은 우크라 NEPTUN. 체크: 동아시아 대치·발사 네온.",
+    status: "shipped",
+    ingest: "static-build",
+  },
+  {
+    layerId: "china-theater-incidents",
+    source: "IRONSIGHT dens · SCS / ECS / WestPac / Taiwan Strait (dyad layers)",
+    url: "src/data/chinaTheaterIncidentsSeed.ts",
+    cadence: "Curated dens · layer toggles",
+    attribution: "Theater dens for China↔Taiwan / Japan / Philippines / US↔China",
+    notes:
+      "작은 빨간 네온 점 + 물방울 리플. 체크박스: 중국↔대만 · 중국↔일본 · 중국↔필리핀 · 미국↔중국. HAPI는 국가 집계만 제공해 좌표는 시드 앵커.",
+    status: "shipped",
+    ingest: "static-build",
+  },
+  {
     layerId: "hapi-conflict-casualties",
     source: "ACLED via HDX HAPI · conflict-events (political_violence fatalities)",
     url: "https://hapi.humdata.org/api/v2/coordination-context/conflict-events → /api/hapi-conflict-casualties",
@@ -444,7 +466,7 @@ export const NEWS_LAYER_SOURCE_CATALOG: NewsLayerSourceNote[] = [
     attribution:
       "Armed Conflict Location & Event Data Project (ACLED) · HDX HAPI · OCHA HDX · www.acleddata.com",
     notes:
-      "원천: ACLED. 배포/질의: OCHA HDX HAPI conflict-events. Geopolitics-only: one skull marker per active front admin1 (Ukraine frontline oblasts + Gaza/south Lebanon). Tension theaters excluded. No wounded field. Docs: https://hapi.humdata.org/docs · Dataset: https://data.humdata.org/dataset/hdx-hapi-conflict-event · ACLED attribution: https://acleddata.com/attributionpolicy",
+      "원천: ACLED. 배포/질의: OCHA HDX HAPI conflict-events. Geopolitics: Ukraine frontline oblasts + Gaza/south Lebanon fatalities; Iran (IRN) admin1 events/fatalities; China/Taiwan political_violence event dens (often 0 fatalities). No wounded field. Docs: https://hapi.humdata.org/docs · Dataset: https://data.humdata.org/dataset/hdx-hapi-conflict-event · ACLED attribution: https://acleddata.com/attributionpolicy",
     status: "shipped",
     ingest: "cached-api",
   },

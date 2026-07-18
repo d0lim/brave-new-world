@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import Script from "next/script";
-import { IBM_Plex_Mono, IBM_Plex_Sans } from "next/font/google";
+import { Analytics } from "@vercel/analytics/next";
+import { Inter, JetBrains_Mono, Merriweather } from "next/font/google";
 import localFont from "next/font/local";
 import { COMPACT_QUERY } from "@/hooks/compactQuery";
 import "./globals.css";
@@ -58,18 +59,30 @@ const gmarket = localFont({
   display: "swap",
 });
 
-/** 영문 UI — IBM Plex (IBM/plex · OFL) */
-const ibmPlexSans = IBM_Plex_Sans({
-  weight: ["400", "500", "600", "700"],
+/**
+ * 영문 웹폰트 3역할
+ * - Inter: UI·데이터 (메인)
+ * - Merriweather: 양피지·긴 브리핑
+ * - JetBrains Mono: 좌표·수치 터미널
+ */
+const inter = Inter({
   subsets: ["latin"],
-  variable: "--font-ibm-plex-sans",
+  variable: "--font-inter",
   display: "swap",
 });
 
-const ibmPlexMono = IBM_Plex_Mono({
-  weight: ["400", "500", "600"],
+const merriweather = Merriweather({
+  weight: ["400", "700"],
+  style: ["normal", "italic"],
   subsets: ["latin"],
-  variable: "--font-ibm-plex-mono",
+  variable: "--font-merriweather",
+  display: "swap",
+});
+
+const jetbrainsMono = JetBrains_Mono({
+  weight: ["400", "500"],
+  subsets: ["latin"],
+  variable: "--font-jetbrains-mono",
   display: "swap",
 });
 
@@ -123,7 +136,7 @@ export default function RootLayout({
         <link rel="stylesheet" href={WANTED_SANS_CSS} />
       </head>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} ${letterHand.variable} ${pretendard.variable} ${gmarket.variable} ${ibmPlexSans.variable} ${ibmPlexMono.variable} ${sbAgro.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} ${letterHand.variable} ${pretendard.variable} ${gmarket.variable} ${inter.variable} ${merriweather.variable} ${jetbrainsMono.variable} ${sbAgro.variable} antialiased`}
         style={{
           background: "#02040a",
           minHeight: "100dvh",
@@ -133,6 +146,7 @@ export default function RootLayout({
           {COMPACT_BOOT_SCRIPT}
         </Script>
         {children}
+        <Analytics />
       </body>
     </html>
   );

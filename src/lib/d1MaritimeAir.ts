@@ -3,6 +3,7 @@ import type { AisVessel, MilitaryAircraft, StaticPoint } from "@/data/geoTypes";
 import { SUBMARINE_TUNNEL_SEED } from "@/data/submarineTunnels";
 import { getDb } from "@/db";
 import { adsbAircraft, aisVessels, submarineTunnels } from "@/db/schema";
+import { enrichAisClassification } from "@/lib/aisVesselClass";
 import { ingestWorkerBase } from "@/lib/d1LiveSnapshots";
 
 /** AIS/ADS-B D1 신선도 (Cron 10분 주기보다 약간 길게) */
@@ -16,6 +17,10 @@ function isFresh(ingestedAt: string, maxAgeMs: number): boolean {
 }
 
 function rowToAis(row: typeof aisVessels.$inferSelect): AisVessel {
+  const classified = enrichAisClassification({
+    shipType: row.shipType,
+    shipName: row.shipName,
+  });
   return {
     id: row.id,
     mmsi: row.mmsi,
@@ -27,8 +32,26 @@ function rowToAis(row: typeof aisVessels.$inferSelect): AisVessel {
     trueHeading: row.trueHeading,
     timestamp: row.timestamp,
     shipType: row.shipType,
-    shipTypeLabel: row.shipTypeLabel,
-    category: (row.category as AisVessel["category"]) || "other",
+    shipTypeLabel: classified.shipTypeLabel ?? row.shipTypeLabel,
+    category: classified.category,
+    militaryKind: classified.militaryKind,
+  };
+}
+
+function ensureMilitaryKind(vessel: AisVessel): AisVessel {
+  if (vessel.militaryKind != null || vessel.category !== "military") {
+    if (vessel.category !== "military") return { ...vessel, militaryKind: null };
+    return vessel;
+  }
+  const classified = enrichAisClassification({
+    shipType: vessel.shipType,
+    shipName: vessel.shipName,
+  });
+  return {
+    ...vessel,
+    category: classified.category,
+    shipTypeLabel: classified.shipTypeLabel ?? vessel.shipTypeLabel,
+    militaryKind: classified.militaryKind,
   };
 }
 
@@ -248,11 +271,12 @@ export async function readAisFromIngestWorker(options: {
     if (!res.ok) return null;
     const payload = (await res.json()) as { vessels?: AisVessel[] };
     if (!Array.isArray(payload.vessels) || payload.vessels.length === 0) return null;
+    const vessels = payload.vessels.map(ensureMilitaryKind);
     return {
       source: "d1",
       receivedAt: new Date().toISOString(),
-      count: payload.vessels.length,
-      vessels: payload.vessels,
+      count: vessels.length,
+      vessels,
     };
   } catch {
     return null;

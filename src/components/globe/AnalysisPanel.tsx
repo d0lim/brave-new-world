@@ -12,6 +12,7 @@ import {
 } from "@/lib/hoverLabels";
 import { milAircraftIconSvg } from "@/lib/milAircraftIcon";
 import { classifyMilAircraft, milAircraftRoleLabel } from "@/lib/milAircraftKind";
+import { aisDisplayTypeLabel } from "@/lib/aisVesselClass";
 import { ukraineControlStatusLabel } from "@/lib/ukraineSettlementLabels";
 import type { AnalysisSelection } from "@/components/globe/types";
 
@@ -115,6 +116,7 @@ export function AnalysisPanel({
   ukraineRuCellCount?: number;
   disputeOverview?: DisputeOverview | null;
 }) {
+  const { lang } = useLocale();
   if (selection.kind === "country") {
     const country = selection.item;
     return (
@@ -299,20 +301,21 @@ export function AnalysisPanel({
         : vessel.category === "commercial"
           ? "민간"
           : "기타";
+    const typeLabel =
+      aisDisplayTypeLabel(vessel, lang) ||
+      vessel.shipTypeLabel ||
+      (vessel.shipType != null ? String(vessel.shipType) : "N/A");
     return (
       <div className="flex flex-col gap-4">
         <PanelHeader
           eyebrow={`AIS · ${categoryLabel}`}
           title={vessel.shipName || `MMSI ${vessel.mmsi}`}
-          badge={vessel.shipTypeLabel || "AIS"}
+          badge={typeLabel || "AIS"}
           onClose={onClose}
         />
         <section className="grid grid-cols-2 gap-3">
           <Metric label="MMSI" value={vessel.mmsi} />
-          <Metric
-            label="유형"
-            value={vessel.shipTypeLabel || (vessel.shipType != null ? String(vessel.shipType) : "N/A")}
-          />
+          <Metric label="유형" value={typeLabel} />
           <Metric
             label="SOG"
             value={vessel.speedOverGround === null ? "N/A" : `${vessel.speedOverGround} kn`}

@@ -44,7 +44,7 @@ export function emitBreakingDispatchSound() {
   emitDashboardSound("hero-breaking", {
     force: true,
     volumeScale: 0.9,
-    durationMs: 15000,
+    durationMs: 9000,
   });
 }
 

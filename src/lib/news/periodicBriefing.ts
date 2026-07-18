@@ -31,6 +31,10 @@ export type LampFeaturedNews = {
   trustTier: 1 | 2 | 3;
   /** 예: Nvidia · 반도체 / 중동 · IDF */
   focusLabel?: string;
+  /** 외교·정상회담 등 — 뱃지·슬롯 캡용 */
+  isDiplomacy?: boolean;
+  /** 외교 카드용 한 줄 훅 (왜 중요한지 맛보기) */
+  matterHook?: string;
 };
 
 /** 지경학 등불 상단·사이드바 거시 표 */
@@ -892,6 +896,8 @@ export function pickEconomyLampNews(
 
 /** 지정학 등불 최소 건수 */
 export const CONFLICT_LAMP_NEWS_MIN = 8;
+/** 등불 안 외교 슬롯 상한 — 전쟁만/회담만으로 치우치지 않게 */
+export const CONFLICT_LAMP_DIPLOMACY_MAX = 3;
 
 type ConflictTheater =
   | "middle-east"
@@ -1020,7 +1026,17 @@ function scoreConflictCandidate(item: NewsPickInput, clusterSize: number): Score
     summaryLen >= 700 ? -30 : summaryLen >= 400 ? -18 : summaryLen >= 200 ? -8 : summaryLen >= 80 ? 4 : 36;
   const thinPenalty = summaryLen < 50 ? 45 : 0;
   const hardBonus = CONFLICT_HARD_NEWS_RE.test(blob) ? -18 : 0;
-  const diplomacyBonus = CONFLICT_DIPLOMACY_RE.test(blob) ? -16 : 0;
+  const isDiplomacy = CONFLICT_DIPLOMACY_RE.test(blob);
+  // 전쟁·행위자와 엮인 외교는 가산, 단독 soft summit은 약하게
+  const diplomacyBonus = isDiplomacy
+    ? CONFLICT_HARD_NEWS_RE.test(blob) || matchedConflictActors(blob).length > 0
+      ? -16
+      : -6
+    : 0;
+  const softDiplomacyPenalty =
+    isDiplomacy && !CONFLICT_HARD_NEWS_RE.test(blob) && matchedConflictActors(blob).length === 0
+      ? 12
+      : 0;
   const softPenalty = CONFLICT_SOFT_NEWS_RE.test(blob) ? 50 : 0;
   const theaterBonus =
     theater === "middle-east" || theater === "russia-ukraine"
@@ -1067,6 +1083,7 @@ function scoreConflictCandidate(item: NewsPickInput, clusterSize: number): Score
       thinPenalty +
       hardBonus +
       diplomacyBonus +
+      softDiplomacyPenalty +
       softPenalty +
       theaterBonus +
       freshnessBonus +
@@ -1076,8 +1093,29 @@ function scoreConflictCandidate(item: NewsPickInput, clusterSize: number): Score
   };
 }
 
+function buildMatterHook(
+  text: string,
+  theater: ConflictTheater,
+  isDiplomacy: boolean,
+  lang: "ko" | "en",
+): string | undefined {
+  if (!isDiplomacy) return undefined;
+  const theaterLabel = lang === "en" ? THEATER_FOCUS_EN[theater] : THEATER_FOCUS_KO[theater];
+  const actors = matchedConflictActors(text).map((a) => (lang === "en" ? a.labelEn : a.labelKo));
+  if (lang === "en") {
+    return actors.length > 0
+      ? `${actors.join("–")} near ${theaterLabel} — tap Why it matters for the map read.`
+      : `Diplomatic signal in ${theaterLabel} — Why it matters unlocks the context.`;
+  }
+  return actors.length > 0
+    ? `${actors.join("·")} · ${theaterLabel} 축 — 「왜 중요?」로 맥락 확인.`
+    : `${theaterLabel} 외교 신호 — 「왜 중요?」로 맥락을 보세요.`;
+}
+
 function toConflictFeatured(row: ScoredConflictNews, lang: "ko" | "en"): LampFeaturedNews {
   const item = row.item;
+  const blob = `${item.title} ${item.summary ?? ""}`;
+  const isDiplomacy = CONFLICT_DIPLOMACY_RE.test(blob);
   return {
     id: item.id,
     title: item.title,
@@ -1086,11 +1124,9 @@ function toConflictFeatured(row: ScoredConflictNews, lang: "ko" | "en"): LampFea
     link: item.link,
     source: item.publisher || item.source,
     trustTier: item.trustTier,
-    focusLabel: buildConflictFocusLabel(
-      `${item.title} ${item.summary ?? ""}`,
-      row.theater,
-      lang,
-    ),
+    focusLabel: buildConflictFocusLabel(blob, row.theater, lang),
+    isDiplomacy,
+    matterHook: buildMatterHook(blob, row.theater, isDiplomacy, lang),
   };
 }
 
@@ -1134,6 +1170,7 @@ export function pickConflictLampNews(
     global: 0,
   };
   const maxPerTheater = Math.max(2, Math.ceil(target / 3));
+  let diplomacyCount = 0;
 
   const tryPush = (row: ScoredConflictNews, relax = false): boolean => {
     const item = row.item;
@@ -1149,9 +1186,14 @@ export function pickConflictLampNews(
 
     if (theaterCounts[row.theater] >= maxPerTheater && !relax) return false;
 
+    const blob = `${item.title} ${item.summary ?? ""}`;
+    const isDiplomacy = CONFLICT_DIPLOMACY_RE.test(blob);
+    if (isDiplomacy && diplomacyCount >= CONFLICT_LAMP_DIPLOMACY_MAX && !relax) return false;
+
     seenLinks.add(key);
     seenClusters.add(cKey);
     theaterCounts[row.theater] += 1;
+    if (isDiplomacy) diplomacyCount += 1;
     out.push(toConflictFeatured(row, lang));
     return true;
   };

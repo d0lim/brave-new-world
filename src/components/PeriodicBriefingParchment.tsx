@@ -54,12 +54,18 @@ function PhotoNewsLampParchment({
   onDismiss,
 }: PeriodicBriefingParchmentProps) {
   const [phase, setPhase] = useState<"idle" | "folding" | "done">("idle");
+  const [expandedNews, setExpandedNews] = useState(false);
+  const [isNarrow, setIsNarrow] = useState(false);
   const parchmentStack =
     'var(--font-wanted), "Wanted Sans Variable", "Wanted Sans", sans-serif';
   const exiting = phase === "folding" || phase === "done";
   const news = briefing.featuredNews ?? [];
   const macroRows = briefing.macroTable ?? [];
   const isEconomy = macroRows.length > 0;
+  const mobilePreview = 4;
+  const visibleNews =
+    !isEconomy && isNarrow && !expandedNews ? news.slice(0, mobilePreview) : news;
+  const canExpandNews = !isEconomy && isNarrow && news.length > mobilePreview && !expandedNews;
   const titleLines = briefing.title.split("\n");
   const kicker = titleLines[0] ?? briefing.title;
   const subtitle =
@@ -67,10 +73,10 @@ function PhotoNewsLampParchment({
     (lang === "en"
       ? isEconomy
         ? "Macro desk"
-        : "Theater desk"
+        : "Today's theater desk"
       : isEconomy
         ? "거시 데스크"
-        : "전장 데스크");
+        : "오늘의 전장 데스크");
 
   const theaterRows = useMemo(() => {
     if (isEconomy) return [];
@@ -83,8 +89,17 @@ function PhotoNewsLampParchment({
   }, [isEconomy, news]);
 
   useEffect(() => {
+    const mq = window.matchMedia("(max-width: 767px)");
+    const sync = () => setIsNarrow(mq.matches);
+    sync();
+    mq.addEventListener("change", sync);
+    return () => mq.removeEventListener("change", sync);
+  }, []);
+
+  useEffect(() => {
     emitParchmentUnfoldSound();
-    emitBreakingDispatchSound();
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (!reduced) emitBreakingDispatchSound();
   }, []);
 
   const handleContinue = useCallback(() => {
@@ -231,74 +246,102 @@ function PhotoNewsLampParchment({
                 </div>
 
                 <div className="min-h-0 flex-1 space-y-6 overflow-y-auto overscroll-contain px-4 py-4 sm:px-6 sm:py-5">
-                  {news.length > 0 ? (
-                    news.map((item) => (
-                      <article
-                        key={item.id}
-                        className="overflow-hidden rounded-sm border border-[#8b6914]/25 bg-[#f7ecd4]/55 shadow-[0_8px_28px_rgba(61,42,24,0.12)]"
-                      >
-                        <div className="relative aspect-[16/9] w-full overflow-hidden bg-[#d4c4a0] sm:aspect-[2/1]">
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img
-                            src={item.imageUrl}
-                            alt=""
-                            className="h-full w-full object-cover"
-                            loading="lazy"
-                            referrerPolicy="no-referrer"
-                            onError={(event) => {
-                              (event.currentTarget as HTMLImageElement).style.visibility = "hidden";
-                            }}
-                          />
-                        </div>
-                        <div className="flex items-stretch gap-3 px-4 py-4 sm:gap-4 sm:px-5 sm:py-5">
-                          <div className="min-w-0 flex-1">
-                            <div className="flex flex-wrap items-center gap-2 text-[10px] uppercase tracking-[0.16em] text-[#6b4a22]/65">
-                              <span>{item.source}</span>
-                              <span aria-hidden>·</span>
-                              <span>T{item.trustTier}</span>
-                              {item.focusLabel ? (
-                                <>
-                                  <span aria-hidden>·</span>
-                                  <span className="normal-case tracking-[0.04em] text-[#5a3d1c]/9">
-                                    {item.focusLabel}
-                                  </span>
-                                </>
-                              ) : null}
-                            </div>
-                            <h2 className="mt-2 text-[1.2rem] leading-snug tracking-[0.02em] text-[#3d2a18] sm:text-[1.45rem] sm:leading-snug">
-                              {item.title}
-                            </h2>
-                            <p className="mt-3 text-[0.98rem] leading-[1.75] text-[#5a4428]/92 sm:text-[1.08rem] sm:leading-[1.8]">
-                              {item.summary}
-                            </p>
-                            {!isEconomy ? (
-                              <LampWhyMattersButton
-                                lang={lang}
-                                title={item.title}
-                                source={item.source}
-                                link={item.link}
-                                focusLabel={item.focusLabel}
-                                excerpt={item.summary}
-                              />
+                  {visibleNews.length > 0 ? (
+                    <>
+                      {visibleNews.map((item) => (
+                        <article
+                          key={item.id}
+                          className="overflow-hidden rounded-sm border border-[#8b6914]/25 bg-[#f7ecd4]/55 shadow-[0_8px_28px_rgba(61,42,24,0.12)]"
+                        >
+                          <div className="relative aspect-[16/9] w-full overflow-hidden bg-[#d4c4a0] sm:aspect-[2/1]">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={item.imageUrl}
+                              alt=""
+                              className="h-full w-full object-cover"
+                              loading="lazy"
+                              referrerPolicy="no-referrer"
+                              onError={(event) => {
+                                (event.currentTarget as HTMLImageElement).style.visibility =
+                                  "hidden";
+                              }}
+                            />
+                            {item.isDiplomacy ? (
+                              <span className="absolute left-3 top-3 rounded-sm border border-[#8b6914]/35 bg-[#efe0b8]/92 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#5a3d1c]">
+                                {lang === "en" ? "Diplomacy" : "외교"}
+                              </span>
                             ) : null}
                           </div>
-                          <div className="flex shrink-0 flex-col items-center justify-center gap-2 self-center">
-                            <a
-                              href={item.link}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="flex items-center rounded-full border border-[#8b6914]/4 bg-[#efe0b8] px-3 py-3 text-[#3d2a18] transition hover:bg-[#f7ecd0] sm:px-4"
-                              aria-label={lang === "en" ? `Open: ${item.title}` : `보러가기: ${item.title}`}
-                              title={lang === "en" ? "Open article" : "보러가기"}
-                            >
-                              <span className="text-xl leading-none sm:text-2xl" aria-hidden>
-                                →
-                              </span>
-                            </a>
+                          <div className="flex items-stretch gap-3 px-4 py-4 sm:gap-4 sm:px-5 sm:py-5">
+                            <div className="min-w-0 flex-1">
+                              <div className="flex flex-wrap items-center gap-2 text-[10px] uppercase tracking-[0.16em] text-[#6b4a22]/65">
+                                <span>{item.source}</span>
+                                <span aria-hidden>·</span>
+                                <span>T{item.trustTier}</span>
+                                {item.focusLabel ? (
+                                  <>
+                                    <span aria-hidden>·</span>
+                                    <span className="normal-case tracking-[0.04em] text-[#5a3d1c]/9">
+                                      {item.focusLabel}
+                                    </span>
+                                  </>
+                                ) : null}
+                              </div>
+                              <h2 className="mt-2 text-[1.2rem] leading-snug tracking-[0.02em] text-[#3d2a18] sm:text-[1.45rem] sm:leading-snug">
+                                {item.title}
+                              </h2>
+                              {item.matterHook ? (
+                                <p className="mt-2 text-[12px] leading-snug text-[#6b4a22]/85 sm:text-[13px]">
+                                  {item.matterHook}
+                                </p>
+                              ) : null}
+                              <p className="mt-3 text-[0.98rem] leading-[1.75] text-[#5a4428]/92 sm:text-[1.08rem] sm:leading-[1.8]">
+                                {item.summary}
+                              </p>
+                              {!isEconomy ? (
+                                <LampWhyMattersButton
+                                  lang={lang}
+                                  title={item.title}
+                                  source={item.source}
+                                  link={item.link}
+                                  focusLabel={item.focusLabel}
+                                  excerpt={item.summary}
+                                />
+                              ) : null}
+                            </div>
+                            <div className="flex shrink-0 flex-col items-center justify-center gap-2 self-center">
+                              <a
+                                href={item.link}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center rounded-full border border-[#8b6914]/4 bg-[#efe0b8] px-3 py-3 text-[#3d2a18] transition hover:bg-[#f7ecd0] sm:px-4"
+                                aria-label={
+                                  lang === "en" ? `Open: ${item.title}` : `보러가기: ${item.title}`
+                                }
+                                title={lang === "en" ? "Open article" : "보러가기"}
+                              >
+                                <span className="text-xl leading-none sm:text-2xl" aria-hidden>
+                                  →
+                                </span>
+                              </a>
+                            </div>
                           </div>
+                        </article>
+                      ))}
+                      {canExpandNews ? (
+                        <div className="pb-2 text-center">
+                          <button
+                            type="button"
+                            onClick={() => setExpandedNews(true)}
+                            className="rounded-sm border border-[#8b6914]/4 bg-[#efe0b8] px-4 py-2 text-[13px] text-[#3d2a18] hover:bg-[#f7ecd0]"
+                          >
+                            {lang === "en"
+                              ? `Show ${news.length - mobilePreview} more`
+                              : `${news.length - mobilePreview}건 더 보기`}
+                          </button>
                         </div>
-                      </article>
-                    ))
+                      ) : null}
+                    </>
                   ) : (
                     <p className="py-10 text-center text-sm text-[#5a4428]/7">
                       {lang === "en"

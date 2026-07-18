@@ -1,4 +1,4 @@
-/** 등불 「왜 중요?」 — 외교학 교수 톤 해설 (유저 BYOK) */
+/** 등불 「왜 중요?」 — 외교학 교수 톤 해설 (BYOK 심층 / 서버·템플릿 간단) */
 
 export type WhyMattersArticleInput = {
   title: string;
@@ -33,52 +33,88 @@ export function buildWhyMattersSystem(lang: "ko" | "en"): string {
   ].join(" ");
 }
 
-export function buildWhyMattersUserMessage(input: WhyMattersArticleInput): string {
+/** 키 없는 유저용 — 짧은 서버 해설 */
+export function buildWhyMattersQuickSystem(lang: "ko" | "en"): string {
+  if (lang === "en") {
+    return [
+      "You are an IR professor giving a 90-second briefing for map users without specialist background.",
+      "Exactly 2 short paragraphs: (1) what may have changed and why now; (2) likely map-level effects + one caveat.",
+      "Do not invent facts. Mark judgment vs unknown. No trading advice. English only.",
+    ].join(" ");
+  }
+  return [
+    "외교학 교수가 비전공 지도 이용자에게 90초 브리핑한다.",
+    "문단 정확히 2개: (1) 무엇이 바뀐 것으로 보이며 왜 지금인지 (2) 지도·전장에 끼칠 영향 + 주의 한 줄.",
+    "사실 단정·환각 금지. 해석은 판단으로 표시. 매매 권유 금지. 한국어만.",
+  ].join(" ");
+}
+
+export function buildWhyMattersUserMessage(
+  input: WhyMattersArticleInput,
+  mode: "deep" | "quick" = "deep",
+): string {
   const lang = input.lang === "en" ? "en" : "ko";
   const lines = [
     lang === "en"
-      ? "Brief this diplomacy / geopolitics item like a seminar for map users:"
-      : "등불 뉴스 「왜 중요?」 세미나 브리핑 요청:",
+      ? mode === "quick"
+        ? "Quick IR brief for map users:"
+        : "Brief this diplomacy / geopolitics item like a seminar for map users:"
+      : mode === "quick"
+        ? "등불 「왜 중요?」 간단 브리핑:"
+        : "등불 뉴스 「왜 중요?」 세미나 브리핑 요청:",
     `Title: ${input.title}`,
   ];
   if (input.source) lines.push(`Source: ${input.source}`);
   if (input.link) lines.push(`Link: ${input.link}`);
   if (input.focusLabel) lines.push(`Focus: ${input.focusLabel}`);
-  if (input.excerpt) lines.push(`Excerpt: ${input.excerpt.slice(0, 900)}`);
-  lines.push(
-    lang === "en"
-      ? [
-          "Cover at least:",
-          "1) What appears to have changed (status quo → this move).",
-          "2) Why this timing (structural + proximate variables).",
-          "3) Likely effects of deeper cooperation / rupture on the map.",
-          "4) Caveats / what we cannot know from the headline alone.",
-        ].join("\n")
-      : [
-          "반드시 다룰 것:",
-          "1) 무엇이 바뀐 것으로 보이는가 (기존 관계·질서 → 이번 움직임).",
-          "2) 왜 이 시기인가 (구조적·촉발 변수).",
-          "3) 협력 심화 또는 균열이 앞으로 지도·전장·시장에 끼칠 영향.",
-          "4) 헤드라인만으로는 알 수 없는 한계·주의.",
-        ].join("\n"),
-  );
+  if (input.excerpt) {
+    lines.push(`Excerpt: ${input.excerpt.slice(0, mode === "quick" ? 480 : 900)}`);
+  }
+  if (mode === "quick") {
+    lines.push(
+      lang === "en"
+        ? "Reply with exactly two short paragraphs. No bullet list."
+        : "문단 두 개만. 불릿 목록 금지.",
+    );
+  } else {
+    lines.push(
+      lang === "en"
+        ? [
+            "Cover at least:",
+            "1) What appears to have changed (status quo → this move).",
+            "2) Why this timing (structural + proximate variables).",
+            "3) Likely effects of deeper cooperation / rupture on the map.",
+            "4) Caveats / what we cannot know from the headline alone.",
+          ].join("\n")
+        : [
+            "반드시 다룰 것:",
+            "1) 무엇이 바뀐 것으로 보이는가 (기존 관계·질서 → 이번 움직임).",
+            "2) 왜 이 시기인가 (구조적·촉발 변수).",
+            "3) 협력 심화 또는 균열이 앞으로 지도·전장·시장에 끼칠 영향.",
+            "4) 헤드라인만으로는 알 수 없는 한계·주의.",
+          ].join("\n"),
+    );
+  }
   return lines.join("\n");
 }
 
-export function stubWhyMattersText(input: WhyMattersArticleInput): string {
+/** 서버 키·스텁도 없을 때 — 항상 읽히는 템플릿 */
+export function templateWhyMattersText(input: WhyMattersArticleInput): string {
   const lang = input.lang === "en" ? "en" : "ko";
+  const focus = input.focusLabel?.trim() || (lang === "en" ? "this theater" : "이 전장");
+  const shortTitle = input.title.slice(0, 80);
   if (lang === "en") {
     return [
-      `Status quo shift (stub): 「${input.title.slice(0, 72)}」 signals a possible realignment near ${input.focusLabel || "the theater"}.`,
-      "Timing: stub mode cannot weigh live variables — paste your Anthropic key for a full IR seminar brief.",
-      "Effects: treat cooperation/rupture claims as provisional until whitelist sources confirm.",
-      "Caveat: demo text only · not verified intelligence.",
+      `「${shortTitle}」 may signal a shift around ${focus}: who meets whom, and on what terms, often matters more than the ceremony itself.`,
+      `Why now usually tracks overlapping pressures — rivalry, sanctions, energy, elections, or a nearby battlefield. Treat cooperation claims as provisional until confirmed by high-trust sources. Add your Anthropic key for a full seminar-length brief.`,
     ].join("\n\n");
   }
   return [
-    `변화(스텁): 「${input.title.slice(0, 72)}」는 ${input.focusLabel || "관련 전장"} 부근의 관계 재편 신호일 수 있습니다.`,
-    "시기: 스텁 모드에서는 실시간 변수를 분석하지 않습니다. 본인 Anthropic 키를 넣으면 외교학 세미나 톤으로 해설합니다.",
-    "영향: 협력·균열 주장은 화이트리스트 매체 확인 전까지 잠정으로 두세요.",
-    "주의: 데모 문구 · 사실 단정 금지.",
+    `「${shortTitle}」는 ${focus} 축에서 ‘누가·어떤 조건으로’ 만나는지가 의식보다 중요한 신호일 수 있습니다.`,
+    `왜 지금인지는 대개 경쟁·제재·에너지·선거·인접 전장이 겹칠 때입니다. 협력 주장은 고신뢰 매체가 교차 확인할 때까지 잠정으로 두세요. 본인 Anthropic 키를 넣으면 세미나 분량으로 풀어 드립니다.`,
   ].join("\n\n");
+}
+
+export function stubWhyMattersText(input: WhyMattersArticleInput): string {
+  return templateWhyMattersText(input);
 }

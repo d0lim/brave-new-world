@@ -1,8 +1,11 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import type { LabelLanguage } from "@/lib/layerPrefs";
-import { getUserAnthropicApiKey } from "@/lib/llm/userAnthropicKey";
+import {
+  getUserAnthropicApiKey,
+  hasUserAnthropicApiKey,
+} from "@/lib/llm/userAnthropicKey";
 
 type Props = {
   lang: LabelLanguage;
@@ -14,7 +17,9 @@ type Props = {
 };
 
 /**
- * 등불 뉴스 「왜 중요?」 — 외교학 교수 톤 Claude 해설 (유저 BYOK).
+ * 등불 뉴스 「왜 중요?」
+ * - 키 있음: 심층 세미나 (BYOK)
+ * - 키 없음: 서버 간단 / 템플릿 폴백
  */
 export function LampWhyMattersButton({
   lang,
@@ -29,6 +34,7 @@ export function LampWhyMattersButton({
   const [text, setText] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [meta, setMeta] = useState<string | null>(null);
+  const hasKey = useMemo(() => hasUserAnthropicApiKey(), [open, text, loading]);
 
   const run = useCallback(async () => {
     if (loading || !title.trim()) return;
@@ -66,10 +72,11 @@ export function LampWhyMattersButton({
         stub?: boolean;
         billing?: string;
         model?: string;
-        needUserKey?: boolean;
+        mode?: string;
+        note?: string;
       };
 
-      if (!res.ok || data.error) {
+      if (!res.ok || (data.error && !data.text)) {
         setError(
           data.error ||
             (lang === "en" ? "Could not explain this item." : "해설을 가져오지 못했습니다."),
@@ -80,13 +87,30 @@ export function LampWhyMattersButton({
       setText(data.text || null);
       setMeta(
         [
-          data.stub ? (lang === "en" ? "stub demo" : "스텁 데모") : null,
+          data.mode === "quick"
+            ? lang === "en"
+              ? "short brief"
+              : "간단 해설"
+            : data.mode === "deep"
+              ? lang === "en"
+                ? "seminar"
+                : "심층 세미나"
+              : data.mode === "template"
+                ? lang === "en"
+                  ? "starter brief"
+                  : "기본 해설"
+                : null,
           data.billing === "user-byok"
             ? lang === "en"
               ? "your key"
               : "본인 키"
-            : null,
-          data.model,
+            : data.billing === "server-short"
+              ? lang === "en"
+                ? "free short"
+                : "무료 간단"
+              : null,
+          data.model && data.model !== "template" ? data.model : null,
+          data.note ?? null,
         ]
           .filter(Boolean)
           .join(" · ") || null,
@@ -112,6 +136,15 @@ export function LampWhyMattersButton({
     void run();
   };
 
+  const labelIdle =
+    lang === "en"
+      ? hasKey
+        ? "Why it matters (deep)"
+        : "Why it matters (short)"
+      : hasKey
+        ? "왜 중요? (심층)"
+        : "왜 중요? (간단)";
+
   return (
     <div className="mt-3 border-t border-[#8b6914]/20 pt-3">
       <button
@@ -122,15 +155,13 @@ export function LampWhyMattersButton({
       >
         {loading
           ? lang === "en"
-            ? "Seminar brief…"
+            ? "Writing…"
             : "해설 작성 중…"
           : open && text
             ? lang === "en"
               ? "Hide"
               : "접기"
-            : lang === "en"
-              ? "Why it matters"
-              : "왜 중요?"}
+            : labelIdle}
       </button>
 
       {open ? (
@@ -146,8 +177,8 @@ export function LampWhyMattersButton({
           {loading && !text ? (
             <p className="text-[13px] leading-relaxed text-[#5a4428]/75">
               {lang === "en"
-                ? "IR seminar voice — weighing timing, realignment, and second-order effects…"
-                : "외교학 세미나 톤으로 시기·관계 재편·파급을 정리하는 중…"}
+                ? "Weighing timing, realignment, and second-order effects…"
+                : "시기·관계 재편·파급을 정리하는 중…"}
             </p>
           ) : null}
           {text ? (

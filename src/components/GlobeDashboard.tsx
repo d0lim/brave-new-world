@@ -69,6 +69,10 @@ import {
 } from "@/components/AirRaidOnboardingCoach";
 import { PeriodicBriefingParchment } from "@/components/PeriodicBriefingParchment";
 import {
+  LampRoleTipBanner,
+  shouldOfferLampRoleTip,
+} from "@/components/LampRoleTipBanner";
+import {
   AirRaidBriefingParchment,
   type AirRaidBriefingContent,
 } from "@/components/AirRaidBriefingParchment";
@@ -1533,6 +1537,7 @@ export function GlobeDashboard({
   const [periodicBriefing, setPeriodicBriefing] = useState<PeriodicBriefing | null>(null);
   /** 오늘 등불 파이프라인 종료 여부(표시·스킵·이미 봄). false면 공습/이슈 UI 보류 */
   const [dailyLampSettled, setDailyLampSettled] = useState(false);
+  const [showLampRoleTip, setShowLampRoleTip] = useState(false);
   const [airRaidBriefing, setAirRaidBriefing] = useState<AirRaidBriefingContent | null>(null);
   const [airRaidOffer, setAirRaidOffer] = useState<AirRaidOffer | null>(null);
   /** 로컬 자정에 바뀜 — 매일 등불 재점화 트리거 */
@@ -9951,12 +9956,25 @@ export function GlobeDashboard({
           onDismiss={() => {
             markPeriodSeen(periodicBriefing.key);
             setPeriodicBriefing(null);
-            if (shouldOfferChromeCoach()) {
+            if (shouldOfferLampRoleTip()) {
+              window.setTimeout(() => setShowLampRoleTip(true), 450);
+            } else if (shouldOfferChromeCoach()) {
               window.setTimeout(() => setChromeCoachStep("nav"), 500);
             }
           }}
         />
       ) : null}
+
+      <LampRoleTipBanner
+        lang={labelLanguage}
+        open={showLampRoleTip}
+        onDismiss={() => {
+          setShowLampRoleTip(false);
+          if (shouldOfferChromeCoach()) {
+            window.setTimeout(() => setChromeCoachStep("nav"), 400);
+          }
+        }}
+      />
 
       {airRaidOffer && !airRaidBriefing && !issueUiPausedForLamp ? (
         <AirRaidOfferBanner

@@ -59,8 +59,8 @@ async function fetchLocationRows(
 }
 
 /**
- * HDX HAPI conflict-events → 열린 전선별 ACLED 사망 합.
- * 우크라·중동 교전국만. 대만·한반도 등 긴장 구간 제외.
+ * HDX HAPI conflict-events → 열린 전선별 ACLED 집계.
+ * UKR·PSE·ISR·LBN(사망) + CHN·TWN(사건·회색지대).
  */
 export async function GET() {
   const appId = resolveHapiAppIdentifier();

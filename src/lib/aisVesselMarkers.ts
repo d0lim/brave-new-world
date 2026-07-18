@@ -1,5 +1,19 @@
 import type { AisVessel } from "@/data/geoTypes";
-import { aisCommercialPointColor } from "@/lib/aisVesselClass";
+import { SUBMARINE_MARKER_SIZE } from "@/data/submarineSilhouette";
+import { SURFACE_COMBATANT_MARKER_SIZE } from "@/data/surfaceCombatantSilhouette";
+import {
+  aisCommercialPointColor,
+  aisDisplayTypeLabel,
+  aisMilitaryKindColor,
+  isAisAspectHullMarker,
+  isAisSurfaceCombatant,
+} from "@/lib/aisVesselClass";
+import {
+  surfaceCombatantAspectFromRelativeHeading,
+  surfaceCombatantIconSvg,
+  surfaceCombatantRelativeHeading,
+} from "@/lib/surfaceCombatantDeckIcon";
+import { submarineIconSvg } from "@/lib/submarineDeckIcon";
 
 export const AIS_VESSEL_MARKER_ROOT_CLASS = "ais-vessel-marker-root";
 
@@ -22,37 +36,51 @@ function ensureAisMarkerStyles() {
     .${AIS_VESSEL_MARKER_ROOT_CLASS}[data-ais-military="1"] button:hover .ais-vessel-icon {
       filter: drop-shadow(0 0 8px rgba(239,68,68,0.7)) drop-shadow(0 1px 3px rgba(0,0,0,0.75));
     }
+    .${AIS_VESSEL_MARKER_ROOT_CLASS}[data-ais-surface="1"] .ais-vessel-icon {
+      filter: drop-shadow(0 0 8px rgba(239,68,68,0.55)) drop-shadow(0 1px 3px rgba(0,0,0,0.75));
+    }
+    .${AIS_VESSEL_MARKER_ROOT_CLASS}[data-ais-surface="1"] button:hover .ais-vessel-icon {
+      filter: drop-shadow(0 0 12px rgba(239,68,68,0.85)) drop-shadow(0 1px 3px rgba(0,0,0,0.75));
+    }
+    .${AIS_VESSEL_MARKER_ROOT_CLASS}[data-ais-submarine="1"] .ais-vessel-icon {
+      filter: drop-shadow(0 0 8px rgba(167,139,250,0.55)) drop-shadow(0 1px 3px rgba(0,0,0,0.75));
+    }
+    .${AIS_VESSEL_MARKER_ROOT_CLASS}[data-ais-submarine="1"] button:hover .ais-vessel-icon {
+      filter: drop-shadow(0 0 12px rgba(167,139,250,0.85)) drop-shadow(0 1px 3px rgba(0,0,0,0.75));
+    }
   `;
   document.head.appendChild(style);
 }
 
-/** COG 우선, 없으면 true heading. 정박(거의 0kn)은 null. */
-export function aisVesselHeadingDeg(vessel: AisVessel): number | null {
-  const sog = vessel.speedOverGround;
-  if (sog != null && Number.isFinite(sog) && sog < 0.4) return null;
+/**
+ * COG 우선, 없으면 true heading.
+ * 8방위 헐 표지(수상·잠수함)는 저속에서도 침로 유지.
+ */
+export function aisVesselHeadingDeg(
+  vessel: AisVessel,
+  options?: { allowStationaryHeading?: boolean },
+): number | null {
   const raw = vessel.courseOverGround ?? vessel.trueHeading;
   if (raw == null || !Number.isFinite(raw)) return null;
-  // AIS heading 511 = not available
   if (raw >= 360) return null;
+  const sog = vessel.speedOverGround;
+  const allowStopped =
+    options?.allowStationaryHeading || isAisAspectHullMarker(vessel.militaryKind);
+  if (!allowStopped && sog != null && Number.isFinite(sog) && sog < 0.4) return null;
   return ((raw % 360) + 360) % 360;
 }
 
-const MILITARY_VESSEL_COLOR = "#ef4444";
-
 function shipColor(vessel: AisVessel): string {
-  if (vessel.category === "military") return MILITARY_VESSEL_COLOR;
+  if (vessel.category === "military") {
+    return aisMilitaryKindColor(vessel.militaryKind);
+  }
   const c = aisCommercialPointColor(vessel.shipType);
   return c.replace(/[\d.]+\)$/, "0.98)") || c;
 }
 
-/**
- * 선수(코)가 viewBox 위쪽을 향하는 선박 화살 실루엣.
- * MapLibre Marker rotationAlignment="map" + rotation=heading 과 함께 씀.
- */
 function aisShipIconSvg(color: string, size: number, military: boolean): string {
   const w = size;
   const h = size;
-  // 위쪽 = 진행 방향
   const body = military
     ? "M16 2 L22 12 L20 12 L20 26 L12 26 L12 12 L10 12 Z"
     : "M16 1.5 L24 14 L19 14 L19 28 L13 28 L13 14 L8 14 Z";
@@ -70,18 +98,30 @@ export function createAisVesselBadge(
     onHover: (vessel: AisVessel | null) => void;
     onClick: (vessel: AisVessel) => void;
   },
-  options?: { lang?: "ko" | "en" },
+  options?: { lang?: "ko" | "en"; mapBearingDeg?: number },
 ): HTMLElement {
   ensureAisMarkerStyles();
   const lang = options?.lang ?? "ko";
-  const heading = aisVesselHeadingDeg(vessel);
+  const mapBearing = options?.mapBearingDeg ?? 0;
   const military = vessel.category === "military";
+  const surface = military && isAisSurfaceCombatant(vessel.militaryKind);
+  const submarine = military && vessel.militaryKind === "submarine";
+  const aspectHull = surface || submarine;
+  const heading = aisVesselHeadingDeg(vessel, { allowStationaryHeading: aspectHull });
   const color = shipColor(vessel);
   const size = military ? 28 : 22;
 
+  const relative = aspectHull
+    ? surfaceCombatantRelativeHeading(heading ?? 0, mapBearing)
+    : null;
+  const aspect =
+    aspectHull && relative != null
+      ? surfaceCombatantAspectFromRelativeHeading(relative)
+      : null;
+
   const titleBits = [
     vessel.shipName || `MMSI ${vessel.mmsi}`,
-    vessel.shipTypeLabel,
+    aisDisplayTypeLabel(vessel, lang),
     vessel.speedOverGround != null ? `${vessel.speedOverGround.toFixed(1)} kn` : null,
     heading != null ? `${Math.round(heading)}°` : lang === "en" ? "no course" : "침로 없음",
   ].filter(Boolean);
@@ -90,16 +130,31 @@ export function createAisVesselBadge(
   outer.className = AIS_VESSEL_MARKER_ROOT_CLASS;
   outer.dataset.aisMmsi = vessel.mmsi;
   if (military) outer.dataset.aisMilitary = "1";
+  if (surface) outer.dataset.aisSurface = "1";
+  if (submarine) outer.dataset.aisSubmarine = "1";
+  if (aspect) outer.dataset.aisAspect = aspect;
   if (heading != null) outer.dataset.aisHeading = String(Math.round(heading));
 
   const inner = document.createElement("button");
   inner.type = "button";
   inner.className = "ais-vessel-marker";
   inner.setAttribute("role", "img");
-  inner.setAttribute(
-    "aria-label",
-    `${military ? (lang === "en" ? "Warship" : "군함") : lang === "en" ? "Vessel" : "선박"} ${vessel.shipName || vessel.mmsi}`,
-  );
+  const roleLabel = submarine
+    ? lang === "en"
+      ? "Submarine"
+      : "잠수함"
+    : surface
+      ? lang === "en"
+        ? "Surface combatant"
+        : "수상전투함"
+      : military
+        ? lang === "en"
+          ? "Warship"
+          : "군함"
+        : lang === "en"
+          ? "Vessel"
+          : "선박";
+  inner.setAttribute("aria-label", `${roleLabel} ${vessel.shipName || vessel.mmsi}`);
   inner.title = titleBits.join(" · ");
   inner.style.display = "flex";
   inner.style.flexDirection = "column";
@@ -114,16 +169,26 @@ export function createAisVesselBadge(
 
   const icon = document.createElement("span");
   icon.className = "ais-vessel-icon";
-  icon.style.width = `${size}px`;
-  icon.style.height = `${size}px`;
-  // 정박/침로 없음: 살짝 기울여 정지로 보이게
-  if (heading == null) {
-    icon.style.transform = "rotate(-20deg)";
-    icon.style.opacity = "0.72";
+  if (submarine && aspect) {
+    icon.style.width = `${SUBMARINE_MARKER_SIZE.width}px`;
+    icon.style.height = `${SUBMARINE_MARKER_SIZE.height}px`;
+    icon.innerHTML = submarineIconSvg(color, SUBMARINE_MARKER_SIZE, aspect);
+    if (heading == null) icon.style.opacity = "0.72";
+  } else if (surface && aspect) {
+    icon.style.width = `${SURFACE_COMBATANT_MARKER_SIZE.width}px`;
+    icon.style.height = `${SURFACE_COMBATANT_MARKER_SIZE.height}px`;
+    icon.innerHTML = surfaceCombatantIconSvg(color, SURFACE_COMBATANT_MARKER_SIZE, aspect);
+    if (heading == null) icon.style.opacity = "0.72";
+  } else {
+    icon.style.width = `${size}px`;
+    icon.style.height = `${size}px`;
+    icon.innerHTML = aisShipIconSvg(color, size, military);
+    if (heading == null) {
+      icon.style.transform = "rotate(-20deg)";
+      icon.style.opacity = "0.72";
+    }
   }
-  icon.innerHTML = aisShipIconSvg(color, size, military);
 
-  // 캐릭터(선명 라벨) 없이 실루엣만
   inner.append(icon);
   outer.append(inner);
 

@@ -20,7 +20,22 @@ export type ViewportPointLayer =
   | "internet-exchanges"
   | "refugee-camps"
   | "ucdp-events"
-  | "lng-terminals";
+  | "lng-terminals"
+  | "gem-coal-plants"
+  | "gem-coal-mines"
+  | "gem-coal-terminals"
+  | "gem-nuclear"
+  | "gem-solar"
+  | "gem-wind"
+  | "gem-hydro"
+  | "gem-geothermal"
+  | "gem-bioenergy"
+  | "gem-oil-gas-plants"
+  | "gem-oil-gas-extraction"
+  | "gem-iron-ore"
+  | "gem-cement"
+  | "gem-steel"
+  | "gem-chemicals";
 
 const FILE_BY_LAYER: Record<ViewportPointLayer, string> = {
   airports: "airports.json",
@@ -33,6 +48,21 @@ const FILE_BY_LAYER: Record<ViewportPointLayer, string> = {
   "refugee-camps": "refugee-camps.json",
   "ucdp-events": "ucdp-events.json",
   "lng-terminals": "lng-terminals.json",
+  "gem-coal-plants": "gem-coal-plants.json",
+  "gem-coal-mines": "gem-coal-mines.json",
+  "gem-coal-terminals": "gem-coal-terminals.json",
+  "gem-nuclear": "gem-nuclear.json",
+  "gem-solar": "gem-solar.json",
+  "gem-wind": "gem-wind.json",
+  "gem-hydro": "gem-hydro.json",
+  "gem-geothermal": "gem-geothermal.json",
+  "gem-bioenergy": "gem-bioenergy.json",
+  "gem-oil-gas-plants": "gem-oil-gas-plants.json",
+  "gem-oil-gas-extraction": "gem-oil-gas-extraction.json",
+  "gem-iron-ore": "gem-iron-ore.json",
+  "gem-cement": "gem-cement.json",
+  "gem-steel": "gem-steel.json",
+  "gem-chemicals": "gem-chemicals.json",
 };
 
 const pointCache = new Map<string, StaticPoint[]>();

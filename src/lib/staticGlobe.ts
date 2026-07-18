@@ -83,6 +83,21 @@ export const STATIC_POINT_COLORS: Record<StaticPoint["kind"], string> = {
   "logistics-hub": "rgba(244, 63, 94, 0.92)",
   "submarine-tunnel": "rgba(125, 211, 252, 0.95)",
   "critical-node": "rgba(250, 204, 21, 0.95)",
+  "gem-coal-plant": "rgba(120, 113, 108, 0.95)",
+  "gem-coal-mine": "rgba(68, 64, 60, 0.95)",
+  "gem-coal-terminal": "rgba(87, 83, 78, 0.92)",
+  "gem-nuclear": "rgba(250, 204, 21, 0.95)",
+  "gem-solar": "rgba(251, 191, 36, 0.92)",
+  "gem-wind": "rgba(125, 211, 252, 0.92)",
+  "gem-hydro": "rgba(56, 189, 248, 0.92)",
+  "gem-geothermal": "rgba(251, 113, 133, 0.9)",
+  "gem-bioenergy": "rgba(134, 239, 172, 0.9)",
+  "gem-oil-gas-plant": "rgba(251, 146, 60, 0.92)",
+  "gem-oil-gas-extraction": "rgba(245, 158, 11, 0.92)",
+  "gem-iron-ore": "rgba(185, 28, 28, 0.9)",
+  "gem-cement": "rgba(163, 163, 163, 0.92)",
+  "gem-steel": "rgba(148, 163, 184, 0.92)",
+  "gem-chemical": "rgba(192, 132, 252, 0.9)",
 };
 
 /** HTML 실루엣 마커 kinds — globe points와 이중 렌더 금지 */
@@ -143,6 +158,21 @@ export function staticPointRadius(kind: StaticPoint["kind"], altitude = 1): numb
     "logistics-hub": 0.26,
     "submarine-tunnel": 0.27,
     "critical-node": 0.3,
+    "gem-coal-plant": 0.2,
+    "gem-coal-mine": 0.2,
+    "gem-coal-terminal": 0.2,
+    "gem-nuclear": 0.22,
+    "gem-solar": 0.18,
+    "gem-wind": 0.18,
+    "gem-hydro": 0.2,
+    "gem-geothermal": 0.19,
+    "gem-bioenergy": 0.19,
+    "gem-oil-gas-plant": 0.2,
+    "gem-oil-gas-extraction": 0.19,
+    "gem-iron-ore": 0.2,
+    "gem-cement": 0.19,
+    "gem-steel": 0.2,
+    "gem-chemical": 0.19,
   };
   return map[kind] * getZoomOutScale(altitude);
 }

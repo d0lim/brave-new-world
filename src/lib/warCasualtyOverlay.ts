@@ -126,7 +126,8 @@ export function applyCasualtyOverlayMetrics(
 
   const elegyPane = el.querySelector<HTMLElement>(".casualty-elegy-pane");
   if (elegyPane) {
-    elegyPane.style.width = `${Math.round(m.elegyPx * 16)}px`;
+    // 문장 2줄 고정 — 폭을 좁히면 둘째 줄이 감겨 3줄처럼 보임
+    elegyPane.style.width = "max-content";
     elegyPane.style.marginBottom = `${Math.max(4, Math.round(m.blockGapPx * 0.55))}px`;
   }
 
@@ -182,15 +183,14 @@ const CASUALTY_NUMBER_FONT =
   'var(--font-wanted), "Wanted Sans Variable", "Wanted Sans", ui-sans-serif, system-ui, sans-serif';
 
 /**
- * 흰색 두개골 SVG — 눈구멍·코구멍 뚫림, 턱·이빨 노출.
- * 턱 아래 잔여 돌기(혹부리) 없이 깔끔한 턱선.
+ * 흰색 두개골 SVG — 둥근 두개 · 큰 원형 눈 · 역하트 코 · 윗니(아래턱 없음).
  */
 function skullSvg(iconPx: number) {
   const px = Math.max(14, Math.round(iconPx));
   return `<svg class="casualty-skull-svg" width="${px}" height="${px}" viewBox="0 0 64 64" aria-hidden="true" style="display:block;flex-shrink:0;filter:drop-shadow(0 1px 2px rgba(0,0,0,0.85))">
-  <path fill="#ffffff" fill-rule="evenodd" d="M32 4C19 4 9 14.2 9 27c0 8.2 3.9 14.2 9.2 18.1V48c0 1.1.4 2.1 1.1 2.9L22 55.5c.25.4.7.6 1.15.6h17.7c.45 0 .9-.2 1.15-.6L41.7 50.9c.7-.8 1.1-1.8 1.1-2.9v-2.9C48.1 41.2 52 35.2 52 27 52 14.2 42 4 32 4zM21.5 22.5a5.6 6.2 0 1 0 11.2 0 5.6 6.2 0 1 0-11.2 0zm10 0a5.6 6.2 0 1 0 11.2 0 5.6 6.2 0 1 0-11.2 0zM32 29c-2.5 0-4.5 1.6-5 3.6-.1.5.3 1 .8 1h8.4c.5 0 .9-.5.8-1C36.5 30.6 34.5 29 32 29z"/>
-  <path fill="#ffffff" d="M22 42h20v8.2c0 1.15-.65 2.1-1.65 2.45-3.3.7-13.4.7-16.7 0C22.65 52.3 22 51.35 22 50.2V42z"/>
-  <path fill="none" stroke="rgba(0,0,0,0.55)" stroke-width="1.15" d="M25.2 42.2v8M28.4 42.2v8M31.6 42.2v8M34.8 42.2v8M38 42.2v8M25.6 46.4h12.8"/>
+  <path fill="#ffffff" fill-rule="evenodd" d="M32 4C17.5 4 8 14.8 8 28c0 9.2 4.6 15.5 11.2 19.2v1.6c0 1 .4 1.9 1.1 2.55L24 56.2c.35.4.85.6 1.35.6h13.3c.5 0 1-.2 1.35-.6l3.7-4.85c.7-.65 1.1-1.55 1.1-2.55v-1.6C51.4 43.5 56 37.2 56 28 56 14.8 46.5 4 32 4zM20.2 23.5a6.6 7.1 0 1 0 13.2 0 6.6 7.1 0 1 0-13.2 0zm10.4 0a6.6 7.1 0 1 0 13.2 0 6.6 7.1 0 1 0-13.2 0zM32 31.5c-2.6 0-4.6 1.7-4.6 3.5 0 .55.2 1.05.55 1.45L32 41.2l4.05-4.75c.35-.4.55-.9.55-1.45 0-1.8-2-3.5-4.6-3.5z"/>
+  <path fill="#ffffff" d="M22 43.2h20v7.6c0 1.05-.6 1.95-1.5 2.25-3.1.9-13.9.9-17 0-.9-.3-1.5-1.2-1.5-2.25v-7.6z"/>
+  <path fill="none" stroke="rgba(0,0,0,0.5)" stroke-width="1.25" stroke-linecap="round" d="M25.4 43.5v8.5M28.7 43.5v8.5M32 43.5v8.5M35.3 43.5v8.5M38.6 43.5v8.5"/>
 </svg>`;
 }
 
@@ -278,7 +278,7 @@ export function createWarCasualtyOverlayElement(
   elegyPane.style.bottom = "100%";
   elegyPane.style.transform = "translateX(-50%)";
   elegyPane.style.marginBottom = `${Math.max(4, Math.round(metrics.blockGapPx * 0.55))}px`;
-  elegyPane.style.width = `${Math.round(metrics.elegyPx * 16)}px`;
+  elegyPane.style.width = "max-content";
   elegyPane.style.pointerEvents = "none";
   elegyPane.style.zIndex = "2";
   elegyPane.style.textAlign = "center";
@@ -299,6 +299,8 @@ export function createWarCasualtyOverlayElement(
 
   const line1 = document.createElement("div");
   const line2 = document.createElement("div");
+  line1.style.whiteSpace = "nowrap";
+  line2.style.whiteSpace = "nowrap";
   line2.style.marginTop = "0.35em";
   elegy.append(line1, line2);
   elegyPane.append(elegy);

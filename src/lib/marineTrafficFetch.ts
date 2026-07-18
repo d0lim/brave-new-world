@@ -1,8 +1,5 @@
 import type { AisVessel } from "@/data/geoTypes";
-import {
-  aisShipTypeLabel,
-  classifyAisVessel,
-} from "@/lib/aisVesselClass";
+import { enrichAisClassification } from "@/lib/aisVesselClass";
 
 const MT_BASE = "https://services.marinetraffic.com/api";
 
@@ -12,18 +9,19 @@ function parseNumber(value: unknown) {
 }
 
 function buildVessel(
-  partial: Omit<AisVessel, "shipType" | "shipTypeLabel" | "category"> & {
+  partial: Omit<AisVessel, "shipType" | "shipTypeLabel" | "category" | "militaryKind"> & {
     shipType?: number | null;
   },
 ): AisVessel {
   const shipType = partial.shipType ?? null;
   const shipName = partial.shipName;
-  const category = classifyAisVessel({ shipType, shipName });
+  const classified = enrichAisClassification({ shipType, shipName });
   return {
     ...partial,
     shipType,
-    shipTypeLabel: aisShipTypeLabel(shipType),
-    category,
+    shipTypeLabel: classified.shipTypeLabel,
+    category: classified.category,
+    militaryKind: classified.militaryKind,
   };
 }
 

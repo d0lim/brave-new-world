@@ -16,12 +16,14 @@ const COLUMN = {
 } as const;
 
 type TensionRegion = {
-  id: "ukraine" | "middle-east" | "taiwan" | "korea";
+  id: "ukraine" | "middle-east" | "taiwan" | "korea" | "pacific" | "atlantic" | "arctic";
   label: string;
   bbox: { minLat: number; maxLat: number; minLng: number; maxLng: number };
   center: { lat: number; lng: number };
   regionalActors: readonly string[];
   actorPairs: ReadonlyArray<readonly [string, string]>;
+  /** 대양 전장 — 지터 폭·날짜선 wrap */
+  ocean?: boolean;
 };
 
 const TENSION_REGIONS: TensionRegion[] = [
@@ -80,6 +82,54 @@ const TENSION_REGIONS: TensionRegion[] = [
       ["PRK", "CHN"],
     ],
   },
+  {
+    id: "pacific",
+    label: "태평양 지정학 경쟁·외교",
+    bbox: { minLat: -50, maxLat: 62, minLng: 120, maxLng: -70 },
+    center: { lat: 18, lng: 160 },
+    regionalActors: ["USA", "CHN", "JPN", "AUS", "PHL", "TWN", "KOR"],
+    actorPairs: [
+      ["USA", "CHN"],
+      ["USA", "RUS"],
+      ["CHN", "JPN"],
+      ["CHN", "AUS"],
+      ["USA", "AUS"],
+      ["CHN", "PHL"],
+      ["USA", "PHL"],
+    ],
+    ocean: true,
+  },
+  {
+    id: "atlantic",
+    label: "대서양 지정학 경쟁·외교",
+    bbox: { minLat: -50, maxLat: 70, minLng: -80, maxLng: 20 },
+    center: { lat: 35, lng: -40 },
+    regionalActors: ["USA", "GBR", "FRA", "DEU", "RUS", "CAN"],
+    actorPairs: [
+      ["USA", "RUS"],
+      ["GBR", "RUS"],
+      ["USA", "CHN"],
+      ["FRA", "RUS"],
+      ["DEU", "RUS"],
+      ["USA", "GBR"],
+    ],
+    ocean: true,
+  },
+  {
+    id: "arctic",
+    label: "북극해 지정학 경쟁·외교",
+    bbox: { minLat: 66, maxLat: 90, minLng: -180, maxLng: 180 },
+    center: { lat: 78, lng: 20 },
+    regionalActors: ["RUS", "USA", "CAN", "NOR", "DNK", "CHN"],
+    actorPairs: [
+      ["USA", "RUS"],
+      ["CAN", "RUS"],
+      ["NOR", "RUS"],
+      ["USA", "CHN"],
+      ["RUS", "CHN"],
+    ],
+    ocean: true,
+  },
 ];
 
 const TENSION_ROOT_CODES = new Set(["10", "11", "12", "13", "15", "16", "17", "18", "19", "20"]);
@@ -97,12 +147,24 @@ const ROOT_LABELS: Record<string, string> = {
   "20": "대규모 폭력",
 };
 
+function normalizeLng(lng: number): number {
+  let value = lng;
+  while (value > 180) value -= 360;
+  while (value < -180) value += 360;
+  return value;
+}
+
 function inBBox(
   lat: number,
   lng: number,
   bbox: TensionRegion["bbox"],
 ): boolean {
-  return lat >= bbox.minLat && lat <= bbox.maxLat && lng >= bbox.minLng && lng <= bbox.maxLng;
+  if (lat < bbox.minLat || lat > bbox.maxLat) return false;
+  const n = normalizeLng(lng);
+  const min = normalizeLng(bbox.minLng);
+  const max = normalizeLng(bbox.maxLng);
+  if (min <= max) return n >= min && n <= max;
+  return n >= min || n <= max;
 }
 
 function actorPairMatches(
@@ -132,11 +194,13 @@ function centerJitter(
   eventId: string,
 ): { lat: number; lng: number } {
   const hash = hashText(`${region.id}|${eventId}`);
-  const latOffset = ((hash & 0xffff) / 0xffff - 0.5) * 2.2;
-  const lngOffset = (((hash >>> 16) & 0xffff) / 0xffff - 0.5) * 2.8;
+  const latSpan = region.ocean ? 8 : 2.2;
+  const lngSpan = region.ocean ? 14 : 2.8;
+  const latOffset = ((hash & 0xffff) / 0xffff - 0.5) * latSpan;
+  const lngOffset = (((hash >>> 16) & 0xffff) / 0xffff - 0.5) * lngSpan;
   return {
-    lat: region.center.lat + latOffset,
-    lng: region.center.lng + lngOffset,
+    lat: Math.max(-85, Math.min(85, region.center.lat + latOffset)),
+    lng: normalizeLng(region.center.lng + lngOffset),
   };
 }
 
@@ -295,7 +359,7 @@ export async function fetchGdeltTensionPoints(options: {
         }
         const tsv = unzipFirstText(await exportResponse.arrayBuffer());
         return {
-          points: parseTensionRows(tsv, Math.max(80, options.maxPoints)),
+          points: parseTensionRows(tsv, Math.max(120, options.maxPoints)),
           errors: [],
         };
       } catch (error) {

@@ -20,6 +20,11 @@ function extractChecked(categories: LayerCategory[]): Record<string, boolean> {
   for (const category of categories) {
     for (const item of category.items) {
       map[item.id] = item.checked;
+      if (item.options?.length) {
+        for (const opt of item.options) {
+          map[opt.id] = opt.checked;
+        }
+      }
     }
   }
   return map;
@@ -103,6 +108,9 @@ export const LayerCategoryDraftHost = memo(function LayerCategoryDraftHost({
                 const next = { ...prev };
                 for (const item of category.items) {
                   next[item.id] = false;
+                  if (item.options?.length) {
+                    for (const opt of item.options) next[opt.id] = false;
+                  }
                 }
                 return next;
               });
@@ -118,7 +126,10 @@ export const LayerCategoryDraftHost = memo(function LayerCategoryDraftHost({
                 return prev;
               }
               let enabledAny = false;
-              for (const item of category.items) {
+              const candidates = category.items.flatMap((item) =>
+                item.options?.length ? item.options : [item],
+              );
+              for (const item of candidates) {
                 if (next[item.id]) continue;
                 const key = LAYER_ITEM_PREF_KEYS[item.id];
                 if (!key) continue;
@@ -141,6 +152,37 @@ export const LayerCategoryDraftHost = memo(function LayerCategoryDraftHost({
           }
         : undefined,
       items: category.items.map((item) => {
+        if (item.presentation === "dropdown" && item.options?.length) {
+          const wrappedOptions = item.options.map((opt) => {
+            const isOn = checked[opt.id] ?? opt.checked;
+            const key = LAYER_ITEM_PREF_KEYS[opt.id];
+            const counted = key ? isLayerCapCountedKey(key) : false;
+            const blocked = !isOn && atCap && counted;
+            const heavy = ultraLite && isUltraLiteHeavyRenderKey(key);
+            return {
+              ...opt,
+              checked: isOn,
+              disabled: opt.disabled || blocked,
+              detail: blocked
+                ? `${opt.detail.replace(/ · 상한.*/, "")} · 상한 ${activeCount}/${cap}`
+                : opt.detail.replace(/ · 상한.*/, ""),
+              cautionTag: heavy ? t("layerClickCautionTag", lang) : opt.cautionTag,
+              cautionHint: heavy ? t("layerClickCautionHint", lang) : opt.cautionHint,
+              onChange: (value: boolean) => applyItem(opt.id, value),
+            };
+          });
+          const anyOn = wrappedOptions.some((o) => o.checked);
+          return {
+            ...item,
+            checked: anyOn,
+            options: wrappedOptions,
+            onChange: (value: boolean) => {
+              for (const opt of item.options ?? []) {
+                applyItem(opt.id, value);
+              }
+            },
+          };
+        }
         const isOn = checked[item.id] ?? item.checked;
         const key = LAYER_ITEM_PREF_KEYS[item.id];
         const counted = key ? isLayerCapCountedKey(key) : false;

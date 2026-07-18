@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
+import { recordInterestNews } from "@/lib/interest/recordInterest";
 import type { LabelLanguage } from "@/lib/layerPrefs";
 import {
   getUserAnthropicApiKey,
@@ -85,6 +86,12 @@ export function LampWhyMattersButton({
       }
 
       setText(data.text || null);
+      if (data.text) {
+        recordInterestNews(
+          link?.trim() || title.trim().slice(0, 120),
+          title.trim().slice(0, 80),
+        );
+      }
       setMeta(
         [
           data.mode === "quick"

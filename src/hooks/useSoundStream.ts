@@ -20,6 +20,40 @@ import { isZoomScaledSound, scaledSoundVolume } from "@/lib/soundDistanceScale";
 /** 로컬/스트림 URL — 캐시 버스팅으로 예전 개짖음 MP3 무효화 */
 const AUDIO_URL_BUST = "v18-fpv-uav-537598";
 
+/** 앰비언트 시작 시 서서히 커짐(팍 안 켜지게) · 전환/정지 시 서서히 작아짐 */
+const AMBIENT_FADE_IN_MS = 1800;
+const AMBIENT_FADE_OUT_MS = 900;
+
+const ambientFadeTokens = new WeakMap<HTMLAudioElement, number>();
+let ambientFadeTokenSeq = 0;
+
+/** rAF 기반 볼륨 램프 — 같은 오디오 엘리먼트에 새 fade가 걸리면 이전 fade는 자동 무효화 */
+function fadeAmbientVolume(
+  audio: HTMLAudioElement,
+  target: number,
+  durationMs: number,
+  onDone?: () => void,
+) {
+  const token = ++ambientFadeTokenSeq;
+  ambientFadeTokens.set(audio, token);
+  const start = audio.volume;
+  const clampedTarget = Math.min(1, Math.max(0, target));
+  const startedAt = performance.now();
+
+  const step = (now: number) => {
+    if (ambientFadeTokens.get(audio) !== token) return;
+    const elapsed = now - startedAt;
+    const progress = durationMs <= 0 ? 1 : Math.min(1, elapsed / durationMs);
+    audio.volume = start + (clampedTarget - start) * progress;
+    if (progress >= 1) {
+      onDone?.();
+      return;
+    }
+    window.requestAnimationFrame(step);
+  };
+  window.requestAnimationFrame(step);
+}
+
 function audioUrlForEvent(eventId: AudioEventId, def: AudioEventDef): string {
   if (def.localSrc) {
     return joinAudioCdnUrl(
@@ -81,6 +115,9 @@ export function useSoundStream(options?: UseSoundStreamOptions) {
   const ambientBaseVolumeRef = useRef(0);
   const lastOneShotAtRef = useRef(0);
   const altitudeRef = useRef<number | null>(null);
+  /** 배경음악(BGM) — 상황별 앰비언트와 별개 채널. 카메라/모드 전환에 영향받지 않고 계속 흐름 */
+  const bgmRef = useRef<HTMLAudioElement | null>(null);
+  const bgmIdRef = useRef<AudioEventId | null>(null);
 
   useEffect(() => {
     setSoundEnabledState(readSoundEnabled());
@@ -96,6 +133,8 @@ export function useSoundStream(options?: UseSoundStreamOptions) {
         overlapPoolRef.current = [];
         ambientRef.current?.pause();
         ambientIdRef.current = null;
+        bgmRef.current?.pause();
+        bgmIdRef.current = null;
       }
     };
     const onStorage = (event: StorageEvent) => {
@@ -108,6 +147,8 @@ export function useSoundStream(options?: UseSoundStreamOptions) {
         overlapPoolRef.current = [];
         ambientRef.current?.pause();
         ambientIdRef.current = null;
+        bgmRef.current?.pause();
+        bgmIdRef.current = null;
       }
     };
 
@@ -139,6 +180,8 @@ export function useSoundStream(options?: UseSoundStreamOptions) {
       overlapPoolRef.current = [];
       ambientRef.current?.pause();
       ambientIdRef.current = null;
+      bgmRef.current?.pause();
+      bgmIdRef.current = null;
     }
   }, []);
 
@@ -191,24 +234,30 @@ export function useSoundStream(options?: UseSoundStreamOptions) {
 
       if (def.loop && !timedBurst) {
         const ambientBase = def.volume * volumeScale;
+        const targetVolume = scaledSoundVolume(eventId, ambientBase, altitudeRef.current);
+
         if (ambientIdRef.current === eventId && ambientRef.current && !ambientRef.current.paused) {
-          ambientRef.current.volume = scaledSoundVolume(
-            eventId,
-            ambientBase,
-            altitudeRef.current,
-          );
+          // 같은 앰비언트가 이미 재생 중 — 볼륨만 서서히 목표치로 (줌 연동 등으로 값이 바뀔 때 뚝 끊기지 않게)
           ambientBaseVolumeRef.current = ambientBase;
+          fadeAmbientVolume(ambientRef.current, targetVolume, 400);
           return;
         }
-        ambientRef.current?.pause();
+
+        // 다른 앰비언트로 전환 — 이전 트랙은 서서히 줄여 정지, 새 트랙은 0에서 서서히 올림
+        const previous = ambientRef.current;
+        if (previous) {
+          fadeAmbientVolume(previous, 0, AMBIENT_FADE_OUT_MS, () => previous.pause());
+        }
+
         const audio = new Audio(audioUrlForEvent(eventId, def));
         audio.loop = true;
-        audio.volume = scaledSoundVolume(eventId, ambientBase, altitudeRef.current);
+        audio.volume = 0;
         ambientRef.current = audio;
         ambientIdRef.current = eventId;
         ambientBaseVolumeRef.current = ambientBase;
         try {
           await audio.play();
+          fadeAmbientVolume(audio, targetVolume, AMBIENT_FADE_IN_MS);
         } catch {
           /* autoplay / network */
         }
@@ -287,7 +336,10 @@ export function useSoundStream(options?: UseSoundStreamOptions) {
   );
 
   const stopAmbient = useCallback(() => {
-    ambientRef.current?.pause();
+    const current = ambientRef.current;
+    if (current) {
+      fadeAmbientVolume(current, 0, AMBIENT_FADE_OUT_MS, () => current.pause());
+    }
     ambientRef.current = null;
     ambientIdRef.current = null;
   }, []);
@@ -307,10 +359,52 @@ export function useSoundStream(options?: UseSoundStreamOptions) {
     [play, stopAmbient],
   );
 
+  /**
+   * 배경음악(BGM) — 상황별 앰비언트(ambientRef)와 별개 채널이라, 카메라가 전선/항모/긴장
+   * 구역을 들락거려도 끊기지 않고 계속 흐른다. 실제 멜로디 있는 트랙용(웅웅거리는 앰비언트와
+   * 성격이 다름) — 같은 트랙이 이미 재생 중이면 아무것도 안 함.
+   */
+  const playBgm = useCallback(
+    async (eventId: AudioEventId) => {
+      if (!canPlay) return;
+      const def = AUDIO_MANIFEST[eventId] as AudioEventDef | undefined;
+      if (!def) return;
+      if (bgmIdRef.current === eventId && bgmRef.current && !bgmRef.current.paused) return;
+
+      const previous = bgmRef.current;
+      if (previous) {
+        fadeAmbientVolume(previous, 0, AMBIENT_FADE_OUT_MS, () => previous.pause());
+      }
+
+      const audio = new Audio(audioUrlForEvent(eventId, def));
+      audio.loop = true;
+      audio.volume = 0;
+      bgmRef.current = audio;
+      bgmIdRef.current = eventId;
+      try {
+        await audio.play();
+        fadeAmbientVolume(audio, def.volume, AMBIENT_FADE_IN_MS);
+      } catch {
+        /* autoplay / network */
+      }
+    },
+    [canPlay],
+  );
+
+  const stopBgm = useCallback(() => {
+    const current = bgmRef.current;
+    if (current) {
+      fadeAmbientVolume(current, 0, AMBIENT_FADE_OUT_MS, () => current.pause());
+    }
+    bgmRef.current = null;
+    bgmIdRef.current = null;
+  }, []);
+
   useEffect(() => {
     return () => {
       oneShotRef.current?.pause();
       ambientRef.current?.pause();
+      bgmRef.current?.pause();
     };
   }, []);
 
@@ -318,6 +412,8 @@ export function useSoundStream(options?: UseSoundStreamOptions) {
     play,
     setAmbient,
     stopAmbient,
+    playBgm,
+    stopBgm,
     setCameraAltitude,
     unlocked,
     soundEnabled,

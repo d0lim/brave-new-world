@@ -11,7 +11,7 @@
  * - 볼륨 낮게 + 줌 연동 cap (원샷 ≤0.22~0.55, 앰비언트 ≤0.22)
  */
 
-export type AudioCategory = "conflict" | "economy" | "ui" | "ambient";
+export type AudioCategory = "conflict" | "economy" | "ui" | "ambient" | "music";
 
 export interface AudioEventDef {
   eventId: string;
@@ -306,6 +306,24 @@ export const AUDIO_MANIFEST = {
     volume: 0.3,
     category: "conflict",
     note: "FS#423166 plasterbrain Minimalist Sci-Fi UI Error · 디지털 톤",
+  },
+
+  // ── Music (BGM) ──────────────────────────────────────────────────
+
+  /**
+   * 대시보드 배경음악 — 웅웅거리는 앰비언트 드론이 아니라 실제 멜로디/구성이 있는 트랙.
+   * 상황별 ambient(전선·긴장·항모 등)와 별개 채널로 계속 흐름 — 카메라·뷰어모드가
+   * 바뀌어도 끊기지 않음(SoundEffectsBridge에서 playBgm으로 한 번만 트리거).
+   * 파일 미배치 — public/audio/dashboard-bgm.mp3 로 넣으면 바로 재생됨.
+   */
+  "dashboard-bgm": {
+    eventId: "dashboard-bgm",
+    freesoundQuery: "cinematic tension score no vocals loopable",
+    localSrc: "/audio/dashboard-bgm.mp3",
+    volume: 0.16,
+    loop: true,
+    category: "music",
+    note: "파일 미배치 — 상업적 이용 가능한 무보컬 시네마틱 스코어(Pixabay Music 등)를 유저가 직접 소싱",
   },
 
   // ── Ambient ──────────────────────────────────────────────────────

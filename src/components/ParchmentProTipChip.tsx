@@ -9,8 +9,20 @@ type ParchmentProTipChipProps = {
 };
 
 const COPY = {
-  ko: { label: "꿀팁!", tip: "F11키 누르면 브라우저 전체화면" },
-  en: { label: "Tip!", tip: "Press F11 for browser fullscreen" },
+  ko: {
+    label: "꿀팁!",
+    tips: [
+      "F11키 누르면 브라우저 전체화면",
+      "장중한 영화 또는 게임 BGM 좋아하시면 같이 들으시면서 들어보세요.",
+    ],
+  },
+  en: {
+    label: "Tip!",
+    tips: [
+      "Press F11 for browser fullscreen",
+      "If you like solemn movie or game BGM, put some on while you explore.",
+    ],
+  },
 } as const;
 
 /**
@@ -33,7 +45,7 @@ export function ParchmentProTipChip({ lang }: ParchmentProTipChipProps) {
     if (!root) return;
     const anchor = root.getBoundingClientRect();
     const width = tip?.offsetWidth || Math.min(256, window.innerWidth - VIEWPORT_EDGE_PAD * 2);
-    const height = tip?.offsetHeight || 48;
+    const height = tip?.offsetHeight || 88;
     const placed = placeNearAnchor({
       anchor,
       width,
@@ -56,7 +68,7 @@ export function ParchmentProTipChip({ lang }: ParchmentProTipChipProps) {
       window.cancelAnimationFrame(raf);
       window.removeEventListener("resize", updatePosition);
     };
-  }, [open, updatePosition, copy.tip]);
+  }, [open, updatePosition, copy.tips]);
 
   useEffect(() => {
     if (!open) return;
@@ -98,7 +110,7 @@ export function ParchmentProTipChip({ lang }: ParchmentProTipChipProps) {
         ref={tipRef}
         id={menuId}
         role="tooltip"
-        className={`parchment-pro-tip-drop econ-insight-parchment pointer-events-none fixed z-[90] min-w-[11.5rem] max-w-[min(72vw,16rem)] px-3 py-2.5 text-[0.72rem] leading-snug tracking-[0.02em] text-[#4a3418] shadow-[0_10px_28px_rgba(0,0,0,0.42)] transition-all duration-150 ${
+        className={`parchment-pro-tip-drop econ-insight-parchment pointer-events-none fixed z-[90] min-w-[12rem] max-w-[min(78vw,18.5rem)] px-3 py-2.5 text-[0.72rem] leading-snug tracking-[0.02em] text-[#4a3418] shadow-[0_10px_28px_rgba(0,0,0,0.42)] transition-all duration-150 ${
           open
             ? "translate-y-0 scale-100 opacity-100"
             : "translate-y-1 scale-[0.98] opacity-0"
@@ -111,7 +123,14 @@ export function ParchmentProTipChip({ lang }: ParchmentProTipChipProps) {
       >
         <span className="parchment-pro-tip-drop-edge pointer-events-none absolute inset-0" aria-hidden />
         <span className="parchment-pro-tip-drop-thread pointer-events-none absolute inset-0" aria-hidden />
-        <span className="relative z-[1] block font-medium">{copy.tip}</span>
+        <ol className="relative z-[1] m-0 list-none space-y-1.5 p-0 font-medium">
+          {copy.tips.map((tip, index) => (
+            <li key={tip} className="flex gap-1.5">
+              <span className="shrink-0 tabular-nums opacity-70">{index + 1}.</span>
+              <span>{tip}</span>
+            </li>
+          ))}
+        </ol>
       </div>
     </div>
   );

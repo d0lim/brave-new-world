@@ -3,9 +3,9 @@
 import { UiSpotlightCoachmark } from "@/components/UiSpotlightCoachmark";
 import type { ViewerMode } from "@/lib/viewPackages";
 
-export const CHROME_COACH_KEY = "geowatch-chrome-coach-v2";
+export const CHROME_COACH_KEY = "geowatch-chrome-coach-v3";
 
-export type ChromeCoachStep = "nav" | "news";
+export type ChromeCoachStep = "nav";
 
 export function readChromeCoachDone(): boolean {
   if (typeof window === "undefined") return true;
@@ -38,40 +38,28 @@ type ChromeOnboardingCoachProps = {
 
 const COPY = {
   ko: {
-    navTitle: "상단 검색 · 탐색 메뉴",
-    navConflict:
-      "상단은 검색창만 보입니다. ▾ 버튼을 누르면 중국·러시아·북한·이란 허브와 반서방국 분쟁사가 열립니다. 우측 위 「주요전장」드롭다운으로 대만·한반도·우크라이나·중동 등 충돌지로 바로 이동합니다.",
-    navEconomy:
-      "검색창으로 에너지·초크포인트·금융 허브를 찾고, ▾ 탐색 메뉴에서 허브 목록을 펼칩니다. 관심 있는 항목을 고를 때만 지도가 이동합니다.",
-    newsTitle: "하단 뉴스 · 속보",
-    newsConflict:
-      "지구본 아래 뉴스·속보 창입니다. 탭하면 검증 보도·전장 뉴스가 열립니다. 사이트를 둘러본 뒤 궁금할 때 여기로 오면 됩니다.",
-    newsEconomy:
-      "지구본 아래 시장·경제 뉴스 창입니다. 티커와 함께 주요 보도를 열 수 있습니다.",
-    next: "다음",
+    title: "탐색은 여기서",
+    conflict:
+      "상단 검색·▾ 메뉴로 허브·분쟁사를 열고, 우측 「주요전장」으로 충돌지에 바로 갈 수 있습니다. 하단 뉴스 창은 궁금할 때 탭하세요. 로딩만으로 자동 진입하지 않습니다.",
+    economy:
+      "상단 검색·▾ 메뉴로 에너지·초크·금융 허브를 고르면 지도가 움직입니다. 하단은 시장·경제 뉴스와 티커입니다. 관심 있는 항목만 열어 보세요.",
     done: "알겠습니다",
     skip: "스킵",
   },
   en: {
-    navTitle: "Hub menu · Key theaters",
-    navConflict:
-      "Top China · Russia · DPRK · Iran are axis hub menus. Use the top-right “Key theaters” dropdown to fly straight to Taiwan, Korea, Ukraine, or the Middle East. Nothing auto-enters from loading alone.",
-    navEconomy:
-      "Focus the search bar to browse energy, chokepoints, and finance hubs. The map moves only when you pick something.",
-    newsTitle: "Bottom news strip",
-    newsConflict:
-      "This is the news / breaking strip under the globe. Tap for verified reporting. Explore freely first—come here when curious.",
-    newsEconomy:
-      "Market and economy news under the globe—open it with the ticker when you need it.",
-    next: "Next",
+    title: "Explore from here",
+    conflict:
+      "Use top search / ▾ for hubs and dispute history, and “Key theaters” for Taiwan, Korea, Ukraine, or the Middle East. Bottom news opens when you want it—nothing auto-enters from loading alone.",
+    economy:
+      "Pick energy, chokepoints, or finance hubs from top search / ▾. Bottom strip is markets and economy news. The map moves only when you choose.",
     done: "Got it",
     skip: "Skip",
   },
 } as const;
 
 /**
- * 도메인 진입 직후 공통 온보딩: 상단 nav → 하단 뉴스 표지.
- * 허브/전장 자동 fly 없이, 유저가 직접 발견한다는 전제를 설명합니다.
+ * 도메인 진입 후 공통 온보딩 1회 — 상단 탐색 + 하단 뉴스 한 장으로 안내.
+ * (과도한 “누르세요” 연쇄를 줄이기 위해 nav→news 2단을 합침)
  */
 export function ChromeOnboardingCoach({
   step,
@@ -83,43 +71,23 @@ export function ChromeOnboardingCoach({
   const copy = lang === "en" ? COPY.en : COPY.ko;
   const isEconomy = viewerMode === "economy";
 
-  const skipAll = () => {
+  const finish = () => {
     markChromeCoachDone();
     onStepChange(null);
   };
 
-  if (step === "nav") {
-    return (
-      <UiSpotlightCoachmark
-        open
-        targetSelector="#app-hover-nav"
-        title={copy.navTitle}
-        body={isEconomy ? copy.navEconomy : copy.navConflict}
-        ctaLabel={copy.next}
-        skipLabel={copy.skip}
-        placement="below"
-        accent={isEconomy ? "emerald" : "sky"}
-        onDismiss={() => onStepChange("news")}
-        onSkip={skipAll}
-      />
-    );
-  }
-
   return (
     <UiSpotlightCoachmark
       open
-      targetSelector="#bottom-intel-compact"
-      title={copy.newsTitle}
-      body={isEconomy ? copy.newsEconomy : copy.newsConflict}
+      targetSelector="#app-hover-nav"
+      title={copy.title}
+      body={isEconomy ? copy.economy : copy.conflict}
       ctaLabel={copy.done}
       skipLabel={copy.skip}
-      placement="above"
-      accent={isEconomy ? "emerald" : "amber"}
-      onDismiss={() => {
-        markChromeCoachDone();
-        onStepChange(null);
-      }}
-      onSkip={skipAll}
+      placement="below"
+      accent={isEconomy ? "emerald" : "sky"}
+      onDismiss={finish}
+      onSkip={finish}
     />
   );
 }

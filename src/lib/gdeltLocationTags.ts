@@ -4,6 +4,10 @@ import { getGlobeLod, type GlobeLodTier } from "@/lib/globeLod";
 import { getZoomOutScale } from "@/lib/zoomScale";
 import { isCenterInView, VIEWPORT_RADIUS_BY_TIER } from "@/lib/viewportCull";
 import { gdeltImportanceRankWeight } from "@/lib/gdeltImportance";
+import {
+  isInOceanGeopoliticsTheater,
+  isOceanGeopoliticsTag,
+} from "@/lib/oceanGeopoliticsTheaters";
 
 type ViewState = { lat: number; lng: number; altitude: number };
 
@@ -109,6 +113,7 @@ function pickTierEvents(
  * - 뷰포트 밖 제외
  * - 격자 중복 제거 (한 칸에 최우선 이벤트 1개)
  * - LOD·티어별 개수 상한
+ * - 대양(태평양·대서양·북극) 경쟁·외교는 showOceanCompetition 으로 별도 포함
  */
 export function pickGdeltTensionTags(
   events: ScoredEvent[],
@@ -116,6 +121,7 @@ export function pickGdeltTensionTags(
     showWar: boolean;
     showDiplomatic: boolean;
     showProtest?: boolean;
+    showOceanCompetition?: boolean;
     view: ViewState;
   },
 ): ScoredEvent[] {
@@ -132,8 +138,26 @@ export function pickGdeltTensionTags(
   if (options.showProtest) {
     picked.push(...pickTierEvents(events, "protest", options.view, limits.protest));
   }
+  if (options.showOceanCompetition) {
+    const oceanPool = events
+      .filter(
+        (e) =>
+          isInOceanGeopoliticsTheater(e.lat, e.lng) ||
+          isOceanGeopoliticsTag(e.title) ||
+          isOceanGeopoliticsTag(e.id),
+      )
+      .map((e) => ({ ...e, eventTier: "diplomatic" as const }));
+    const oceanCap = Math.max(10, Math.ceil(limits.diplomatic * 0.85));
+    picked.push(...pickTierEvents(oceanPool, "diplomatic", options.view, oceanCap));
+  }
 
-  return picked.sort((a, b) => tagRank(b) - tagRank(a));
+  // id 기준 중복 제거
+  const byId = new Map<string, ScoredEvent>();
+  for (const ev of picked) {
+    const prev = byId.get(ev.id);
+    if (!prev || tagRank(ev) > tagRank(prev)) byId.set(ev.id, ev);
+  }
+  return Array.from(byId.values()).sort((a, b) => tagRank(b) - tagRank(a));
 }
 
 /** 동맹 GDELT 이벤트 — 뷰포트·격자 기준 핀 */

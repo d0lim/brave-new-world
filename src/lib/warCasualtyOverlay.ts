@@ -62,9 +62,10 @@ export function markCasualtyElegyTyped(theaterId: string): void {
 }
 
 /**
- * 영토에 붙어 보이는 배율.
- * 줌아웃(고도↑) → 화면 배율↓ 로 전장 크기에 맞춰 축소하고,
- * 줌인(고도↓) → 읽기 좋게 키움. (이전: 고도↑에 커져 전선에서 떠 보임)
+ * 영토에 붙어 보이는 배율 (CSS transform에만 적용).
+ * 줌아웃(고도↑) → 축소, 줌인(고도↓) → 확대.
+ * 글자 px는 아래에서 고정 베이스로 두고 transform만 배율한다
+ * (이전: px와 scale을 동시에 줄여 유효 글자가 ~1–3px로 사라져 숫자가 안 보임).
  */
 export function getCasualtyOverlayScale(
   altitude: number,
@@ -74,8 +75,9 @@ export function getCasualtyOverlayScale(
   const span = Math.max(3, Number.isFinite(territorySpanDeg) ? territorySpanDeg : 10);
   // 전장 각크기 ≈ span/a 에 비례 — 넓은 전장은 같은 고도에서 약간 더 큼
   const territoryOnScreen = span / a;
-  const raw = territoryOnScreen * 0.028;
-  return Math.min(0.78, Math.max(0.12, raw));
+  const raw = territoryOnScreen * 0.045;
+  // 하한 0.45 — 대륙 줌에서도 사망 숫자가 읽히게
+  return Math.min(1.35, Math.max(0.45, raw));
 }
 
 export type CasualtyOverlayMetrics = {
@@ -89,18 +91,21 @@ export type CasualtyOverlayMetrics = {
   blockGapPx: number;
 };
 
-/** 숫자·호버 문구·아이콘 크기 — 배율에 비례 (영토 대비 작게) */
+/**
+ * 숫자·아이콘 베이스 크기 (transform scale=1 기준).
+ * 화면 배율은 getCasualtyOverlayScale → CSS transform만 담당.
+ */
 export function getCasualtyOverlayMetrics(scale: number): CasualtyOverlayMetrics {
-  const s = Math.max(0.12, Math.min(0.78, scale));
+  const s = Math.max(0.45, Math.min(1.35, scale));
   return {
     scale: s,
-    numPx: Math.round(10 + 8 * s),
-    labelPx: Math.round(5 + 3.5 * s),
-    elegyPx: Math.round(6 + 4 * s),
-    notePx: Math.round(5 + 3 * s),
-    iconPx: Math.round(11 + 11 * s),
-    rowGapPx: Math.round(3 + 4 * s),
-    blockGapPx: Math.round(4 + 4 * s),
+    numPx: 26,
+    labelPx: 11,
+    elegyPx: 13,
+    notePx: 11,
+    iconPx: 26,
+    rowGapPx: 7,
+    blockGapPx: 9,
   };
 }
 
@@ -119,10 +124,10 @@ export function applyCasualtyOverlayMetrics(
   const counts = el.querySelector<HTMLElement>(".casualty-skull-counts");
   if (counts) counts.style.gap = `${m.rowGapPx}px`;
 
-  const sidePane = el.querySelector<HTMLElement>(".casualty-side-pane");
-  if (sidePane) {
-    sidePane.style.marginLeft = `${Math.max(6, Math.round(m.blockGapPx))}px`;
-    sidePane.style.width = `${Math.round(m.elegyPx * 14)}px`;
+  const elegyPane = el.querySelector<HTMLElement>(".casualty-elegy-pane");
+  if (elegyPane) {
+    elegyPane.style.width = `${Math.round(m.elegyPx * 16)}px`;
+    elegyPane.style.marginBottom = `${Math.max(4, Math.round(m.blockGapPx * 0.55))}px`;
   }
 
   el.querySelectorAll<HTMLElement>(".casualty-count-num").forEach((node) => {
@@ -172,9 +177,9 @@ function escapeHtml(value: string | null | undefined) {
     .replace(/"/g, "&quot;");
 }
 
-/** SB 어그로 Bold — layout --font-sb-agro */
+/** Wanted Sans — 사망 숫자·라벨 */
 const CASUALTY_NUMBER_FONT =
-  'var(--font-sb-agro), "SB Agro", "SBAgro", sans-serif';
+  'var(--font-wanted), "Wanted Sans Variable", "Wanted Sans", ui-sans-serif, system-ui, sans-serif';
 
 /**
  * 흰색 두개골 SVG — 눈구멍·코구멍 뚫림, 턱·이빨 노출.
@@ -218,7 +223,7 @@ export function createWarCasualtyOverlayElement(
   el.className = "casualty-skull-marker war-casualty-overlay";
   el.dataset.theaterId = theaterId;
   el.dataset.territorySpan = String(spanDeg);
-  // 인플로우 자식은 counts만 — 사이드 페인은 absolute라 핀이 전선 좌표에서 안 밀림
+  // 인플로우: counts · 애도는 숫자 바로 위 absolute (핀 좌표 안 밀림)
   el.style.display = "block";
   el.style.position = "relative";
   el.style.pointerEvents = "auto";
@@ -228,12 +233,14 @@ export function createWarCasualtyOverlayElement(
   el.style.filter = "drop-shadow(0 2px 6px rgba(0,0,0,0.9))";
 
   const numberFont = CASUALTY_NUMBER_FONT;
-  const elegyFont = '"Pretendard","IBM Plex Sans","Noto Sans KR",sans-serif';
+  const elegyFont =
+    'var(--font-wanted), "Wanted Sans Variable", "Wanted Sans", sans-serif';
 
   const counts = document.createElement("div");
   counts.className = "casualty-skull-counts";
   counts.style.display = "flex";
   counts.style.flexDirection = "column";
+  counts.style.position = "relative";
   counts.style.transition = "opacity 0.35s ease";
 
   const row = (iconSvg: string, count: number, label: string, kind: "killed" | "wounded") => {
@@ -263,15 +270,18 @@ export function createWarCasualtyOverlayElement(
   counts.append(killedRow);
   if (woundedRow) counts.append(woundedRow);
 
-  const sidePane = document.createElement("div");
-  sidePane.className = "casualty-side-pane";
-  sidePane.style.position = "absolute";
-  sidePane.style.left = "100%";
-  sidePane.style.top = "50%";
-  sidePane.style.transform = "translateY(-50%)";
-  sidePane.style.marginLeft = `${Math.max(6, Math.round(metrics.blockGapPx))}px`;
-  sidePane.style.width = `${Math.round(metrics.elegyPx * 14)}px`;
-  sidePane.style.pointerEvents = "none";
+  /** 애도 문구 — 사망 숫자 바로 위에 깔림 */
+  const elegyPane = document.createElement("div");
+  elegyPane.className = "casualty-elegy-pane";
+  elegyPane.style.position = "absolute";
+  elegyPane.style.left = "50%";
+  elegyPane.style.bottom = "100%";
+  elegyPane.style.transform = "translateX(-50%)";
+  elegyPane.style.marginBottom = `${Math.max(4, Math.round(metrics.blockGapPx * 0.55))}px`;
+  elegyPane.style.width = `${Math.round(metrics.elegyPx * 16)}px`;
+  elegyPane.style.pointerEvents = "none";
+  elegyPane.style.zIndex = "2";
+  elegyPane.style.textAlign = "center";
 
   const elegy = document.createElement("div");
   elegy.className = "casualty-elegy";
@@ -285,19 +295,22 @@ export function createWarCasualtyOverlayElement(
   elegy.style.transition = "opacity 0.35s ease";
   elegy.style.pointerEvents = "none";
   elegy.style.textShadow = "0 1px 4px rgba(0,0,0,0.85)";
+  elegy.style.whiteSpace = "normal";
 
   const line1 = document.createElement("div");
   const line2 = document.createElement("div");
   line2.style.marginTop = "0.35em";
   elegy.append(line1, line2);
+  elegyPane.append(elegy);
 
   const noteTip = document.createElement("div");
   noteTip.className = "casualty-wounded-note";
   noteTip.setAttribute("role", "status");
   noteTip.style.position = "absolute";
-  noteTip.style.left = "0";
-  noteTip.style.top = "50%";
-  noteTip.style.transform = "translateY(-50%)";
+  noteTip.style.left = "50%";
+  noteTip.style.bottom = "100%";
+  noteTip.style.transform = "translateX(-50%)";
+  noteTip.style.marginBottom = `${Math.max(4, Math.round(metrics.blockGapPx * 0.55))}px`;
   noteTip.style.borderRadius = "4px";
   noteTip.style.border = "1px solid rgba(255,255,255,0.28)";
   noteTip.style.background = "rgba(8,12,20,0.82)";
@@ -312,10 +325,11 @@ export function createWarCasualtyOverlayElement(
   noteTip.style.pointerEvents = "none";
   noteTip.style.whiteSpace = "normal";
   noteTip.style.boxShadow = "0 4px 12px rgba(0,0,0,0.45)";
+  noteTip.style.zIndex = "2";
+  noteTip.style.textAlign = "center";
   noteTip.textContent = woundedNote;
 
-  sidePane.append(elegy, noteTip);
-  el.append(counts, sidePane);
+  el.append(elegyPane, counts, noteTip);
 
   const sourceAttribution = input.sourceAttribution?.trim() || "";
   if (sourceAttribution) {

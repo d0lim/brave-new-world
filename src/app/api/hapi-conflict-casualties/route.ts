@@ -77,9 +77,11 @@ export async function GET() {
     );
     const rows = batches.flat();
     const fronts = aggregateActiveFronts(rows);
+    // 전 지역 수집 실패·필터로 비면 시드로 응답해 클라이언트가 숫자를 유지
+    const resolvedFronts = fronts.length > 0 ? fronts : HAPI_CASUALTY_SEED.fronts;
 
     const payload: HapiConflictCasualtiesPayload = {
-      fronts,
+      fronts: resolvedFronts,
       fetchedAt: new Date().toISOString(),
       windowStart: start,
       windowEnd: end,
@@ -91,7 +93,10 @@ export async function GET() {
         HAPI_CONFLICT_EVENTS_URL,
         HAPI_HDX_DATASET_URL,
       ],
-      caveat: HAPI_CASUALTY_CAVEAT,
+      caveat:
+        fronts.length > 0
+          ? HAPI_CASUALTY_CAVEAT
+          : `${HAPI_CASUALTY_CAVEAT} · live empty, serving seed`,
     };
 
     return NextResponse.json(payload, {

@@ -12,6 +12,7 @@ import { MethodologySourcesPanel, SourcesLinkButton } from "@/components/Methodo
 import { NewsTrustTierPanel } from "@/components/NewsTrustTierPanel";
 import { TrustBadgeChip } from "@/components/TrustBadgeChip";
 import { ShareViewButton } from "@/components/ShareViewButton";
+import { MobileAlertFeed } from "@/components/MobileAlertFeed";
 import { GdeltAlertPanel } from "@/components/GdeltAlertPanel";
 import { TelegramOsintPanel } from "@/components/TelegramOsintPanel";
 import { TzevaAdomPanel, type AirRaidFocusTarget } from "@/components/TzevaAdomPanel";
@@ -1520,6 +1521,8 @@ export function GlobeDashboard({
   const [showQuickStart, setShowQuickStart] = useState(false);
   const [showSourcesPanel, setShowSourcesPanel] = useState(false);
   const [showTrustPanel, setShowTrustPanel] = useState(false);
+  /** 모바일 전용 — 지구본을 가리지 않는 속보+반응 바텀시트 (지구본과 동시에 볼 수 있음) */
+  const [showMobileAlertFeed, setShowMobileAlertFeed] = useState(false);
   const [showLocalAlertPanel, setShowLocalAlertPanel] = useState(false);
   const [showGdeltAlertPanel, setShowGdeltAlertPanel] = useState(false);
   const [showDisputeLegendPanel, setShowDisputeLegendPanel] = useState(false);
@@ -2350,6 +2353,8 @@ export function GlobeDashboard({
         if (!res.ok) return;
         const payload = (await res.json()) as HapiConflictCasualtiesPayload;
         if (cancelled || !payload?.fronts) return;
+        // 라이브가 비면 시드 유지 — 빈 배열로 덮어 사망 숫자가 사라지지 않게
+        if (payload.fronts.length === 0) return;
         setHapiCasualties({ ...HAPI_CASUALTY_SEED, ...payload });
       } catch {
         /* seed 유지 */
@@ -8069,7 +8074,7 @@ export function GlobeDashboard({
               htmlLat={(point: HtmlOverlayMarker) => point.lat}
               htmlLng={(point: HtmlOverlayMarker) => point.lng}
               htmlAltitude={(point: HtmlOverlayMarker) =>
-                point.displayKind === "casualty-skull" ? 0.0005 : 0.004
+                point.displayKind === "casualty-skull" ? 0.002 : 0.004
               }
               htmlElement={createHtmlOverlayElement}
               htmlRotation={(point: HtmlOverlayMarker) => {
@@ -8801,6 +8806,11 @@ export function GlobeDashboard({
             <ServerDonateChip lang={labelLanguage} />
           </div>
         ) : null}
+        {isCompactUi ? (
+          <div className="cv-compact-only pointer-events-auto">
+            <ServerDonateChip lang={labelLanguage} />
+          </div>
+        ) : null}
       </div>
       ) : null}
 
@@ -8888,7 +8898,16 @@ export function GlobeDashboard({
             <FeatureGuideButton viewerMode={viewerMode} onClick={() => setShowFeatureGuide(true)} />
           </div>
         ) : (
-          <div className="cv-compact-only pointer-events-auto">
+          <div className="cv-compact-only pointer-events-auto flex flex-col items-end gap-2">
+            <button
+              type="button"
+              onClick={() => setShowMobileAlertFeed((prev) => !prev)}
+              aria-label={labelLanguage === "en" ? "Alerts" : "알림"}
+              aria-pressed={showMobileAlertFeed}
+              className="tap-target flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-sky-300/25 bg-slate-950/70 text-[15px] text-sky-100 shadow-sm transition hover:border-sky-200/45"
+            >
+              🔔
+            </button>
             <TrustBadgeChip
               lang={labelLanguage}
               compact
@@ -9373,6 +9392,7 @@ export function GlobeDashboard({
           onContinue={() => setFrictionEpisodeBrief(null)}
           playBreakingDispatch
           typewriter
+          historyHandFont
           titleId="friction-episode-letter-title"
           zIndexClass="z-[9990]"
         />
@@ -9439,6 +9459,10 @@ export function GlobeDashboard({
           placement={isCompactUi ? "above" : "below"}
           onDismiss={() => setShowAirRaidCoach(false)}
         />
+      ) : null}
+
+      {isCompactUi && showMobileAlertFeed ? (
+        <MobileAlertFeed onClose={() => setShowMobileAlertFeed(false)} />
       ) : null}
 
       {periodicBriefing ? (

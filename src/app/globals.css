@@ -19,6 +19,9 @@
   --safe-left: env(safe-area-inset-left, 0px);
   /* Apple HIG / Material 최소 터치 타겟 */
   --tap-target-min: 44px;
+  /* Wanted Sans — UI·양피지 기본 (반서방 11대 현장만 RIDI Batang 유지) */
+  --font-wanted: "Wanted Sans Variable", "Wanted Sans", -apple-system, BlinkMacSystemFont,
+    system-ui, "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", sans-serif;
 }
 
 body {
@@ -28,7 +31,8 @@ body {
     radial-gradient(ellipse 42% 32% at 82% 14%, rgba(69, 243, 255, 0.03) 0%, transparent 54%),
     radial-gradient(ellipse 38% 28% at 14% 86%, rgba(255, 0, 127, 0.025) 0%, transparent 50%),
     var(--background);
-  font-family: var(--font-geist-mono), var(--font-ibm-plex-mono), "IBM Plex Mono", "JetBrains Mono", monospace;
+  font-family: var(--font-wanted);
+  letter-spacing: -0.01em;
   min-height: 100vh;
   min-height: 100dvh;
   padding-left: var(--safe-left);
@@ -53,42 +57,51 @@ html[data-compact="0"] .cv-compact-only {
 }
 
 
-/** 지경학 상단 nav — Pretendard */
+/** 지경학 상단 nav — Wanted Sans */
 .font-nav-economy,
 .hover-nav--economy {
-  font-family: var(--font-pretendard), var(--font-ibm-plex-sans), "Pretendard", sans-serif;
+  font-family: var(--font-wanted);
   letter-spacing: -0.01em;
 }
 
-/** 모든 양피지 필체 — RIDI Batang */
-.econ-insight-parchment {
-  font-family: var(--font-letter-hand), "RIDI Batang", "Gowun Batang", "Nanum Myeongjo", "Batang", serif;
+/** 양피지 기본 — Wanted Sans (환영·등불·허브·지경학) */
+.econ-insight-parchment,
+.parchment-letter {
+  font-family: var(--font-wanted);
   font-optical-sizing: auto;
   font-style: normal;
 }
 
-/** 지정학·지경학 뉴스/속보 헤드라인 — Gmarket Sans */
+/** 반서방국 11대 현장(분쟁 외교사)만 RIDI Batang 필체 유지 */
+.parchment-letter--history {
+  font-family: var(--font-letter-hand), "RIDI Batang", "Gowun Batang", "Nanum Myeongjo", "Batang",
+    serif;
+  font-optical-sizing: auto;
+  font-style: normal;
+}
+
+/** 지정학·지경학 뉴스/속보 헤드라인 — Wanted Sans */
 .font-news-headline {
-  font-family: var(--font-gmarket), var(--font-ibm-plex-sans), "Gmarket Sans", sans-serif;
+  font-family: var(--font-wanted);
   font-weight: 700;
   letter-spacing: -0.02em;
 }
 
-/** 영문 UI — IBM Plex Sans (latin) */
+/** 영문 UI — Wanted Sans (라틴·한글 동일 패밀리) */
 .font-en,
 [data-ui-lang="en"] .font-news-headline,
 main[data-ui-lang="en"] {
-  --ui-latin-font: var(--font-ibm-plex-sans), "IBM Plex Sans", sans-serif;
+  --ui-latin-font: var(--font-wanted);
 }
 
 main[data-ui-lang="en"] .font-news-headline,
 .font-en {
-  font-family: var(--font-ibm-plex-sans), "IBM Plex Sans", sans-serif;
+  font-family: var(--font-wanted);
 }
 
 main[data-viewer="economy"] .font-en,
 .hover-nav--economy .font-en {
-  font-family: var(--font-ibm-plex-sans), var(--font-pretendard), sans-serif;
+  font-family: var(--font-wanted);
 }
 
 .parchment-type-caret {
@@ -113,7 +126,7 @@ main[data-viewer="economy"] .font-en,
   pointer-events: none;
   user-select: none;
   white-space: nowrap;
-  font-family: "Malgun Gothic", "Apple SD Gothic Neo", "Noto Sans KR", "Segoe UI", sans-serif;
+  font-family: var(--font-wanted);
   font-weight: 700;
   letter-spacing: -0.02em;
   line-height: 1.2;
@@ -818,9 +831,9 @@ main[data-viewer="economy"] .font-en,
   }
 }
 
-/* 전쟁구역 사상자 — SB 어그로 Bold, 영토 좌표에 고정 */
+/* 전쟁구역 사상자 — Wanted Sans (숫자·라벨) */
 .war-casualty-overlay .casualty-count-num,
 .war-casualty-overlay .casualty-count-label {
-  font-family: var(--font-sb-agro), "SB Agro", sans-serif;
+  font-family: var(--font-wanted);
   font-weight: 700;
 }

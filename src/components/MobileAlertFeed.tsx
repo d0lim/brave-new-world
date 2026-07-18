@@ -8,7 +8,7 @@ import { theaterLabel } from "@/lib/uiStrings";
 import type { NewsStreamItem, NewsTheater } from "@/lib/news/types";
 
 type MobileAlertFeedProps = {
-  onSwitchToGlobe: () => void;
+  onClose: () => void;
 };
 
 /** 화면에 한 번에 보여줄 최대 기사 수 (오래된 건 굳이 다 안 당겨옴) */
@@ -23,12 +23,13 @@ function ageMinutesOf(item: NewsStreamItem): number {
 }
 
 /**
- * 지도를 안 긁어도 되는 모바일 기본 화면(수첩형 알림 피드) — 최근 검증 기사를 전장별로 묶어서,
- * 각 전장 헤더에 "이 사건 이후" 종목 반응(EventMarketReactionCard)을 같이 보여준다.
- * 데이터는 이미 떠 있는 NewsStreamContext를 그대로 읽으므로 추가 폴링·호출이 없다.
- * mobileHomeView 설정으로 언제든 지도 화면과 전환 가능(끄고 켤 수 있음).
+ * 모바일 전용 속보+반응 바텀시트 — 지구본을 가리지 않고 "같이" 볼 수 있도록,
+ * 화면을 다 덮지 않고 하단에서 절반 정도만 올라오는 시트로 뜬다(지구본은 위쪽에 계속 보임).
+ * 최근 검증 기사를 전장별로 묶어서, 각 전장 헤더에 "이 사건 이후" 종목 반응
+ * (EventMarketReactionCard)을 같이 보여준다. 데이터는 이미 떠 있는 NewsStreamContext를
+ * 그대로 읽으므로 추가 폴링·호출이 없다.
  */
-export function MobileAlertFeed({ onSwitchToGlobe }: MobileAlertFeedProps) {
+export function MobileAlertFeed({ onClose }: MobileAlertFeedProps) {
   const { payload } = useNewsStreamContext();
   const { lang } = useLocale();
 
@@ -53,23 +54,27 @@ export function MobileAlertFeed({ onSwitchToGlobe }: MobileAlertFeedProps) {
 
   return (
     <div
-      className="cv-compact-only pointer-events-auto fixed inset-x-0 z-[38] flex flex-col bg-[#050b18]"
-      style={{
-        top: "calc(max(0.75rem, env(safe-area-inset-top, 0px)) + 2.85rem)",
-        bottom: "calc(var(--bottom-intel-stack-clearance) + env(safe-area-inset-bottom, 0px))",
-      }}
+      className="cv-compact-only pointer-events-auto fixed inset-x-0 bottom-0 z-[47] flex max-h-[55vh] flex-col rounded-t-2xl border-t border-sky-300/20 bg-[#050b18]/97 shadow-2xl backdrop-blur-xl"
+      style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
+      role="dialog"
+      aria-modal="false"
       aria-label={lang === "en" ? "Alerts" : "알림"}
     >
+      <div className="flex shrink-0 justify-center pt-2">
+        <span className="h-1 w-9 rounded-full bg-white/15" aria-hidden />
+      </div>
+
       <div className="flex shrink-0 items-center justify-between border-b border-sky-200/10 px-3.5 py-2.5">
         <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-sky-100/85">
           {lang === "en" ? "Alerts" : "알림"}
         </p>
         <button
           type="button"
-          onClick={onSwitchToGlobe}
-          className="tap-target min-h-[32px] rounded-lg border border-sky-300/20 bg-white/5 px-2.5 text-[11px] font-medium text-sky-100/85 transition hover:border-sky-200/40 hover:bg-white/10"
+          onClick={onClose}
+          aria-label={lang === "en" ? "Close" : "닫기"}
+          className="tap-target flex min-h-[32px] min-w-[32px] items-center justify-center rounded-lg text-[13px] text-sky-200/70 transition hover:bg-white/5 hover:text-sky-50"
         >
-          {lang === "en" ? "View map →" : "지도 보기 →"}
+          ✕
         </button>
       </div>
 

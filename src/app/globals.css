@@ -343,6 +343,11 @@ main[data-viewer="economy"] .font-en,
   perspective-origin: 50% 35%;
 }
 
+/** 지경학 시장 등불 — 뷰포트 거의 채우는 대형 양피지 */
+.welcome-letter-stage--economy-lamp {
+  max-width: min(96vw, 72rem);
+}
+
 .welcome-letter-card {
   position: relative;
   width: 100%;
@@ -350,6 +355,10 @@ main[data-viewer="economy"] .font-en,
   transform-style: preserve-3d;
   transform-origin: 50% 0%;
   will-change: transform, opacity;
+}
+
+.welcome-letter-card--economy-lamp {
+  max-width: min(96vw, 72rem);
 }
 
 .welcome-letter-face {

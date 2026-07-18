@@ -1,10 +1,10 @@
 /**
  * Next.js(Node)에서 로컬/원격 D1에 붙을 때 사용.
  * - Cloudflare(OpenNext): getCloudflareContext → env.DB
- * - 로컬: wrangler getPlatformProxy → env.DB
+ * - 로컬 next dev: wrangler getPlatformProxy → env.DB
  *
- * wrangler는 webpack에 넣으면 blake3/esbuild가 깨지므로
- * 반드시 동적 import + webpackIgnore 로만 로드한다.
+ * wrangler CLI는 production OpenNext 번들에 넣으면 deploy가 깨지므로
+ * NODE_ENV=production에서는 wranglerProxy 모듈을 로드하지 않는다.
  *
  * API 라우트 예:
  *   const db = await getDb();
@@ -29,41 +29,6 @@ async function tryOpenNextD1(): Promise<D1Like | null> {
   }
 }
 
-async function tryWranglerProxyD1(persist: boolean): Promise<{
-  d1: D1Like;
-  dispose: () => void;
-} | null> {
-  try {
-    const wrangler = (await import(/* webpackIgnore: true */ "wrangler")) as {
-      getPlatformProxy: (opts: {
-        configPath?: string;
-        persist?: boolean;
-      }) => Promise<{
-        env: { DB?: D1Like };
-        dispose: () => Promise<void>;
-      }>;
-    };
-    const proxy = await wrangler.getPlatformProxy({
-      // Cron ingest Worker 설정(D1 바인딩). OpenNext 앱은 wrangler.jsonc.
-      configPath: "wrangler.ingest.toml",
-      persist,
-    });
-    const d1 = proxy.env.DB;
-    if (!d1) {
-      await proxy.dispose();
-      return null;
-    }
-    return {
-      d1,
-      dispose: () => {
-        void proxy.dispose();
-      },
-    };
-  } catch {
-    return null;
-  }
-}
-
 export async function getDb(options?: { persist?: boolean }): Promise<AppDb> {
   if (cached?.db) return cached.db;
 
@@ -79,17 +44,21 @@ export async function getDb(options?: { persist?: boolean }): Promise<AppDb> {
     return db;
   }
 
-  const proxy = await tryWranglerProxyD1(options?.persist ?? true);
-  if (proxy) {
-    const db = createDb(proxy.d1);
-    cached = {
-      db,
-      dispose: () => {
-        proxy.dispose();
-        cached = null;
-      },
-    };
-    return db;
+  // OpenNext esbuild defines NODE_ENV=production → this branch is dropped from Workers bundles.
+  if (process.env.NODE_ENV !== "production") {
+    const { tryWranglerProxyD1 } = await import("./wranglerProxy");
+    const proxy = await tryWranglerProxyD1(options?.persist ?? true);
+    if (proxy) {
+      const db = createDb(proxy.d1);
+      cached = {
+        db,
+        dispose: () => {
+          proxy.dispose();
+          cached = null;
+        },
+      };
+      return db;
+    }
   }
 
   throw new Error(

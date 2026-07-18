@@ -89,16 +89,17 @@ export function TzevaAdomPanel({
   const hasActive = active.length > 0;
 
   const headline = useMemo(() => {
-    const alert = active[0] ?? history[0] ?? null;
+    // 활성 경보가 없으면 헤드라인도 비움 — history로 “경보 중”처럼 보이던 잔상 제거
+    const alert = hasActive ? active[0] ?? null : null;
     if (!alert) return null;
     return {
       region: translateOrefRegion(alert.region, lang),
       title: translateOrefTitle(alert.title, lang, alert.category),
-      active: alert.active || hasActive,
+      active: true,
       lat: alert.lat,
       lng: alert.lng,
     };
-  }, [active, hasActive, history, lang]);
+  }, [active, hasActive, lang]);
 
   const list = useMemo(() => {
     const seen = new Set<string>();

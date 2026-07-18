@@ -75,9 +75,9 @@ export function getCasualtyOverlayScale(
   const span = Math.max(3, Number.isFinite(territorySpanDeg) ? territorySpanDeg : 10);
   // 전장 각크기 ≈ span/a 에 비례 — 넓은 전장은 같은 고도에서 약간 더 큼
   const territoryOnScreen = span / a;
-  const raw = territoryOnScreen * 0.06;
-  // 하한 0.65 — 대륙 줌에서도 사망 숫자가 읽히게
-  return Math.min(1.55, Math.max(0.65, raw));
+  const raw = territoryOnScreen * 0.045;
+  // 하한 0.45 — 대륙 줌에서도 사망 숫자가 읽히게 (전선 호버 시에만 표시)
+  return Math.min(1.35, Math.max(0.45, raw));
 }
 
 export type CasualtyOverlayMetrics = {
@@ -96,16 +96,16 @@ export type CasualtyOverlayMetrics = {
  * 화면 배율은 getCasualtyOverlayScale → CSS transform만 담당.
  */
 export function getCasualtyOverlayMetrics(scale: number): CasualtyOverlayMetrics {
-  const s = Math.max(0.65, Math.min(1.55, scale));
+  const s = Math.max(0.45, Math.min(1.35, scale));
   return {
     scale: s,
-    numPx: 42,
-    labelPx: 14,
-    elegyPx: 15,
-    notePx: 12,
-    iconPx: 36,
-    rowGapPx: 8,
-    blockGapPx: 10,
+    numPx: 26,
+    labelPx: 11,
+    elegyPx: 13,
+    notePx: 11,
+    iconPx: 26,
+    rowGapPx: 7,
+    blockGapPx: 9,
   };
 }
 

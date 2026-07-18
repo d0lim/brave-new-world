@@ -15,12 +15,30 @@ function asFn<T, R>(value: unknown, fallback: Accessor<T, R>): Accessor<T, R> {
 const MAX_ANGULAR_POINT_RADIUS_PX = 48;
 const MAX_ANGULAR_LINE_WIDTH_PX = 26;
 
+/**
+ * 해저 케이블 — 일반 path와 반대:
+ * 줌아웃(멀리) → 굵게, 줌인(가까이) → ~0.1px로 가늘어짐.
+ */
+export function cableInverseLineWidth(zoom: number): number {
+  const z = Number.isFinite(zoom) ? zoom : 2;
+  // zoom 1.2 → 멀리(굵음), zoom 9 → 가까이(0.1)
+  const t = Math.max(0, Math.min(1, (z - 1.2) / 7.8));
+  const farPx = 2.6;
+  const nearPx = 0.1;
+  return farPx + (nearPx - farPx) * t;
+}
+
 function angularToPixelRadius(angular: number, zoom: number): number {
   return Math.min(MAX_ANGULAR_POINT_RADIUS_PX, Math.max(2, angular * Math.pow(2, zoom - 0.5) * 14));
 }
 
 function angularToLineWidth(angular: number, zoom: number): number {
   return Math.min(MAX_ANGULAR_LINE_WIDTH_PX, Math.max(0.35, angular * Math.pow(2, zoom - 2) * 5.5));
+}
+
+function resolvePathLineWidth(stroke: number, zoom: number, kind?: string): number {
+  if (kind === "submarine-cable") return cableInverseLineWidth(zoom);
+  return angularToLineWidth(stroke, zoom);
 }
 
 export function buildPointsGeoJson<T>(
@@ -58,6 +76,8 @@ export function buildPathsGeoJson<T>(
     stroke: Accessor<T, number>;
     dashLength: Accessor<T, number>;
     dashGap: Accessor<T, number>;
+    /** path.kind — 해저 케이블 역줌 굵기 등에 사용 */
+    kind?: Accessor<T, string | undefined>;
   },
   zoom: number,
 ): FeatureCollection<LineString> {
@@ -66,6 +86,7 @@ export function buildPathsGeoJson<T>(
     features: items.flatMap((item, index) => {
       const pts = accessors.points(item);
       if (!pts || pts.length < 2) return [];
+      const kind = accessors.kind?.(item);
       return [
         {
           type: "Feature" as const,
@@ -76,7 +97,7 @@ export function buildPathsGeoJson<T>(
           properties: {
             index,
             color: accessors.color(item),
-            width: angularToLineWidth(accessors.stroke(item), zoom),
+            width: resolvePathLineWidth(accessors.stroke(item), zoom, kind),
             dashLength: accessors.dashLength(item),
             dashGap: accessors.dashGap(item),
           },

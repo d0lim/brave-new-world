@@ -30,6 +30,16 @@ export function isLlmDailyLampEnabled(): boolean {
   return Boolean(getServerAnthropicApiKey());
 }
 
+/**
+ * 「왜 중요?」 키 없는 유저용 짧은 서버 해설.
+ * LLM_WHY_MATTERS_SERVER=false 로 끌 수 있음.
+ */
+export function isLlmWhyMattersServerEnabled(): boolean {
+  if (isApiStubMode()) return false;
+  if (process.env.LLM_WHY_MATTERS_SERVER === "false") return false;
+  return Boolean(getServerAnthropicApiKey());
+}
+
 export type ClaudeServerStatus = {
   stubMode: boolean;
   /** 서버 ANTHROPIC_API_KEY 존재 여부 (값은 노출 안 함) */

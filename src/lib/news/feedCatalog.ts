@@ -474,6 +474,110 @@ const SHARED_ECONOMY: NewsFeedDef[] = [
     econGenre: "macro",
     unfiltered: true,
   },
+
+  // —— 미·중 경쟁 · 중국·아시아 거시/테크 (미국 일변도 방지) ——
+  {
+    url: G(
+      '(China OR Beijing OR PBOC OR "People\'s Bank of China" OR yuan OR renminbi) (GDP OR inflation OR stimulus OR "property" OR "local government debt" OR "industrial policy")',
+    ),
+    name: "Google · China Macro",
+    theater: "china-taiwan",
+    topic: "economy",
+    econGenre: "macro",
+    unfiltered: true,
+  },
+  {
+    url: G(
+      '(Huawei OR Alibaba OR Tencent OR ByteDance OR "SMIC" OR CATL OR BYD OR Xiaomi) (China OR Chinese) (stock OR earnings OR AI OR chip OR EV OR export)',
+    ),
+    name: "Google · China Tech · Majors",
+    theater: "china-taiwan",
+    topic: "economy",
+    econGenre: "tech",
+    unfiltered: true,
+  },
+  {
+    url: G(
+      '("US China" OR "U.S.-China" OR "China US" OR "trade war" OR "export control" OR "rare earth" OR de-risking OR decoupling) (tariff OR semiconductor OR EV OR investment)',
+    ),
+    name: "Google · US–China Rivalry",
+    theater: "global",
+    topic: "economy",
+    econGenre: "macro",
+    unfiltered: true,
+  },
+  {
+    url: G(
+      '(Japan OR Korea OR India OR ASEAN OR "Bank of Japan" OR "Bank of Korea" OR RBI) (rate OR inflation OR GDP OR semiconductor OR supply chain)',
+    ),
+    name: "Google · Asia Macro · Peers",
+    theater: "global",
+    topic: "economy",
+    econGenre: "macro",
+    unfiltered: true,
+  },
+  {
+    url: G(
+      '(Korea OR "South Korea" OR Seoul OR Samsung OR "SK hynix" OR Hyundai OR "Bank of Korea") (stock OR earnings OR chip OR rate OR GDP OR export)',
+    ),
+    name: "Google · Korea Macro · Majors",
+    theater: "korea",
+    topic: "economy",
+    econGenre: "macro",
+    unfiltered: true,
+  },
+  {
+    url: G(
+      '(Japan OR Tokyo OR Toyota OR SoftBank OR Sony OR "Bank of Japan" OR yen) (stock OR earnings OR rate OR GDP OR semiconductor OR export)',
+    ),
+    name: "Google · Japan Macro · Majors",
+    theater: "japan",
+    topic: "economy",
+    econGenre: "macro",
+    unfiltered: true,
+  },
+
+  // —— 유럽 · 러시아 거시/에너지/제재 ——
+  {
+    url: G(
+      '(ECB OR "European Central Bank" OR Lagarde OR Eurozone OR Germany OR France OR "EU Commission") (rate OR inflation OR GDP OR fiscal OR industrial)',
+    ),
+    name: "Google · Europe Macro",
+    theater: "global",
+    topic: "economy",
+    econGenre: "macro",
+    unfiltered: true,
+  },
+  {
+    url: G(
+      '(Siemens OR SAP OR "LVMH" OR Volkswagen OR TotalEnergies OR BP OR Nestle OR "Deutsche Bank") (earnings OR stock OR Europe OR EU)',
+    ),
+    name: "Google · Europe Majors",
+    theater: "global",
+    topic: "economy",
+    econGenre: "markets",
+    unfiltered: true,
+  },
+  {
+    url: G(
+      '(Russia OR Moscow OR Kremlin OR Gazprom OR Rosneft OR "Central Bank of Russia" OR ruble) (sanction OR oil OR gas OR energy OR economy OR export)',
+    ),
+    name: "Google · Russia Economy · Energy",
+    theater: "russia-ukraine",
+    topic: "economy",
+    econGenre: "energy",
+    unfiltered: true,
+  },
+  {
+    url: G(
+      '(Russia OR Ukraine) (sanction OR "oil price cap" OR pipeline OR LNG OR "shadow fleet" OR grain OR wheat)',
+    ),
+    name: "Google · Russia–EU Energy · Trade",
+    theater: "russia-ukraine",
+    topic: "economy",
+    econGenre: "macro",
+    unfiltered: true,
+  },
 ];
 
 /** 중앙아시아 — global 전장 Google 쿼리 (NewsTheater 별도 버킷 없음) */
@@ -482,6 +586,198 @@ const CENTRAL_ASIA_GOOGLE: NewsFeedDef[] = [
     url: G('(Central Asia) AND ("Great Game" OR "Geopolitics" OR "Security")'),
     name: "Google News · Central Asia",
     theater: "global",
+    unfiltered: true,
+  },
+];
+
+/**
+ * 국가 간 외교·동맹 재편 — 신냉전 질서(정상회담·동맹·정상화·다자외교).
+ * 전쟁 피드만으로는 안 보이는 관계 재편을 지정학 탭에 보강.
+ */
+const DIPLOMACY_GOOGLE: NewsFeedDef[] = [
+  {
+    url: G(
+      '(diplomacy OR "diplomatic relations" OR "foreign minister" OR summit OR "state visit" OR alliance) (geopolitics OR "great power" OR "cold war" OR realignment OR "strategic partnership")',
+    ),
+    name: "Google News · Interstate Diplomacy",
+    theater: "global",
+    unfiltered: true,
+  },
+  {
+    url: G(
+      '("US China" OR "United States China" OR "US-China") (diplomacy OR summit OR "state visit" OR bilateral OR "strategic dialogue" OR "foreign minister")',
+    ),
+    name: "Google News · US–China Diplomacy",
+    theater: "china-taiwan",
+    unfiltered: true,
+  },
+  {
+    url: G(
+      '(NATO OR "European Union" OR G7 OR "EU summit") (diplomacy OR summit OR enlargement OR accession OR "security partnership" OR "foreign minister")',
+    ),
+    name: "Google News · NATO · EU Diplomacy",
+    theater: "russia-ukraine",
+    unfiltered: true,
+  },
+  {
+    url: G(
+      '("Russia China" OR "Russia North Korea" OR "China North Korea" OR BRICS) (summit OR treaty OR alliance OR partnership OR diplomacy OR "state visit")',
+    ),
+    name: "Google News · Axis Diplomacy",
+    theater: "global",
+    unfiltered: true,
+  },
+  // —— 반서방·비서방 축 국가 간 외교 (서로 간의 정상회담·조약·다자기구) ——
+  {
+    url: G(
+      '("Russia China" OR "Putin Xi" OR "Beijing Moscow") (diplomacy OR summit OR treaty OR alliance OR "no-limits" OR partnership OR "state visit" OR "foreign minister")',
+    ),
+    name: "Google News · Russia–China Diplomacy",
+    theater: "china-taiwan",
+    unfiltered: true,
+  },
+  {
+    url: G(
+      '("Russia Iran" OR "Iran Russia" OR "Moscow Tehran" OR "Putin Raisi" OR "Putin Pezeshkian") (diplomacy OR summit OR treaty OR alliance OR partnership OR "state visit" OR "foreign minister")',
+    ),
+    name: "Google News · Russia–Iran Diplomacy",
+    theater: "middle-east",
+    unfiltered: true,
+  },
+  {
+    url: G(
+      '("China Iran" OR "Iran China" OR "Beijing Tehran" OR "comprehensive strategic partnership" Iran China) (diplomacy OR summit OR treaty OR partnership OR "state visit" OR "foreign minister")',
+    ),
+    name: "Google News · China–Iran Diplomacy",
+    theater: "middle-east",
+    unfiltered: true,
+  },
+  {
+    url: G(
+      '("Russia North Korea" OR "North Korea Russia" OR "Putin Kim" OR "Pyongyang Moscow" OR "Kim Jong Un" Russia) (diplomacy OR summit OR treaty OR alliance OR partnership OR "state visit")',
+    ),
+    name: "Google News · Russia–DPRK Diplomacy",
+    theater: "korea",
+    unfiltered: true,
+  },
+  {
+    url: G(
+      '("China North Korea" OR "North Korea China" OR "Beijing Pyongyang" OR "Xi Kim" OR "Kim Jong Un" China) (diplomacy OR summit OR treaty OR alliance OR partnership OR "state visit")',
+    ),
+    name: "Google News · China–DPRK Diplomacy",
+    theater: "korea",
+    unfiltered: true,
+  },
+  {
+    url: G(
+      '("Iran North Korea" OR "North Korea Iran" OR "Tehran Pyongyang") (diplomacy OR summit OR missile OR nuclear OR partnership OR "foreign minister")',
+    ),
+    name: "Google News · Iran–DPRK Diplomacy",
+    theater: "korea",
+    unfiltered: true,
+  },
+  {
+    url: G(
+      '("Russia China Iran" OR "China Russia Iran" OR "axis of upheaval" OR "CRINK") (diplomacy OR summit OR alliance OR partnership OR coordination)',
+    ),
+    name: "Google News · Russia–China–Iran Axis",
+    theater: "global",
+    unfiltered: true,
+  },
+  {
+    url: G(
+      '(SCO OR "Shanghai Cooperation" OR CSTO OR "Collective Security Treaty") (summit OR diplomacy OR membership OR enlargement OR "foreign minister" OR partnership)',
+    ),
+    name: "Google News · SCO · CSTO Diplomacy",
+    theater: "global",
+    unfiltered: true,
+  },
+  {
+    url: G(
+      '(BRICS OR "BRICS+" OR "BRICS summit") (diplomacy OR enlargement OR membership OR "Global South" OR partnership OR "de-dollar" OR "new development bank") -Quad -NATO',
+    ),
+    name: "Google News · BRICS Diplomacy",
+    theater: "global",
+    unfiltered: true,
+  },
+  {
+    url: G(
+      '(Belarus OR Lukashenko) (Russia OR China OR Iran OR "North Korea") (diplomacy OR summit OR treaty OR alliance OR "state visit" OR partnership)',
+    ),
+    name: "Google News · Belarus Axis Diplomacy",
+    theater: "russia-ukraine",
+    unfiltered: true,
+  },
+  {
+    url: G(
+      '(Venezuela OR Cuba OR Nicaragua OR Maduro OR Díaz-Canel) (Russia OR China OR Iran) (diplomacy OR summit OR alliance OR partnership OR "state visit" OR "foreign minister")',
+    ),
+    name: "Google News · LatAm Anti-West Diplomacy",
+    theater: "global",
+    unfiltered: true,
+  },
+  {
+    url: G(
+      '(Syria OR Assad OR "Bashar al-Assad") (Russia OR Iran OR China OR "North Korea") (diplomacy OR summit OR alliance OR partnership OR "state visit" OR recognition)',
+    ),
+    name: "Google News · Syria Axis Diplomacy",
+    theater: "middle-east",
+    unfiltered: true,
+  },
+  {
+    url: G(
+      '(Sahel OR Mali OR Niger OR Burkina OR Wagner OR "Africa Corps") (Russia OR China OR Iran) (diplomacy OR military OR partnership OR "security agreement" OR "foreign minister")',
+    ),
+    name: "Google News · Sahel–Russia Diplomacy",
+    theater: "global",
+    unfiltered: true,
+  },
+  {
+    url: G(
+      '("Global South" OR "non-aligned" OR NAM OR "anti-Western" OR "multipolar") (diplomacy OR summit OR alliance OR partnership OR "foreign minister" OR realignment)',
+    ),
+    name: "Google News · Global South · Multipolar Diplomacy",
+    theater: "global",
+    unfiltered: true,
+  },
+  {
+    url: G(
+      '(Israel OR Iran OR Saudi OR UAE OR Qatar OR "Abraham Accords") (diplomacy OR normalization OR mediation OR ceasefire OR "foreign minister" OR summit)',
+    ),
+    name: "Google News · Middle East Diplomacy",
+    theater: "middle-east",
+    unfiltered: true,
+  },
+  {
+    url: G(
+      '("South Korea" OR Japan OR trilateral OR "Camp David") (diplomacy OR summit OR alliance OR "foreign minister" OR "security cooperation" OR "state visit")',
+    ),
+    name: "Google News · Korea–Japan Diplomacy",
+    theater: "korea",
+    unfiltered: true,
+  },
+  {
+    url: G(
+      '(Japan OR Tokyo) (diplomacy OR summit OR "foreign minister" OR "security partnership" OR "Quad" OR "state visit")',
+    ),
+    name: "Google News · Japan Diplomacy",
+    theater: "japan",
+    unfiltered: true,
+  },
+  {
+    url: G(
+      '(India OR Quad OR BRICS OR "Global South" OR Modi) (diplomacy OR summit OR "foreign policy" OR "strategic partnership" OR "foreign minister")',
+    ),
+    name: "Google News · India · Multilateral Diplomacy",
+    theater: "south-asia",
+    unfiltered: true,
+  },
+  {
+    url: G(
+      '(Ukraine OR Russia) (diplomacy OR negotiation OR "peace talks" OR mediator OR "foreign minister" OR summit OR "security guarantee")',
+    ),
+    name: "Google News · Ukraine Diplomacy",
+    theater: "russia-ukraine",
     unfiltered: true,
   },
 ];
@@ -497,6 +793,20 @@ export const GOOGLE_NEWS_QUERIES: Record<string, string> = {
     '(India OR Modi) AND (geopolitics OR "foreign policy" OR security) AND (site:thehindu.com OR site:indianexpress.com)',
   "south-asia-lac": '("Line of Actual Control" OR India OR Pakistan) AND (border OR tension)',
   "central-asia": '(Central Asia) AND ("Great Game" OR "Geopolitics" OR "Security")',
+  diplomacy:
+    '(diplomacy OR "diplomatic relations" OR "foreign minister" OR summit OR alliance) (geopolitics OR "great power" OR realignment)',
+  "diplomacy-us-china":
+    '("US China" OR "US-China") (diplomacy OR summit OR bilateral OR "strategic dialogue")',
+  "diplomacy-nato-eu":
+    '(NATO OR "European Union" OR G7) (diplomacy OR summit OR enlargement OR "security partnership")',
+  "diplomacy-middle-east":
+    '(Israel OR Iran OR Saudi OR UAE OR "Abraham Accords") (diplomacy OR normalization OR mediation)',
+  "diplomacy-anti-west":
+    '("Russia China" OR "Russia Iran" OR "China Iran" OR "Russia North Korea" OR SCO OR CSTO OR BRICS) (diplomacy OR summit OR treaty OR alliance)',
+  "diplomacy-axis-latam":
+    '(Venezuela OR Cuba OR Nicaragua) (Russia OR China OR Iran) (diplomacy OR summit OR partnership)',
+  "diplomacy-sahel-russia":
+    '(Mali OR Niger OR Burkina OR Sahel) (Russia OR China) (diplomacy OR partnership OR "security agreement")',
   "economy-energy":
     '("Exxon Mobil" OR Chevron OR Shell OR Aramco OR OPEC OR Brent OR LNG)',
   "economy-macro":
@@ -520,18 +830,19 @@ export const ECON_RELEVANCE =
 
 export const THEATER_RELEVANCE: Record<NewsTheater, RegExp> = {
   "middle-east":
-    /iran|israel|idf|irgc|hezbollah|hamas|houthi|lebanon|gaza|tehran|tel\s?aviv|jerusalem|yemen|iraq|syria|gulf|hormuz|red\s?sea|missile|strike|nuclear|centcom|middle\s?east|west\s?bank|golan|khamenei|netanyahu|drone|saudi|emirates|uae|gcc/i,
+    /iran|israel|idf|irgc|hezbollah|hamas|houthi|lebanon|gaza|tehran|tel\s?aviv|jerusalem|yemen|iraq|syria|gulf|hormuz|red\s?sea|missile|strike|nuclear|centcom|middle\s?east|west\s?bank|golan|khamenei|netanyahu|drone|saudi|emirates|uae|gcc|abraham\s?accords|normalization|diplomacy|summit|mediation/i,
   "russia-ukraine":
-    /ukrain|russia|russian|putin|zelensky|kyiv|kharkiv|odesa|dnipro|donbas|crimea|sevastopol|kremlin|moscow|belgorod|wagner|himars|atacms|shahed/i,
+    /ukrain|russia|russian|putin|zelensky|kyiv|kharkiv|odesa|dnipro|donbas|crimea|sevastopol|kremlin|moscow|belgorod|wagner|himars|atacms|shahed|nato|diplomacy|summit|negotiation|peace\s?talks|foreign\s?minister/i,
   "china-taiwan":
-    /china|taiwan|taipei|beijing|pla|strait|senkaku|diaoyu|south\s?china\s?sea|xi\s?jinping|cross[\s-]?strait|kinmen/i,
+    /china|taiwan|taipei|beijing|pla|strait|senkaku|diaoyu|south\s?china\s?sea|xi\s?jinping|cross[\s-]?strait|kinmen|diplomacy|summit|bilateral|strategic\s?dialogue|state\s?visit/i,
   korea:
-    /north\s?korea|south\s?korea|pyongyang|seoul|dmz|dprk|kim\s?jong|korean\s?peninsula|icbm|ballistic/i,
+    /north\s?korea|south\s?korea|pyongyang|seoul|dmz|dprk|kim\s?jong|korean\s?peninsula|icbm|ballistic|diplomacy|summit|trilateral|alliance|foreign\s?minister/i,
   japan:
-    /japan|tokyo|okinawa|senkaku|self[\s-]?defense\s?force|sdf|yasukuni|north\s?korea\s?japan/i,
+    /japan|tokyo|okinawa|senkaku|self[\s-]?defense\s?force|sdf|yasukuni|north\s?korea\s?japan|diplomacy|summit|quad|alliance|foreign\s?minister|state\s?visit/i,
   "south-asia":
-    /india|pakistan|kashmir|afghanistan|taliban|myanmar|bangladesh|sri\s?lanka|nepal|modi|rawalpindi|line\s?of\s?actual\s?control|lac\b|central\s?asia|kazakh|uzbek|turkmen|kyrgyz|tajik/i,
-  global: /military|defense|war|conflict|strike|missile|pentagon|nato|sanction|geopolitic|great\s?game|central\s?asia/i,
+    /india|pakistan|kashmir|afghanistan|taliban|myanmar|bangladesh|sri\s?lanka|nepal|modi|rawalpindi|line\s?of\s?actual\s?control|lac\b|central\s?asia|kazakh|uzbek|turkmen|kyrgyz|tajik|diplomacy|summit|brics|quad|foreign\s?policy|strategic\s?partnership/i,
+  global:
+    /military|defense|war|conflict|strike|missile|pentagon|nato|sanction|geopolitic|great\s?game|central\s?asia|diplomacy|diplomatic|summit|alliance|embassy|foreign\s?minister|bilateral|multilateral|realignment|state\s?visit|strategic\s?partnership|brics|g7|sco\b|csto|multipolar|global\s?south|non[\s-]?aligned|venezuela|cuba|nicaragua|sahel|wagner|africa\s?corps|crink|axis\s?of\s?upheaval/i,
 };
 
 const NOISE =
@@ -545,6 +856,7 @@ export const ALL_NEWS_FEEDS: NewsFeedDef[] = dedupeFeedsByUrl([
   ...JAPAN,
   ...SOUTH_ASIA,
   ...CENTRAL_ASIA_GOOGLE,
+  ...DIPLOMACY_GOOGLE,
   ...SHARED_DEFENSE,
 ]);
 

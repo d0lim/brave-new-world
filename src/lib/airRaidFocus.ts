@@ -6,7 +6,7 @@ import type { Polygon } from "geojson";
 
 export const AIR_RAID_SIREN_MS = 10000;
 export const AIR_RAID_SIREN_VOLUME_SCALE = 1.45;
-/** fly 시작 후 사이렌 시작 지연 — 이동 직후 울리게 */
+/** fly 시작 후 사이렌 시작 지연 — 수동 칩 클릭용(이동 직후). 자동 fly는 AIR_RAID_FLY_MS로 도착 맞춤. */
 export const AIR_RAID_SIREN_DELAY_MS = 650;
 /**
  * 공습경보 포커스 — 국가 전체가 아니라 경보 발령 지역(시·군·구역) 스케일.

@@ -85,7 +85,7 @@ const TYPEWRITER_ENABLED = false;
 const TYPE_MS_PER_CHAR = 26;
 
 const PARCHMENT_STACK =
-  'var(--font-letter-hand), "RIDI Batang", "Gowun Batang", "Nanum Myeongjo", "Batang", serif';
+  'var(--font-wanted), "Wanted Sans Variable", "Wanted Sans", sans-serif';
 
 export type EconInsightParchmentProps = {
   lang: LabelLanguage;

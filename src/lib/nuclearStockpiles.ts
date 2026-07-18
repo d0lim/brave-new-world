@@ -63,7 +63,7 @@ function escapeHtml(value: string | null | undefined) {
 }
 
 const NUCLEAR_NUMBER_FONT =
-  'var(--font-sb-agro), "SB Agro", "SBAgro", sans-serif';
+  'var(--font-wanted), "Wanted Sans Variable", "Wanted Sans", sans-serif';
 
 /**
  * 북한 화성-18형 형태를 참고한 3단 ICBM 실루엣 — 흰색.
@@ -149,7 +149,8 @@ export function createNuclearStockpileElement(
   tip.style.border = "1px solid rgba(255,255,255,0.28)";
   tip.style.background = "rgba(8,12,20,0.9)";
   tip.style.color = "rgba(255,255,255,0.96)";
-  tip.style.fontFamily = '"Pretendard","IBM Plex Sans","Noto Sans KR",sans-serif';
+  tip.style.fontFamily =
+    'var(--font-wanted), "Wanted Sans Variable", "Wanted Sans", sans-serif';
   tip.style.fontWeight = "600";
   tip.style.fontSize = "10px";
   tip.style.lineHeight = "1.4";

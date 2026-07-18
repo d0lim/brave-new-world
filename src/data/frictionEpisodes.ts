@@ -1,7 +1,8 @@
 /**
  * 반서방·권위주의 진영 내부 분쟁 외교사 — 11대 큐레이션 에피소드.
  * coordinates: [lng, lat] (GeoJSON). 내부 fly는 lat/lng로 변환.
- * 브리핑은 공개 기록·표준 명칭·연도 위주. 문학적 수식 배제.
+ * 브리핑은 공개 기록·표준 명칭·연도 위주.
+ * 양피지 본문(frictionParchmentParagraphs)은 사실 위에 문학적 논픽션 줄글을 가미한다.
  */
 
 import type { AxisHubId } from "@/data/axisNetwork";

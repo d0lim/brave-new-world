@@ -79,6 +79,11 @@ export type ParchmentLetterProps = {
   playBreakingDispatch?: boolean;
   /** 본문을 타자기처럼 한 글자씩 출력 (분쟁 외교사 등) */
   typewriter?: boolean;
+  /**
+   * true면 반서방 11대 현장 전용 RIDI Batang 필체.
+   * 기본(false)은 Wanted Sans.
+   */
+  historyHandFont?: boolean;
   /** dialog 접근성 라벨 id */
   titleId?: string;
   zIndexClass?: string;
@@ -98,6 +103,7 @@ export function ParchmentLetter({
   playUnfoldSound = true,
   playBreakingDispatch = false,
   typewriter = false,
+  historyHandFont = false,
   titleId = "parchment-letter-title",
   zIndexClass = "z-[10000]",
 }: ParchmentLetterProps) {
@@ -106,8 +112,9 @@ export function ParchmentLetter({
   const bodyScrollRef = useRef<HTMLDivElement>(null);
   const typingSkipRef = useRef(false);
   const typingIntervalRef = useRef<number | null>(null);
-  const parchmentStack =
-    'var(--font-letter-hand), "RIDI Batang", "Gowun Batang", "Nanum Myeongjo", "Batang", serif';
+  const parchmentStack = historyHandFont
+    ? 'var(--font-letter-hand), "RIDI Batang", "Gowun Batang", "Nanum Myeongjo", "Batang", serif'
+    : 'var(--font-wanted), "Wanted Sans Variable", "Wanted Sans", sans-serif';
   const bodyFont = parchmentStack;
   const titleFont = parchmentStack;
   const resolvedBackMark = backMark ?? (lang === "en" ? BRAND_NAME.en : BRAND_NAME.ko);
@@ -222,9 +229,9 @@ export function ParchmentLetter({
     >
       <div className="welcome-letter-stage">
         <div
-          className={`welcome-letter-card ${
-            exiting ? "welcome-letter-card--fold-exit" : "welcome-letter-card--unfold-enter"
-          }`}
+          className={`welcome-letter-card parchment-letter ${
+            historyHandFont ? "parchment-letter--history" : ""
+          } ${exiting ? "welcome-letter-card--fold-exit" : "welcome-letter-card--unfold-enter"}`}
           style={{ fontFamily: bodyFont }}
         >
           <div className="welcome-parchment welcome-letter-face welcome-letter-face--front relative flex max-h-[min(92vh,880px)] w-full max-w-2xl flex-col overflow-hidden rounded-sm shadow-[0_24px_80px_rgba(0,0,0,0.55)]">

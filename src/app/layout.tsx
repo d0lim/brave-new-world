@@ -5,6 +5,10 @@ import localFont from "next/font/local";
 import { COMPACT_QUERY } from "@/hooks/compactQuery";
 import "./globals.css";
 
+/** Wanted Sans — jsDelivr 가변 동적 서브셋 (OFL) https://github.com/wanteddev/wanted-sans */
+const WANTED_SANS_CSS =
+  "https://cdn.jsdelivr.net/gh/wanteddev/wanted-sans@v1.0.3/packages/wanted-sans/fonts/webfonts/variable/split/WantedSansVariable.min.css";
+
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
   variable: "--font-geist-sans",
@@ -113,6 +117,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ko" suppressHydrationWarning style={{ background: "#02040a" }}>
+      <head>
+        <link rel="preconnect" href="https://cdn.jsdelivr.net" crossOrigin="anonymous" />
+        <link rel="preload" as="style" crossOrigin="anonymous" href={WANTED_SANS_CSS} />
+        <link rel="stylesheet" href={WANTED_SANS_CSS} />
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} ${letterHand.variable} ${pretendard.variable} ${gmarket.variable} ${ibmPlexSans.variable} ${ibmPlexMono.variable} ${sbAgro.variable} antialiased`}
         style={{

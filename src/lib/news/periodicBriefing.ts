@@ -11,7 +11,7 @@ import type { ViewerMode } from "@/lib/viewPackages";
  * - 재방문: 로컬 자정 기준 그날 아직 안 봤으면 모드별 양피지
  * - seen 키 = `daily-YYYY-MM-DD-{conflict|economy}`
  * - 본문 = (지경학) SOTW market-lamp → D1 집계 → 큐레이션 폴백
- * - 스토리텔링 뼈대 = 육하원칙(누가·언제·어디서·무엇을·왜·어떻게)
+ * - 서술 뼈대 = 육하원칙(누가·언제·어디서·무엇을·왜·어떻게)을 논리 순서로 따르는 정부 정례 브리핑 어조
  */
 
 export type BriefingTier = "monthly" | "weekly" | "daily";
@@ -147,8 +147,8 @@ const LAMP_TITLE_ECON = {
 } as const;
 
 /**
- * 등불 스토리텔링 — 육하원칙(누가·언제·어디서·무엇을·왜·어떻게)을 뼈대로 하되
- * 라벨 나열이 아니라 한 편의 짧은 이야기로 이어 쓴다.
+ * 등불 서술 — 육하원칙(누가·언제·어디서·무엇을·왜·어떻게)을 논리 순서로 따르되
+ * 라벨 나열이 아니라 정부 정례 브리핑처럼 단정한 공식 문장으로 이어 쓴다.
  */
 function looksMostlyKorean(text: string): boolean {
   const ko = (text.match(/[\uac00-\ud7a3]/g) ?? []).length;
@@ -182,16 +182,16 @@ function buildGeoFallback(tier: BriefingTier, dayKey: string, lang: LabelLanguag
     paragraphs: ko
       ? [
           // 언제 · 어디서 · 누가
-          `${yearText}, ${episode.locationName}에서 ${who}이(가) 맞붙었습니다. 오늘 등불은 그 자리로 돌아갑니다.`,
+          `보고드립니다. ${yearText}, ${episode.locationName}에서 ${who}이(가) 충돌했습니다. 금일 정례 보고는 라이브 집계가 비어 있어 이 사례를 기준 자료로 다룹니다.`,
           // 무엇을 · 왜
           episode.briefing,
           // 어떻게
-          "라이브 집계가 비어 있어도, 이 과거는 오늘의 긴장을 읽는 렌즈가 됩니다. 지도 허브 「반서방국 충돌사」에서 이어서 읽고, 이 등불은 자정에 다시 켜집니다.",
+          "이상은 확인된 과거 기록에 근거한 정리이며, 오늘의 긴장을 판단하는 참고 자료입니다. 상세 내용은 지도 허브 「반서방국 충돌사」에서 확인하실 수 있습니다. 다음 보고는 자정 기준으로 갱신됩니다.",
         ]
       : [
-          `When ${yearText}, at ${episode.locationName}, ${who} collided. Tonight the lamp returns there.`,
+          `Briefing. In ${yearText}, at ${episode.locationName}, ${who} collided. With live aggregates empty, today's report uses this case as reference material.`,
           episode.briefing,
-          "Even without live aggregates, this past is a lens on today's tension. Continue in Frictions. The lamp relights at local midnight.",
+          "The above is drawn from verified historical record and serves as reference for reading today's tension. Full detail is available in the Frictions hub. The next report updates at local midnight.",
         ],
   };
 }
@@ -209,20 +209,20 @@ function buildEconFallback(tier: BriefingTier, dayKey: string, lang: LabelLangua
       koLines.length > 0
         ? koLines
         : [
-            `${brief.titleKo}은(는) 물자와 가격이 지나가는 병목입니다.`,
-            "긴장이 번지면 에너지·물류·물가 경로로 파급됩니다. 그래서 오늘 시장 등불이 이곳을 고릅니다.",
+            `${brief.titleKo}은(는) 물자와 가격이 지나가는 병목 지점입니다.`,
+            "긴장이 번지면 에너지·물류·물가 경로로 파급됩니다. 금일 보고가 이 지점을 다루는 배경입니다.",
           ];
     return {
       tier,
       key: dayKey,
       title: `${kicker}\n${brief.titleKo}`,
       paragraphs: [
-        // 누가 · 언제 · 어디서
-        `누가 보나 — 시장과 물류를 읽는 눈. 언제 — 오늘. 어디서 — ${brief.titleKo}.`,
+        // 언제 · 어디서 · 무엇을
+        `보고드립니다. 금일 시장 정례 보고 대상은 ${brief.titleKo}입니다. 라이브 집계가 비어 있어 축적된 분석 자료를 기준으로 정리합니다.`,
         // 무엇을 · 왜
         ...whatWhy.slice(0, 2),
         // 어떻게
-        "표로 외우지 말고, 육하원칙으로 한 장면만 가져가세요. 수치는 시리즈마다 시점이 다를 수 있습니다. 이 등불은 자정에 다시 켜집니다.",
+        "이상은 확인된 자료에 근거한 정리이며, 수치는 시리즈별 기준 시점이 다를 수 있습니다. 다음 보고는 자정 기준으로 갱신됩니다.",
       ],
     };
   }
@@ -232,10 +232,10 @@ function buildEconFallback(tier: BriefingTier, dayKey: string, lang: LabelLangua
     key: dayKey,
     title: `${kicker}\n${brief.titleEn}`,
     paragraphs: [
-      `Who watches markets; when is today; where is ${brief.titleEn}.`,
+      `Briefing. Today's market report covers ${brief.titleEn}. With live aggregates empty, this draws on standing analysis.`,
       brief.impactLine,
       ...brief.paragraphs.slice(0, 2),
-      "Read it as 5W1H, not a ledger. The lamp relights at local midnight.",
+      "This organizes verified material only; series may differ in reference date. The next report updates at local midnight.",
     ],
   };
 }
@@ -287,44 +287,44 @@ export function buildBriefingFromStats(
 
   const titleLine = hot
     ? ko
-      ? `${hot} — 육하원칙으로 읽기`
-      : `${hot} — in 5W1H`
+      ? `${hot} 상황 정례 보고`
+      : `${hot} — situation report`
     : ko
       ? econ
-        ? "시장 창을 육하원칙으로"
-        : "전선을 육하원칙으로"
+        ? "시장 관측 정례 보고"
+        : "전선 관측 정례 보고"
       : econ
-        ? "Markets in 5W1H"
-        : "The front in 5W1H";
+        ? "Market situation report"
+        : "Frontline situation report";
 
   const paragraphs: string[] = [];
 
   if (ko) {
     // 언제 · 어디서
     const whenWhere = hot
-      ? `언제 — 오늘 같은 관측 창. 어디서 — ${hot}${placeNames ? ` (가까이 ${placeNames})` : ""}.`
+      ? `보고드립니다. 기준 시점은 금일 관측 창이며, 주요 관측 지역은 ${hot}${placeNames ? ` 일대입니다. 인접 지점으로 ${placeNames}이(가) 함께 포착되었습니다` : "입니다"}.`
       : placeNames
-        ? `언제 — 오늘 같은 관측 창. 어디서 — ${placeNames} 일대.`
-        : "언제 — 오늘 같은 관측 창. 어디서 — 지도 전역에서 깜빡인 신호들.";
+        ? `보고드립니다. 기준 시점은 금일 관측 창이며, 주요 관측 지역은 ${placeNames} 일대입니다.`
+        : "보고드립니다. 기준 시점은 금일 관측 창이며, 특정 지역에 국한되지 않고 지도 전역에서 신호가 포착되었습니다.";
     paragraphs.push(whenWhere);
 
     // 누가 · 무엇을
     const actors: string[] = [];
     if (stats.gdeltCount > 0) {
-      actors.push(`긴장 관측 ${stats.gdeltCount.toLocaleString()}곳`);
+      actors.push(`긴장 관측 ${stats.gdeltCount.toLocaleString()}건`);
     }
     if (stats.firmsCount > 0) {
-      actors.push(`열원 ${stats.firmsCount.toLocaleString()}점`);
+      actors.push(`열원 탐지 ${stats.firmsCount.toLocaleString()}건`);
     }
     if (stats.telegramCount > 0) {
-      actors.push(`현장 채널 ${stats.telegramCount.toLocaleString()}건`);
+      actors.push(`현장 채널 보고 ${stats.telegramCount.toLocaleString()}건`);
     } else if (stats.newsItemCount > 0) {
-      actors.push(`뉴스 흐름 ${stats.newsItemCount.toLocaleString()}건`);
+      actors.push(`뉴스 보도 ${stats.newsItemCount.toLocaleString()}건`);
     }
     if (actors.length > 0) {
       paragraphs.push(
-        `누가·무엇을 — ${actors.join(", ")}이(가) 같은 창에 남긴 흔적입니다.${
-          econ ? " 시장은 잠들어도 지도는 깨어 있습니다." : ""
+        `집계 항목은 ${actors.join(", ")}입니다. 동일 관측 창에서 수집된 신호를 종합한 수치입니다.${
+          econ ? " 시장 거래 마감 시간대에도 관측은 계속되었습니다." : ""
         }`,
       );
     }
@@ -333,49 +333,49 @@ export function buildBriefingFromStats(
     if (koTg.length > 0) {
       const s = koTg[0]!;
       paragraphs.push(
-        `왜 지금이냐면 — ${s.region} 쪽에서 「${s.text.slice(0, 120)}${s.text.length > 120 ? "…" : ""}」라는 전언이 온도를 올렸기 때문입니다.`,
+        `주목 배경은 다음과 같습니다. ${s.region} 방면에서 「${s.text.slice(0, 120)}${s.text.length > 120 ? "…" : ""}」라는 현장 전언이 접수되어 긴장 수위가 상승했습니다. 미확인 전언으로, 교차 확인이 필요합니다.`,
       );
     } else if (tgRegions.length > 0) {
       paragraphs.push(
-        `왜 지금이냐면 — ${tgRegions.join("·")} 일대 채널이 위치를 가리키고, 전선의 결이 그쪽으로 기울었기 때문입니다. (원문은 외국어 섞임이 많아 위치만 남깁니다.)`,
+        `주목 배경은 ${tgRegions.join("·")} 일대 채널이 해당 지점을 지목한 데 있습니다. 원문에 외국어가 다수 섞여 위치 정보만 확인했습니다.`,
       );
     } else if (hot || placeNames) {
       paragraphs.push(
-        `왜 지금이냐면 — ${hot || placeNames}이(가) 오늘 창에서 가장 먼저 밝아졌기 때문입니다.`,
+        `주목 배경은 ${hot || placeNames}이(가) 금일 관측 창에서 가장 먼저·가장 강하게 반응한 점입니다.`,
       );
     }
 
     // 어떻게
     paragraphs.push(
       econ
-        ? "어떻게 읽나 — 숫자 표가 아니라 누가·언제·어디서·무엇을·왜·어떻게, 여섯 칸만 챙기세요. 이 등불은 자정에 다시 켜집니다."
-        : "어떻게 읽나 — 목록이 아니라 육하원칙 한 장면으로. 누가·언제·어디서·무엇을·왜·어떻게. 이 등불은 자정에 다시 켜집니다.",
+        ? "종합하면, 본 보고는 누가·언제·어디서·무엇을·왜·어떻게 순서로 확인된 사실만 정리한 것입니다. 수치는 시리즈별 기준 시점이 달라 단정적 해석은 유보합니다. 다음 보고는 자정 기준으로 갱신됩니다."
+        : "종합하면, 본 보고는 확인된 관측 사실을 육하원칙 순서로 정리한 것이며 추정·전망은 포함하지 않았습니다. 다음 보고는 자정 기준으로 갱신됩니다.",
     );
   } else {
     paragraphs.push(
       hot
-        ? `When — this live window. Where — ${hot}${placeNames ? ` (near ${placeNames})` : ""}.`
+        ? `Briefing. As of this observation window, the primary area of interest is ${hot}${placeNames ? `, with adjacent activity near ${placeNames}` : ""}.`
         : placeNames
-          ? `When — this live window. Where — ${placeNames}.`
-          : "When — this live window. Where — sparks across the map.",
+          ? `Briefing. As of this observation window, the primary area of interest is ${placeNames}.`
+          : "Briefing. As of this observation window, signals were recorded across the map with no single dominant area.",
     );
     const actors: string[] = [];
-    if (stats.gdeltCount > 0) actors.push(`${stats.gdeltCount.toLocaleString()} GDELT sparks`);
-    if (stats.firmsCount > 0) actors.push(`${stats.firmsCount.toLocaleString()} FIRMS embers`);
-    if (stats.telegramCount > 0) actors.push(`${stats.telegramCount.toLocaleString()} field notes`);
+    if (stats.gdeltCount > 0) actors.push(`${stats.gdeltCount.toLocaleString()} tension observations`);
+    if (stats.firmsCount > 0) actors.push(`${stats.firmsCount.toLocaleString()} heat detections`);
+    if (stats.telegramCount > 0) actors.push(`${stats.telegramCount.toLocaleString()} field-channel reports`);
     if (actors.length > 0) {
-      paragraphs.push(`Who & what — ${actors.join("; ")} left traces in the same frame.`);
+      paragraphs.push(`Recorded items: ${actors.join("; ")}, aggregated from the same observation window.`);
     }
     if (tgSamples[0]) {
       const s = tgSamples[0];
       paragraphs.push(
-        `Why now — from ${s.region}: “${s.text.slice(0, 120)}${s.text.length > 120 ? "…" : ""}”.`,
+        `Context: a field report from ${s.region} — “${s.text.slice(0, 120)}${s.text.length > 120 ? "…" : ""}” — raised the tension level. Unverified; pending corroboration.`,
       );
     } else if (hot || placeNames) {
-      paragraphs.push(`Why now — ${hot || placeNames} lit up first in tonight's window.`);
+      paragraphs.push(`Context: ${hot || placeNames} responded first and most strongly in this window.`);
     }
     paragraphs.push(
-      "How to read — as 5W1H, not a checklist. This lamp relights at local midnight.",
+      "In summary, this report organizes verified observations in 5W1H order and excludes projection. The next report updates at local midnight.",
     );
   }
 

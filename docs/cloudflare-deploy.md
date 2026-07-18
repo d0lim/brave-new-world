@@ -48,6 +48,8 @@ npm run cf:app:deploy
 
 Cloudflare는 `WORKERS_CI=1`을 주입합니다. `npm run build`(`scripts/ci-build.js`)가
 이를 감지해 OpenNext를 실행하고, Vercel(`VERCEL=1`)은 `next build`만 둡니다.
+OpenNext가 내부에서 다시 `npm run build`를 호출할 때는 `OPENNEXT_BUILDING=1`로
+재귀를 끊고 `next build`만 실행합니다(가드 없으면 Workers Builds가 20분 타임아웃).
 
 ### 주의
 

@@ -4,6 +4,7 @@ import { Analytics } from "@vercel/analytics/next";
 import { Inter, JetBrains_Mono, Merriweather } from "next/font/google";
 import localFont from "next/font/local";
 import { COMPACT_QUERY } from "@/hooks/compactQuery";
+import { PwaInstallPrompt } from "@/components/PwaInstallPrompt";
 import "./globals.css";
 
 /** Wanted Sans — jsDelivr 가변 동적 서브셋 (OFL) https://github.com/wanteddev/wanted-sans */
@@ -146,6 +147,7 @@ export default function RootLayout({
           {COMPACT_BOOT_SCRIPT}
         </Script>
         {children}
+        <PwaInstallPrompt />
         <Analytics />
       </body>
     </html>

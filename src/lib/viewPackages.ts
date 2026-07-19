@@ -155,7 +155,6 @@ export const VIEW_PACKAGES: ViewPackageDef[] = [
       // 우크라 전선은 ModePicker/내비「우크라」세부 선택 시에만
       showUkraineControl: false,
       showWarZones: true,
-      showEastAsiaAdiz: true,
       showGdeltWar: true,
       showGdeltDiplomatic: true,
       showGdeltAlliance: true,

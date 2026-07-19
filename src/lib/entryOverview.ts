@@ -61,7 +61,6 @@ function allBooleanLayersOff(base: LayerPrefs): LayerPrefs {
 /** 지정학 히어로 — 요청 기본 레이어 */
 const CONFLICT_HERO_ON: Partial<LayerPrefs> = {
   showWarZones: true,
-  showEastAsiaAdiz: true,
   showGdeltWar: true,
   showGdeltDiplomatic: true,
   showGdeltAlliance: true,

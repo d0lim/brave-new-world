@@ -39,11 +39,9 @@ export function applyBattlefieldPreset(
         showTelegramOsint: true,
         showMilitaryActivity: false,
         showAis: false,
-        showEastAsiaAdiz: false,
       });
     case "taiwan":
       return patch(current, {
-        showEastAsiaAdiz: true,
         showMilitaryActivity: true,
         showAis: true,
         showShippingLanes: true,
@@ -71,11 +69,9 @@ export function applyBattlefieldPreset(
         showWarZones: true,
         showUkraineControl: false,
         showNeptun: false,
-        showEastAsiaAdiz: false,
       });
     case "korea":
       return patch(current, {
-        showEastAsiaAdiz: true,
         showMilitaryActivity: true,
         showMilitaryBases: true,
         showAis: true,

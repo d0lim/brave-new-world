@@ -26,25 +26,25 @@ export const MILITARY_BASE_AREA_MAX_BY_TIER: Record<GlobeLodTier, number> = {
 };
 
 export const SUBMARINE_CABLE_MAX_BY_TIER: Record<GlobeLodTier, number> = {
-  global: 120,
-  continent: 200,
-  regional: 400,
-  near: 800,
-  village: 1500,
+  global: 36,
+  continent: 64,
+  regional: 140,
+  near: 280,
+  village: 520,
 };
 
 export const OIL_PIPELINE_MAX_BY_TIER: Record<GlobeLodTier, number> = {
-  global: 40,
-  continent: 80,
-  regional: 160,
-  near: 320,
-  village: 600,
+  global: 16,
+  continent: 32,
+  regional: 80,
+  near: 160,
+  village: 320,
 };
 
 export const GAS_PIPELINE_MAX_BY_TIER: Record<GlobeLodTier, number> = {
-  global: 60,
-  continent: 120,
-  regional: 240,
-  near: 480,
-  village: 900,
+  global: 20,
+  continent: 40,
+  regional: 100,
+  near: 200,
+  village: 400,
 };

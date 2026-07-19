@@ -23,6 +23,11 @@ import { fetchGdeltTensionPoints } from "./gdeltExport";
 import { fetchTelegramAlerts } from "./telegram";
 import { readBriefingStats, upsertBriefingPeriodStats } from "./briefingStats";
 import { readDailyRanks, readWorldTension, upsertDailyRanks } from "./dailyRanks";
+import {
+  broadcastPush,
+  deletePushSubscription,
+  upsertPushSubscription,
+} from "./push";
 
 export type { IngestEnv };
 
@@ -328,6 +333,8 @@ const ALLOWED_TRACK_EVENTS = new Set([
   "pwa_prompt_accept",
   "pwa_prompt_dismiss",
   "pwa_installed",
+  "push_subscribed",
+  "push_subscribe_denied",
 ]);
 
 function authorizeManual(request: Request, env: IngestEnv): boolean {
@@ -383,8 +390,100 @@ const worker = {
           dailyPredict:
             "POST /daily-predict (Bearer INGEST_CRON_SECRET; body targetDate,kind,deviceId,pickEntityId)",
           track: "POST /track (Bearer INGEST_CRON_SECRET, D1-less hosts like Vercel forward here)",
+          pushSubscribe: "POST /push/subscribe (public; body endpoint,keys)",
+          pushUnsubscribe: "POST /push/unsubscribe (body endpoint)",
+          pushSend: "POST /push/send (Bearer INGEST_CRON_SECRET; body title,body,url,tag)",
         },
       });
+    }
+
+    if (url.pathname === "/push/subscribe" && request.method === "POST") {
+      try {
+        const body = (await request.json()) as {
+          endpoint?: string;
+          keys?: { p256dh?: string; auth?: string };
+          lang?: string;
+          userAgent?: string;
+        };
+        const endpoint = typeof body.endpoint === "string" ? body.endpoint.trim() : "";
+        const p256dh = typeof body.keys?.p256dh === "string" ? body.keys.p256dh.trim() : "";
+        const auth = typeof body.keys?.auth === "string" ? body.keys.auth.trim() : "";
+        if (!endpoint.startsWith("https://") || !p256dh || !auth) {
+          return Response.json({ ok: false, error: "invalid subscription" }, { status: 400 });
+        }
+        if (endpoint.length > 2048 || p256dh.length > 200 || auth.length > 100) {
+          return Response.json({ ok: false, error: "subscription too large" }, { status: 400 });
+        }
+        await upsertPushSubscription(env.DB, {
+          endpoint,
+          p256dh,
+          auth,
+          userAgent:
+            typeof body.userAgent === "string"
+              ? body.userAgent.slice(0, 256)
+              : (request.headers.get("user-agent") || "").slice(0, 256) || null,
+          lang: typeof body.lang === "string" ? body.lang.slice(0, 8) : null,
+        });
+        return Response.json({ ok: true });
+      } catch (error) {
+        return Response.json(
+          {
+            ok: false,
+            error: error instanceof Error ? error.message : "subscribe failed",
+          },
+          { status: 500 },
+        );
+      }
+    }
+
+    if (url.pathname === "/push/unsubscribe" && request.method === "POST") {
+      try {
+        const body = (await request.json()) as { endpoint?: string };
+        const endpoint = typeof body.endpoint === "string" ? body.endpoint.trim() : "";
+        if (!endpoint) {
+          return Response.json({ ok: false, error: "endpoint required" }, { status: 400 });
+        }
+        await deletePushSubscription(env.DB, endpoint);
+        return Response.json({ ok: true });
+      } catch (error) {
+        return Response.json(
+          {
+            ok: false,
+            error: error instanceof Error ? error.message : "unsubscribe failed",
+          },
+          { status: 500 },
+        );
+      }
+    }
+
+    if (url.pathname === "/push/send" && request.method === "POST") {
+      if (!authorizeManual(request, env)) {
+        return Response.json({ error: "unauthorized" }, { status: 401 });
+      }
+      try {
+        const body = (await request.json()) as {
+          title?: string;
+          body?: string;
+          url?: string;
+          tag?: string;
+        };
+        const title = typeof body.title === "string" ? body.title.trim() : "";
+        if (!title || title.length > 120) {
+          return Response.json({ ok: false, error: "title required (≤120)" }, { status: 400 });
+        }
+        const result = await broadcastPush(env, {
+          title,
+          body: typeof body.body === "string" ? body.body.slice(0, 500) : "",
+          url: typeof body.url === "string" ? body.url.slice(0, 500) : "/",
+          tag: typeof body.tag === "string" ? body.tag.slice(0, 64) : "cv-push",
+        });
+        return Response.json(result, { status: result.ok ? 200 : 500 });
+      } catch (error) {
+        return Response.json(
+          { ok: false, error: error instanceof Error ? error.message : "send failed" },
+          { status: 500 },
+        );
+      }
     }
 
     if (url.pathname === "/track" && request.method === "POST") {

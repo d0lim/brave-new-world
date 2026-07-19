@@ -1,13 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { ensurePushSubscription } from "@/lib/pushClient";
 import { trackEvent } from "@/lib/trackClient";
 
 /**
  * PWA 부트스트랩 + 홈 화면 추가 유도 (모바일 전용)
  *
  * 역할 2가지:
- *  1) 서비스워커 등록 — 설치 가능 조건 + 향후 웹 푸시 수신 준비
+ *  1) 서비스워커 등록 — 설치 가능 조건 + 웹 푸시 수신 준비
  *  2) "홈 화면에 추가" 안내 배너
  *
  * ★ 노출 정책 (첫인상을 해치지 않는 게 최우선)
@@ -66,6 +67,14 @@ function bumpVisitCount(): number {
   }
 }
 
+async function syncPushQuiet(requestIfNeeded: boolean) {
+  const result = await ensurePushSubscription({ requestIfNeeded });
+  if (result.ok) trackEvent("push_subscribed");
+  else if (result.reason === "denied" && requestIfNeeded) {
+    trackEvent("push_subscribe_denied");
+  }
+}
+
 export function PwaInstallPrompt() {
   const [visible, setVisible] = useState(false);
   const [installEvent, setInstallEvent] = useState<BeforeInstallPromptEvent | null>(null);
@@ -79,13 +88,30 @@ export function PwaInstallPrompt() {
     if (!("serviceWorker" in navigator)) return;
     if (process.env.NODE_ENV !== "production") return;
     const onLoad = () => {
-      navigator.serviceWorker.register("/sw.js").catch(() => {
-        /* 등록 실패는 조용히 무시 — 앱 동작에는 영향 없음 */
-      });
+      navigator.serviceWorker
+        .register("/sw.js")
+        .then(() => {
+          // 이미 허용된 경우만 조용히 재구독 (권한 팝업 없음)
+          void syncPushQuiet(false);
+        })
+        .catch(() => {
+          /* 등록 실패는 조용히 무시 — 앱 동작에는 영향 없음 */
+        });
     };
     if (document.readyState === "complete") onLoad();
     else window.addEventListener("load", onLoad, { once: true });
     return () => window.removeEventListener("load", onLoad);
+  }, []);
+
+  // standalone(홈화면 앱)에서는 한 번 권한 요청 허용 — 유입 초입 웹탭에서는 안 함
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (process.env.NODE_ENV !== "production") return;
+    if (!isStandalone()) return;
+    const t = window.setTimeout(() => {
+      void syncPushQuiet(true);
+    }, 8_000);
+    return () => window.clearTimeout(t);
   }, []);
 
   // 2) 설치 배너 노출 판단
@@ -97,13 +123,11 @@ export function PwaInstallPrompt() {
     if (visits < MIN_VISITS) return;
 
     const onBeforeInstall = (event: Event) => {
-      // 브라우저 기본 미니바 대신 우리 배너로
       event.preventDefault();
       setInstallEvent(event as BeforeInstallPromptEvent);
     };
     window.addEventListener("beforeinstallprompt", onBeforeInstall);
 
-    // iOS 사파리는 beforeinstallprompt 자체가 없어 수동 안내가 유일한 방법
     const ios = isIos();
     setIosMode(ios);
 
@@ -115,21 +139,17 @@ export function PwaInstallPrompt() {
     };
   }, []);
 
-  /**
-   * dwell 시간이 지났고, (iOS 수동안내 대상이거나 설치 이벤트를 잡았을 때) 노출.
-   * beforeinstallprompt가 타이머보다 늦게 오는 경우도 커버된다.
-   */
   useEffect(() => {
     if (!delayPassed) return;
     if (!iosMode && !installEvent) return;
     setVisible(true);
   }, [delayPassed, iosMode, installEvent]);
 
-  // 설치 완료되면 배너 제거
   useEffect(() => {
     const onInstalled = () => {
       setVisible(false);
       trackEvent("pwa_installed");
+      void syncPushQuiet(true);
     };
     window.addEventListener("appinstalled", onInstalled);
     return () => window.removeEventListener("appinstalled", onInstalled);

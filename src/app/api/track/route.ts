@@ -22,6 +22,8 @@ const ALLOWED_EVENTS = new Set([
   "pwa_prompt_accept",
   "pwa_prompt_dismiss",
   "pwa_installed",
+  "push_subscribed",
+  "push_subscribe_denied",
 ]);
 
 const trackBodySchema = z.object({

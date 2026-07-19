@@ -64,6 +64,12 @@ export type IngestEnv = {
   AIS_MAX_VESSELS?: string;
   ADSB_MIL_MAX?: string;
   ADSB_CIV_PER_HUB?: string;
+  /** Web Push VAPID — `wrangler secret put VAPID_PRIVATE_KEY` */
+  VAPID_PRIVATE_KEY?: string;
+  /** Public key (base64url) — wrangler [vars] 또는 secret */
+  VAPID_PUBLIC_KEY?: string;
+  /** mailto: or https: contact for VAPID JWT */
+  VAPID_SUBJECT?: string;
 };
 
 export type FirmsFireRow = {

@@ -9,6 +9,8 @@ export type LayerPrefs = {
   showCityLabels: boolean;
   showRailGlow: boolean;
   showAis: boolean;
+  /** 위장·다크플리트 선박 (AIS_Tracker OSINT 시드) */
+  showDisguisedVessels: boolean;
   showShippingLanes: boolean;
   showSubmarineCables: boolean;
   /** 해저터널 인프라 (D1 클라우드 로그 · 토글 시 온디맨드) */
@@ -110,8 +112,8 @@ export type LayerPrefs = {
 
 export type MobileHomeView = "alerts" | "globe";
 
-/** v28: 중국 도련선 · 미군 인도·태평양 방어선 */
-export const LAYER_PREFS_KEY = "geowatch-layers-v28";
+/** v29: 위장선박 (AIS_Tracker) */
+export const LAYER_PREFS_KEY = "geowatch-layers-v29";
 
 /** 토글 가능 레이어는 기본 OFF. 활성 전장(이란·우크라) 전쟁구역만 기본 ON */
 export const DEFAULT_LAYER_PREFS: LayerPrefs = {
@@ -120,6 +122,7 @@ export const DEFAULT_LAYER_PREFS: LayerPrefs = {
   showCityLabels: false,
   showRailGlow: false,
   showAis: false,
+  showDisguisedVessels: false,
   showShippingLanes: false,
   showSubmarineCables: false,
   showSubmarineTunnels: false,
@@ -191,6 +194,7 @@ export const DEFAULT_LAYER_PREFS: LayerPrefs = {
 };
 
 const LEGACY_LAYER_KEYS = [
+  "geowatch-layers-v28",
   "geowatch-layers-v27",
   "geowatch-layers-v26",
   "geowatch-layers-v25",

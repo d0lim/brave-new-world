@@ -269,6 +269,12 @@ export type AisVessel = {
   category: "military" | "commercial" | "other";
   /** 군함 함종 (비군함 null). 선명·헐넘버 휴리스틱 */
   militaryKind?: import("@/lib/aisVesselClass").AisMilitaryKind | null;
+  /**
+   * AIS_Tracker 위장·다크플리트·무기고 개조 선박 매칭.
+   * @see https://github.com/arandomguyhere/AIS_Tracker.git
+   */
+  disguised?: boolean;
+  disguisedKind?: "arsenal-ship" | "dark-fleet" | null;
 };
 
 export type MilitaryAircraft = {
@@ -320,6 +326,11 @@ export type MilitaryAircraft = {
   /** ACAS RA advisory text if present */
   acasAdvisory: string | null;
   timestamp: string | null;
+  /**
+   * Bellingcat Turnstone modes.csv military hex match.
+   * @see https://github.com/bellingcat/adsb-history.git
+   */
+  bellingcatMilitary?: boolean;
 };
 
 export type UsCarrierStatus = "deployed" | "home" | "maintenance";

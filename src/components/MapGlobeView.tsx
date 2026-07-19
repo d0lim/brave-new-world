@@ -1496,6 +1496,8 @@ export const MapGlobeView = forwardRef<MapGlobeMethods, MapGlobeViewProps>(funct
                 rotation={rotation}
                 rotationAlignment={alignment}
                 pitchAlignment="viewport"
+                /* 기본 0.2면 구체 뒤편(유럽 기지 등)이 한반도 쪽에서 비쳐 보임 */
+                opacityWhenCovered={0}
               >
                 <div
                   ref={(node) => {

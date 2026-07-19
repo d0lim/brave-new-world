@@ -44,7 +44,7 @@ export const PRIMARY_LIVE_SOURCES: PrimaryLiveSource[] = [
     url: "https://www.adsbexchange.com/",
     layers: "군용기·민간 항적 (/api/adsb-mil, /api/adsb-traffic)",
     noteKo:
-      "ADS-B 항적. 워커는 Worker IP 호환 소스(adsb.lol 등) 우선, 키 있으면 ADSBexchange. 지도 표기: ADS-B.",
+      "ADS-B 항적. 워커는 Worker IP 호환 소스(adsb.lol 등) 우선, 키 있으면 ADSBexchange. 군용 ICAO hex는 Bellingcat Turnstone(adsb-history) modes.csv로 보강. 출처: https://github.com/bellingcat/adsb-history.git · 지도 표기: ADS-B.",
   },
   {
     id: "marinetraffic",
@@ -52,9 +52,9 @@ export const PRIMARY_LIVE_SOURCES: PrimaryLiveSource[] = [
     nameEn: "MarineTraffic AIS",
     product: "exportvessels · aisstream.io 폴백",
     url: "https://www.marinetraffic.com/",
-    layers: "선박 AIS (/api/ais)",
+    layers: "선박 AIS (/api/ais) · 위장선박 (/api/ais-disguised)",
     noteKo:
-      "민간 화물·탱커·여객 등. MarineTraffic 키 실패 시 AISstream 폴백. 지도 표기: MarineTraffic · AIS.",
+      "민간 화물·탱커·여객 등. MarineTraffic 키 실패 시 AISstream 폴백. 위장·다크플리트 시드는 AIS_Tracker(https://github.com/arandomguyhere/AIS_Tracker.git). 지도 표기: MarineTraffic · AIS.",
   },
 ];
 
@@ -88,12 +88,13 @@ export const NEWS_LAYER_SOURCE_CATALOG: NewsLayerSourceNote[] = [
   },
   {
     layerId: "military-activity",
-    source: "ADS-B (군용기)",
+    source: "ADS-B (군용기) + Bellingcat Turnstone hex DB",
     url: "/api/adsb-mil",
     cadence: "Cron warm ~10m · toggle on-demand D1",
-    attribution: "ADS-B · adsb.lol / airplanes.live / ADSBexchange / adsb.fi",
+    attribution:
+      "ADS-B · adsb.lol / airplanes.live / ADSBexchange / adsb.fi · Military hex: https://github.com/bellingcat/adsb-history.git",
     notes:
-      "Military aircraft via ADS-B. Cron → D1 `adsb_aircraft` (mode=mil). User toggle reads D1 first; ?live=1 forces upstream.",
+      "Military aircraft via ADS-B. Cron → D1 `adsb_aircraft` (mode=mil). ICAO hex military flags enriched from Bellingcat/Turnstone modes.csv (adsb-history, MIT). User toggle reads D1 first; ?live=1 forces upstream.",
     status: "shipped",
     ingest: "cached-api",
   },
@@ -104,7 +105,7 @@ export const NEWS_LAYER_SOURCE_CATALOG: NewsLayerSourceNote[] = [
     cadence: "Cron hub warm ~10m · toggle on-demand D1",
     attribution: "ADS-B · adsb.lol / airplanes.live / ADSBexchange / adsb.fi",
     notes:
-      "Civilian ADS-B traffic (exclude dbFlags&1). Cron warms hub grids into D1; viewport query prefers D1 bbox then live.",
+      "Civilian ADS-B traffic (exclude dbFlags&1 and Bellingcat military hex). Cron warms hub grids into D1; viewport query prefers D1 bbox then live.",
     status: "shipped",
     ingest: "cached-api",
   },
@@ -118,6 +119,18 @@ export const NEWS_LAYER_SOURCE_CATALOG: NewsLayerSourceNote[] = [
       "Commercial AIS via MarineTraffic → D1 `ais_vessels`. Toggle reads D1 first; AISstream live fallback when MT unavailable.",
     status: "shipped",
     ingest: "cached-api",
+  },
+  {
+    layerId: "disguised-vessels",
+    source: "AIS_Tracker (위장·다크플리트 선박)",
+    url: "/api/ais-disguised",
+    cadence: "Static seed (OSINT watchlist)",
+    attribution:
+      "https://github.com/arandomguyhere/AIS_Tracker.git — vessels DB · dark_fleet.py · demo_data",
+    notes:
+      "Civilian vessels conducting military missions / dark fleet / arsenal-ship seed from AIS_Tracker. Seed positions + name/MMSI match against live AIS when available.",
+    status: "shipped",
+    ingest: "static-build",
   },
   {
     layerId: "tunnels",

@@ -7,9 +7,12 @@ import {
   nextUtcRankDate,
   utcRankDate,
 } from "@/lib/dailyRanks";
+import { CDN_CACHE, publicCacheHeaders } from "@/lib/httpCacheHeaders";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+const PROMPT_CDN = publicCacheHeaders(CDN_CACHE.dailyPrompt);
 
 async function syntheticPrompt(targetDate: string): Promise<DailyPrompt | null> {
   const payload = await loadDailyRanks({ date: utcRankDate(), limit: 5 });
@@ -60,9 +63,12 @@ export async function GET(request: Request) {
   if (!prompt) {
     prompt = await syntheticPrompt(targetDate);
   }
-  return NextResponse.json({
-    ok: true,
-    prompt,
-    targetDate,
-  });
+  return NextResponse.json(
+    {
+      ok: true,
+      prompt,
+      targetDate,
+    },
+    { headers: PROMPT_CDN },
+  );
 }

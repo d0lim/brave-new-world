@@ -3,9 +3,11 @@
  * ITU-R M.1371 ship and cargo type; MarineTraffic generic: 2/4/6/7/8.
  */
 
+import { lookupDisguisedVessel } from "@/data/disguisedVessels";
+
 export type AisVesselCategory = "military" | "commercial" | "other";
 
-export type AisClassFilter = "military" | "commercial" | "all";
+export type AisClassFilter = "military" | "commercial" | "all" | "disguised";
 
 /**
  * 항모 레이어에 안 잡힌 군함의 함종.
@@ -238,12 +240,14 @@ export function aisShipTypeLabel(shipType: number | null | undefined): string | 
   return generic[g] ?? `Type ${shipType}`;
 }
 
-/** 지정학: 군함만. 지경학: 민간(화물·탱커·여객 등). unknown은 민간 다수로 간주해 경제에만 포함. */
+/** 지정학: 군함만. 지경학: 민간. disguised: AIS_Tracker 위장·다크플리트. */
 export function matchesAisClassFilter(
   category: AisVesselCategory,
   filter: AisClassFilter,
+  disguised?: boolean,
 ): boolean {
   if (filter === "all") return true;
+  if (filter === "disguised") return Boolean(disguised);
   if (filter === "military") return category === "military";
   // commercial: include other (대부분 민간 AIS) so the economy map fills up
   return category === "commercial" || category === "other";
@@ -294,24 +298,32 @@ export function aisMilitaryKindColor(kind: AisMilitaryKind | null | undefined): 
 }
 
 export function parseAisClassFilter(raw: string | null): AisClassFilter {
-  if (raw === "military" || raw === "commercial" || raw === "all") return raw;
+  if (raw === "military" || raw === "commercial" || raw === "all" || raw === "disguised") {
+    return raw;
+  }
   return "all";
 }
 
-/** category / militaryKind / labels 한 번에 */
+/** category / militaryKind / labels 한 번에 (+ AIS_Tracker 위장 매칭) */
 export function enrichAisClassification(input: {
   shipType?: number | null;
   shipName?: string | null;
+  mmsi?: string | null;
 }): {
   category: AisVesselCategory;
   shipTypeLabel: string | null;
   militaryKind: AisMilitaryKind | null;
+  disguised: boolean;
+  disguisedKind: "arsenal-ship" | "dark-fleet" | null;
 } {
   const shipType = input.shipType ?? null;
   const category = classifyAisVessel(input);
+  const hit = lookupDisguisedVessel({ mmsi: input.mmsi, shipName: input.shipName });
   return {
     category,
     shipTypeLabel: aisShipTypeLabel(shipType),
     militaryKind: category === "military" ? classifyMilitaryKind(input) : null,
+    disguised: hit != null,
+    disguisedKind: hit?.kind ?? null,
   };
 }

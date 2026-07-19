@@ -318,7 +318,7 @@ src/
     licensing/ (viina · sipri · vdem · telegram · ironsight)
 docs/
   ux-scenarios.md         # UX 시나리오 (현행 제품 기준)
-  cloudflare-deploy.md · data-architecture-2tier.md
+  cloudflare-deploy.md · data-architecture-2tier.md · vercel-cdn-and-workers-fs.md
 public/audio/             # 로컬 전투·공습 샘플
 ```
 

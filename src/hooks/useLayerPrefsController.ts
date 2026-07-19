@@ -57,6 +57,8 @@ export function useLayerPrefsController(
         saveLayerPrefs(clamped);
         immediateUntilRef.current = Date.now() + LAYER_IMMEDIATE_RENDER_MS;
       } else {
+        // soft batch도 경로 레이어(BRI/DFC 등)가 카메라 쓰로틀에 막히지 않게 짧게 우회
+        immediateUntilRef.current = Date.now() + LAYER_IMMEDIATE_RENDER_MS;
         // localStorage 동기 write가 체크 입력과 겹치지 않게
         window.setTimeout(() => saveLayerPrefs(draftRef.current), 0);
       }

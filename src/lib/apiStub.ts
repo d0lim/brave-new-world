@@ -25,6 +25,7 @@ export type ApiStubRoute =
   | "sanctions-entities"
   | "briefing-stats"
   | "daily-ranks"
+  | "daily-prompt"
   | "daily-predict"
   | "daily-predict-stats";
 
@@ -43,6 +44,12 @@ function stubBody(route: ApiStubRoute, request?: Request): Record<string, unknow
         chokepoint: [],
         worldTension: null,
         yesterdayCorrectPct: null,
+      };
+    case "daily-prompt":
+      return {
+        ok: true,
+        prompt: null,
+        targetDate: at.slice(0, 10),
       };
     case "daily-predict":
       return {

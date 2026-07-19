@@ -110,7 +110,7 @@ export function formatWtiBriefingLead(
 }
 
 /** 메인 예측 문제 카피 (전장별은 보너스) */
-export function wtiPredictQuestion(ko: boolean): { ko: string; en: string } {
+export function wtiPredictQuestion(): { ko: string; en: string } {
   return {
     ko: `내일 이 시간, ${formatWtiTitle(true)}는 오를까 내릴까?`,
     en: `By this time tomorrow, will the ${formatWtiTitle(false)} go UP or DOWN?`,

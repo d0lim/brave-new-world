@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useState } from "react";
 import { HoverHint } from "@/components/HoverHint";
 import type { LabelLanguage } from "@/lib/layerPrefs";
@@ -71,7 +72,7 @@ export function ServerDonateChip({ lang }: ServerDonateChipProps) {
               </button>
             </div>
             <div className="flex flex-col items-center gap-3 px-5 py-5">
-              <img
+              <Image
                 src="/donate-qr.png"
                 alt={isEn ? "Donation QR code" : "후원 QR 코드"}
                 width={280}

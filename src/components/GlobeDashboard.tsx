@@ -8799,8 +8799,6 @@ export function GlobeDashboard({
                 }
                 if (path.kind === "shipping-lane") return PATH_LAYER_COLORS["shipping-lane"];
                 if (path.kind === "submarine-cable") return PATH_LAYER_COLORS["submarine-cable"];
-                if (path.kind === "oil-pipeline") return PATH_LAYER_COLORS["oil-pipeline"];
-                if (path.kind === "gas-pipeline") return PATH_LAYER_COLORS["gas-pipeline"];
                 if (path.kind === "arms-embargo") return ARMS_EMBARGO_STROKE;
                 if (path.kind === "msr") return "rgba(250, 204, 21, 0.9)";
                 if (

@@ -14,10 +14,12 @@ import {
   type ReactNode,
 } from "react";
 import { InterestRecommendChips } from "@/components/InterestRecommendChips";
+import { LivingTaiwanFollowChip } from "@/components/LivingConflictPanel";
 import { emitBreakingDispatchSound } from "@/components/SoundEffectsBridge";
 import { MapLegend } from "@/components/MapLegend";
 import { HoverHint } from "@/components/HoverHint";
 import { EventMarketReactionCard } from "@/components/EventMarketReactionCard";
+import { CounterfactualInvestCard } from "@/components/CounterfactualInvestCard";
 import { StockTickerStrip } from "@/components/StockTickerStrip";
 import { IntelRelatedMarketsPanel } from "@/components/IntelRelatedMarketsPanel";
 import { IntelSheetSearchBar, type IntelSearchResult } from "@/components/IntelSheetSearchBar";
@@ -29,6 +31,7 @@ import { VideoNewsPanel } from "@/components/VideoNewsPanel";
 import type { ViinaFrontEvent } from "@/lib/viinaFrontEvents";
 import type { TelegramAlert } from "@/lib/telegramAlerts";
 import type { HeroBreakingItem, NewsStreamItem, NewsStreamPayload, NewsTheater } from "@/lib/news/types";
+import { displayNewsItemTitle } from "@/lib/newfeedsI18n";
 import {
   ECONOMY_GENRE_ORDER,
   economyGenreHint,
@@ -171,29 +174,55 @@ export type EconomyIntelTab = "news" | "video" | "markets";
 
 const POLL_MS_FALLBACK = 90_000;
 
-const THEATER_LABELS: Record<NewsStreamItem["theater"], string> = {
-  "middle-east": "중동",
-  "russia-ukraine": "러·우",
-  "china-taiwan": "중·대",
-  korea: "한반도",
-  japan: "일본",
-  "south-asia": "남아시아",
-  arctic: "북극",
-  atlantic: "대서양",
-  global: "글로벌",
+const THEATER_LABELS: Record<
+  NewsStreamItem["theater"],
+  { ko: string; en: string }
+> = {
+  "middle-east": { ko: "중동", en: "Middle East" },
+  "russia-ukraine": { ko: "러·우", en: "RU–UA" },
+  "china-taiwan": { ko: "중·대", en: "CN–TW" },
+  korea: { ko: "한반도", en: "Korea" },
+  japan: { ko: "일본", en: "Japan" },
+  "south-asia": { ko: "남아시아", en: "South Asia" },
+  arctic: { ko: "북극", en: "Arctic" },
+  atlantic: { ko: "대서양", en: "Atlantic" },
+  global: { ko: "글로벌", en: "Global" },
 };
 
-const HERO_STATUS_LABELS: Record<HeroBreakingItem["heroStatus"], string> = {
-  confirmed: "확인됨",
-  breaking: "속보",
-  unverified: "미확인",
+function newsStreamTheaterLabel(
+  theater: NewsStreamItem["theater"],
+  lang: LabelLanguage,
+): string {
+  const entry = THEATER_LABELS[theater];
+  return lang === "en" ? entry.en : entry.ko;
+}
+
+const HERO_STATUS_LABELS: Record<
+  HeroBreakingItem["heroStatus"],
+  { ko: string; en: string }
+> = {
+  confirmed: { ko: "확인됨", en: "Confirmed" },
+  breaking: { ko: "속보", en: "Breaking" },
+  unverified: { ko: "미확인", en: "Unverified" },
 };
 
-const ECONOMY_HERO_STATUS_LABELS: Record<HeroBreakingItem["heroStatus"], string> = {
-  confirmed: "시장 반영",
-  breaking: "속보",
-  unverified: "미확인",
+const ECONOMY_HERO_STATUS_LABELS: Record<
+  HeroBreakingItem["heroStatus"],
+  { ko: string; en: string }
+> = {
+  confirmed: { ko: "시장 반영", en: "Priced in" },
+  breaking: { ko: "속보", en: "Breaking" },
+  unverified: { ko: "미확인", en: "Unverified" },
 };
+
+function heroStatusLabel(
+  status: HeroBreakingItem["heroStatus"],
+  lang: LabelLanguage,
+  economy = false,
+): string {
+  const map = economy ? ECONOMY_HERO_STATUS_LABELS : HERO_STATUS_LABELS;
+  return lang === "en" ? map[status].en : map[status].ko;
+}
 
 type NewsStreamContextValue = {
   payload: NewsStreamPayload | null;
@@ -254,27 +283,42 @@ function filterNewsByQuery(items: NewsStreamItem[], query: string): NewsStreamIt
   );
 }
 
-function newsItemsToSearchResults(items: NewsStreamItem[]): IntelSearchResult[] {
+function newsItemsToSearchResults(
+  items: NewsStreamItem[],
+  lang: LabelLanguage,
+): IntelSearchResult[] {
   return items.map((item) => ({
     id: item.id,
-    title: item.title,
+    title: displayNewsItemTitle(item, lang),
     subtitle: item.source,
-    badge: item.trustTier === 1 ? "확인" : item.trustTier === 2 ? "보완" : "속보",
+    badge:
+      item.trustTier === 1
+        ? lang === "en"
+          ? "Verified"
+          : "확인"
+        : item.trustTier === 2
+          ? lang === "en"
+            ? "Secondary"
+            : "보완"
+          : lang === "en"
+            ? "Breaking"
+            : "속보",
   }));
 }
 
-function formatAge(minutes: number): string {
-  if (minutes < 1) return "방금";
-  if (minutes < 60) return `${minutes}분 전`;
+function formatAge(minutes: number, lang: LabelLanguage = "ko"): string {
+  const en = lang === "en";
+  if (minutes < 1) return en ? "Just now" : "방금";
+  if (minutes < 60) return en ? `${minutes}m ago` : `${minutes}분 전`;
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}시간 전`;
-  return `${Math.floor(hours / 24)}일 전`;
+  if (hours < 24) return en ? `${hours}h ago` : `${hours}시간 전`;
+  return en ? `${Math.floor(hours / 24)}d ago` : `${Math.floor(hours / 24)}일 전`;
 }
 
-function formatPubAge(pubDate: string): string {
+function formatPubAge(pubDate: string, lang: LabelLanguage = "ko"): string {
   const ts = Date.parse(pubDate);
   if (!Number.isFinite(ts)) return "";
-  return formatAge(Math.max(0, Math.round((Date.now() - ts) / 60_000)));
+  return formatAge(Math.max(0, Math.round((Date.now() - ts) / 60_000)), lang);
 }
 
 function heroShellClass(status: HeroBreakingItem["heroStatus"], economy = false): string {
@@ -383,6 +427,8 @@ type IntelCompactBarProps = {
   onFlyToTheater?: (theater: NewsTheater) => void;
   /** 맞춤 칩 → 레이어 ON */
   onEnableLayer?: (layerKey: string) => void;
+  /** 대만해협 진행형 패널 열기 */
+  onOpenLivingTaiwan?: () => void;
 };
 
 function TodayHotspotChip({
@@ -458,17 +504,17 @@ function HeroHeadlineBanner({
   economy?: boolean;
 }) {
   const { lang, t } = useLocale();
-  const statusLabels = economy ? ECONOMY_HERO_STATUS_LABELS : HERO_STATUS_LABELS;
+  const statusText = heroStatusLabel(hero.heroStatus, lang, economy);
   return (
     <div
       className={`intel-hero-enter pointer-events-auto overflow-hidden rounded-t-2xl border border-b-0 shadow-2xl backdrop-blur-md ${heroShellClass(hero.heroStatus, economy)}`}
       role="status"
       aria-live="polite"
-      aria-label={`속보: ${hero.title}`}
+      aria-label={`${lang === "en" ? "Breaking" : "속보"}: ${displayNewsItemTitle(hero, lang)}`}
     >
       <div className="flex items-center justify-between gap-2 border-b border-white/12 bg-black/20 px-3 py-1.5">
         <span className="text-[10px] font-bold uppercase tracking-[0.22em] text-red-200/90">
-          Headline
+          {lang === "en" ? "Headline" : "헤드라인"}
         </span>
         <span className="text-[10px] text-slate-500">{theaterLabel(hero.theater, lang)}</span>
       </div>
@@ -490,7 +536,7 @@ function HeroHeadlineBanner({
           <span
             className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${heroBadgeClass(hero.heroStatus, economy)}`}
           >
-            {statusLabels[hero.heroStatus]}
+            {statusText}
           </span>
           <span className="font-news-headline min-w-0 flex-1 truncate text-sm font-semibold leading-snug text-slate-50">
             {hero.heroStatus === "unverified"
@@ -498,17 +544,26 @@ function HeroHeadlineBanner({
                 ? `${hero.source}에 따르면 `
                 : `${hero.source}${t("heroAccordingTo")}`
               : ""}
-            {hero.title}
+            {displayNewsItemTitle(hero, lang)}
           </span>
           <span className="shrink-0 text-[10px] text-slate-500">
-            {formatAge(hero.ageMinutes)}
+            {formatAge(hero.ageMinutes, lang)}
           </span>
           <span className="hero-open-cta-arrow shrink-0 text-[10px] font-bold uppercase tracking-wider text-sky-300">
             {t("openPanel")}
           </span>
         </div>
       </button>
-      <EventMarketReactionCard theater={hero.theater} ageMinutes={hero.ageMinutes} />
+      <EventMarketReactionCard
+        theater={hero.theater}
+        ageMinutes={hero.ageMinutes}
+        prominent
+      />
+      <CounterfactualInvestCard
+        theater={hero.theater}
+        ageMinutes={hero.ageMinutes}
+        prominent
+      />
       {hero.link ? (
         <div className="flex justify-end border-t border-white/8 px-2 py-1.5">
           <HoverHint placement="top" title={t("hoverOpenArticle")} detail={t("hoverOpenArticleHint")}>
@@ -538,6 +593,7 @@ export function DynamicIntelStack({
   onOpenSheet,
   onFlyToTheater,
   onEnableLayer,
+  onOpenLivingTaiwan,
 }: IntelCompactBarProps) {
   const { lang, t } = useLocale();
   const { payload, preferEconomyNews } = useNewsStreamContext();
@@ -767,6 +823,10 @@ export function DynamicIntelStack({
         />
       ) : null}
 
+      {!fabOnly && !dockCollapsed && !isEconomy && onOpenLivingTaiwan ? (
+        <LivingTaiwanFollowChip lang={lang} onOpen={onOpenLivingTaiwan} />
+      ) : null}
+
       {!fabOnly && !dockCollapsed ? (
         <InterestRecommendChips
           economy={isEconomy}
@@ -809,6 +869,21 @@ export function DynamicIntelStack({
 
         {isAlert && hero ? (
           <HeroHeadlineBanner hero={hero} onOpenSheet={onOpenSheet} economy={isEconomy} />
+        ) : null}
+
+        {!isAlert && hero && !isEconomy ? (
+          <>
+            <EventMarketReactionCard
+              theater={hero.theater}
+              ageMinutes={hero.ageMinutes}
+              prominent
+            />
+            <CounterfactualInvestCard
+              theater={hero.theater}
+              ageMinutes={hero.ageMinutes}
+              prominent
+            />
+          </>
         ) : null}
 
         {showCompactTicker ? (
@@ -1083,7 +1158,10 @@ function IntelSheetTabBar({
   const { t } = useLocale();
   if (economyMode) {
     return (
-      <div className="flex shrink-0 gap-1 border-b border-emerald-400/15 px-4 py-2">
+      <div
+        id="intel-sheet-tabs"
+        className="flex shrink-0 gap-1 border-b border-emerald-400/15 px-4 py-2"
+      >
         <button
           type="button"
           onClick={() => onEconomyTabChange?.("markets")}
@@ -1125,7 +1203,10 @@ function IntelSheetTabBar({
   }
 
   return (
-    <div className="flex shrink-0 gap-1 overflow-x-auto border-b border-sky-300/10 px-4 py-2">
+    <div
+      id="intel-sheet-tabs"
+      className="flex shrink-0 gap-1 overflow-x-auto border-b border-sky-300/10 px-4 py-2"
+    >
       <HoverHint placement="bottom" title={t("hoverSheetNews")} detail={t("hoverSheetNewsHint")}>
         <button
           type="button"
@@ -1391,8 +1472,8 @@ export const IntelNewsSheet = forwardRef<BottomIntelStackHandle, IntelNewsSheetP
       [showTier3, tier1Items, tier2Items, tier3Items],
     );
     const newsSearchResults = useMemo(
-      () => newsItemsToSearchResults(filterNewsByQuery(allEconomyNews, newsSearchQuery)),
-      [allEconomyNews, newsSearchQuery],
+      () => newsItemsToSearchResults(filterNewsByQuery(allEconomyNews, newsSearchQuery), lang),
+      [allEconomyNews, newsSearchQuery, lang],
     );
     const newsById = useMemo(() => new Map(allEconomyNews.map((i) => [i.id, i])), [allEconomyNews]);
     const marketsSearchResults = useMemo(() => {
@@ -1427,6 +1508,7 @@ export const IntelNewsSheet = forwardRef<BottomIntelStackHandle, IntelNewsSheetP
 
     return (
       <div
+        id="intel-news-sheet"
         className={`intel-news-sheet fixed inset-x-0 bottom-0 z-[44] flex flex-col ${
           open ? "intel-news-sheet--open" : ""
         } ${sheetDragging ? "intel-news-sheet--dragging" : ""}`}
@@ -1611,12 +1693,16 @@ export const IntelNewsSheet = forwardRef<BottomIntelStackHandle, IntelNewsSheetP
                       <span
                         className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${heroBadgeClass(hero!.heroStatus, preferEconomyNews)}`}
                       >
-                        {HERO_STATUS_LABELS[hero!.heroStatus]}
+                        {heroStatusLabel(hero!.heroStatus, lang, preferEconomyNews)}
                       </span>
-                      <span className="text-[11px] text-slate-400">{THEATER_LABELS[hero!.theater]}</span>
-                      <span className="text-[11px] text-slate-500">{formatAge(hero!.ageMinutes)}</span>
+                      <span className="text-[11px] text-slate-400">
+                        {newsStreamTheaterLabel(hero!.theater, lang)}
+                      </span>
+                      <span className="text-[11px] text-slate-500">{formatAge(hero!.ageMinutes, lang)}</span>
                     </div>
-                    <p className="mt-1.5 text-sm font-semibold leading-snug text-slate-50">{hero!.title}</p>
+                    <p className="mt-1.5 text-sm font-semibold leading-snug text-slate-50">
+                      {displayNewsItemTitle(hero!, lang)}
+                    </p>
                   </div>
                   {(() => {
                     if (!onFlyToMap) return null;
@@ -1939,7 +2025,7 @@ function AnalysisPanel({
             {hero && theaterLabelText ? (
               <p>
                 <span className="font-medium text-violet-200">
-                  [{HERO_STATUS_LABELS[hero.heroStatus]}]
+                  [{heroStatusLabel(hero.heroStatus, lang)}]
                 </span>{" "}
                 {theaterLabelText}
                 {lang === "en" ? " theater signal. " : " 전장 속보 신호. "}
@@ -2055,7 +2141,18 @@ function NewsRow({
 }) {
   const { lang } = useLocale();
   const tierLabel =
-    item.trustTier === 1 ? "확인" : item.trustTier === 2 ? "보완" : "속보";
+    item.trustTier === 1
+      ? lang === "en"
+        ? "Verified"
+        : "확인"
+      : item.trustTier === 2
+        ? lang === "en"
+          ? "Secondary"
+          : "보완"
+        : lang === "en"
+          ? "Breaking"
+          : "속보";
+  const displayTitle = displayNewsItemTitle(item, lang);
   const genre =
     economyMode && item.econGenre
       ? economyGenreLabel(item.econGenre, lang)
@@ -2129,7 +2226,7 @@ function NewsRow({
             <span className="text-[11px] text-slate-500">{item.source}</span>
           </span>
           <span className="line-clamp-2 text-sm font-medium leading-5 text-slate-100">
-            {item.title}
+            {displayTitle}
           </span>
           {item.summary ? (
             <span className="mt-1 line-clamp-2 block text-xs leading-5 text-slate-400">
@@ -2137,7 +2234,7 @@ function NewsRow({
             </span>
           ) : null}
           <span className="mt-1 block text-[11px] text-slate-500">
-            {THEATER_LABELS[item.theater]} · {formatPubAge(item.pubDate)}
+            {newsStreamTheaterLabel(item.theater, lang)} · {formatPubAge(item.pubDate, lang)}
           </span>
         </span>
       </a>

@@ -105,3 +105,67 @@ CREATE TABLE IF NOT EXISTS ingest_runs (
   error TEXT,
   detail_json TEXT
 );
+
+CREATE TABLE IF NOT EXISTS living_timeline_entries (
+  id TEXT NOT NULL PRIMARY KEY,
+  conflict_id TEXT NOT NULL,
+  entry_date TEXT NOT NULL,
+  headline_ko TEXT NOT NULL,
+  headline_en TEXT NOT NULL,
+  source_urls_json TEXT,
+  created_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_living_timeline_conflict_date
+  ON living_timeline_entries (conflict_id, entry_date);
+
+CREATE INDEX IF NOT EXISTS idx_living_timeline_date
+  ON living_timeline_entries (entry_date);
+
+CREATE TABLE IF NOT EXISTS bunker_sentiment_votes (
+  vote_date TEXT NOT NULL,
+  device_id TEXT NOT NULL,
+  pick TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  PRIMARY KEY (vote_date, device_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_bunker_sentiment_date
+  ON bunker_sentiment_votes (vote_date);
+
+CREATE TABLE IF NOT EXISTS air_raid_alerts (
+  id TEXT PRIMARY KEY NOT NULL,
+  source TEXT NOT NULL,
+  theater_id TEXT NOT NULL,
+  region TEXT,
+  title TEXT,
+  severity INTEGER NOT NULL DEFAULT 3,
+  alert_at TEXT NOT NULL,
+  active INTEGER NOT NULL DEFAULT 0,
+  detail_json TEXT,
+  ingested_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_air_raid_theater_at
+  ON air_raid_alerts (theater_id, alert_at);
+
+CREATE INDEX IF NOT EXISTS idx_air_raid_source_at
+  ON air_raid_alerts (source, alert_at);
+
+CREATE INDEX IF NOT EXISTS idx_air_raid_ingested
+  ON air_raid_alerts (ingested_at);
+
+CREATE TABLE IF NOT EXISTS theater_signal_daily (
+  signal_date TEXT NOT NULL,
+  theater_id TEXT NOT NULL,
+  mentions REAL NOT NULL DEFAULT 0,
+  points REAL NOT NULL DEFAULT 0,
+  fire_count REAL NOT NULL DEFAULT 0,
+  telegram_count REAL NOT NULL DEFAULT 0,
+  air_raid_score REAL NOT NULL DEFAULT 0,
+  updated_at TEXT NOT NULL,
+  PRIMARY KEY (signal_date, theater_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_theater_signal_daily_theater
+  ON theater_signal_daily (theater_id, signal_date);

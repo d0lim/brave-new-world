@@ -61,6 +61,8 @@ export function WelcomeParchmentLetter({ lang, onContinue }: WelcomeParchmentLet
       ctaLabel={t("welcomeLetterCta", lang)}
       onContinue={onContinue}
       titleId="welcome-letter-title"
+      historyHandFont={lang !== "en"}
+      intelFont={lang === "en"}
     />
   );
 }

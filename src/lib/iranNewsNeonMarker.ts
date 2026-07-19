@@ -4,6 +4,7 @@
  */
 
 import type { NewfeedsAttackPoint } from "@/lib/newfeeds";
+import { localizeNewfeedsLocation, localizeNewfeedsTitle } from "@/lib/newfeedsI18n";
 
 export const IRAN_NEWS_NEON_ROOT = "iran-news-neon-marker";
 
@@ -128,19 +129,17 @@ export function createIranNewsNeonBadge(
   root.className = IRAN_NEWS_NEON_ROOT;
   root.dataset.markerId = attack.markerId;
   root.dataset.severity = attack.severity || "low";
+  const title = localizeNewfeedsTitle(attack.title, lang);
+  const location = localizeNewfeedsLocation(attack.location, lang);
   const tagLine = attack.hapiTag
-    ? lang === "en"
-      ? `HAPI · ${attack.hapiTag}`
-      : `HAPI · ${attack.hapiTag}`
+    ? `HAPI · ${attack.hapiTag}`
     : "";
-  root.title = [attack.title, attack.location, tagLine].filter(Boolean).join("\n");
+  root.title = [title, location, tagLine].filter(Boolean).join("\n");
   root.setAttribute("role", "img");
   root.setAttribute(
     "aria-label",
     escapeAttr(
-      lang === "en"
-        ? `Iran incident · ${attack.title}`
-        : `이란 사건 · ${attack.title}`,
+      lang === "en" ? `Iran incident · ${title}` : `이란 사건 · ${title}`,
     ),
   );
   root.style.opacity = String(0.75 + intensity * 0.25);

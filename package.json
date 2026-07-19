@@ -78,6 +78,7 @@
     "cf:r2:upload:audio": "node scripts/r2-upload-data.js --audio-only",
     "cf:r2:upload:audio:dry": "node scripts/r2-upload-data.js --audio-only --dry-run",
     "axis:arms:build": "node scripts/build-axis-arms.js",
+    "axis:hubs:build": "node scripts/build-axis-hub-countries.js",
     "axis:vdem:build": "node scripts/build-axis-vdem.js",
     "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts"
   },

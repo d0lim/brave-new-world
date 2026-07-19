@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNewsStreamContext } from "@/components/BottomIntelStack";
 import { EventMarketReactionCard } from "@/components/EventMarketReactionCard";
+import { CounterfactualInvestCard } from "@/components/CounterfactualInvestCard";
 import { DailyPredictPanel } from "@/components/DailyPredictPanel";
 import { useLocale } from "@/contexts/LocaleContext";
 import { theaterLabel } from "@/lib/uiStrings";
@@ -108,19 +109,43 @@ export function MobileAlertFeed({ onClose }: MobileAlertFeedProps) {
           <DailyPredictPanel lang={lang} yesterdayCorrectPct={yesterdayCorrectPct} />
         </div>
 
+        {payload?.hero ? (
+          <div className="border-b border-amber-400/15 px-0 pb-1">
+            <div className="px-3 pb-1 pt-1">
+              <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-amber-200/80">
+                {lang === "en" ? "War ↔ Markets" : "전쟁 ↔ 이익"}
+              </span>
+            </div>
+            <EventMarketReactionCard
+              theater={payload.hero.theater}
+              ageMinutes={payload.hero.ageMinutes}
+              prominent
+            />
+            <CounterfactualInvestCard
+              theater={payload.hero.theater}
+              ageMinutes={payload.hero.ageMinutes}
+              prominent
+            />
+          </div>
+        ) : null}
+
         {groups.length === 0 ? (
           <p className="px-3 py-8 text-center text-[12px] text-slate-500">
             {lang === "en" ? "No recent alerts." : "최근 알림이 없습니다."}
           </p>
         ) : (
-          groups.map((group) => (
+          groups.map((group, index) => (
             <div key={group.theater} className="border-b border-white/5 last:border-b-0">
               <div className="px-3 pb-1 pt-2.5">
                 <span className="text-[11px] font-semibold text-sky-200/80">
                   {theaterLabel(group.theater, lang)}
                 </span>
               </div>
-              <EventMarketReactionCard theater={group.theater} ageMinutes={group.ageMinutes} />
+              <EventMarketReactionCard
+                theater={group.theater}
+                ageMinutes={group.ageMinutes}
+                prominent={index === 0}
+              />
               <ul className="px-2 py-1.5">
                 {group.items.slice(0, MAX_ITEMS_PER_THEATER).map((item) => (
                   <li key={item.id}>

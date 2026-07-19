@@ -16,11 +16,13 @@ import { formatWtiTitle, wtiBand, wtiBandLabel } from "@/lib/wti";
 type PeriodicBriefingParchmentProps = {
   briefing: PeriodicBriefing;
   lang: LabelLanguage;
+  /** 접기 — 하루 종료가 아니라 다시 펼칠 수 있게 접어둠 */
   onDismiss: () => void;
 };
 
 /**
- * 매일 전장/시장 등불 — 첫입장 온보딩 이후, 지정학·지경학 각각 하루 1회.
+ * 전장/시장 등불 — 입장 온보딩 이후, 지정학·지경학 각각 하루 종일.
+ * 접으면 칩으로 다시 펼칠 수 있고, 뉴스 본문은 6시간마다 갱신.
  * 사진 뉴스(featuredNews)가 있으면 대형 양피지, 없으면 기존 텍스트 편지.
  */
 export function PeriodicBriefingParchment({
@@ -31,6 +33,7 @@ export function PeriodicBriefingParchment({
   const isPhotoLamp =
     (briefing.featuredNews && briefing.featuredNews.length > 0) ||
     (briefing.macroTable && briefing.macroTable.length > 0);
+  const foldLabel = lang === "en" ? "Fold" : "접기";
 
   if (!isPhotoLamp) {
     return (
@@ -38,10 +41,11 @@ export function PeriodicBriefingParchment({
         lang={lang}
         title={briefing.title}
         paragraphs={briefing.paragraphs}
-        ctaLabel={lang === "en" ? "Until tomorrow" : "내일 다시"}
+        ctaLabel={foldLabel}
         onContinue={onDismiss}
         playBreakingDispatch
         titleId="periodic-briefing-title"
+        historyHandFont={lang !== "en"}
       />
     );
   }
@@ -62,7 +66,7 @@ function PhotoNewsLampParchment({
   const parchmentStack =
     lang === "en"
       ? "var(--font-intel)"
-      : 'var(--font-wanted), "Wanted Sans Variable", "Wanted Sans", sans-serif';
+      : 'var(--font-letter-hand), "RIDI Batang", "Gowun Batang", "Nanum Myeongjo", "Batang", serif';
   /** 기사 본문·메타 — 검정 통일 */
   const articleInk = "#000000";
   const articleInkMuted = "rgba(0,0,0,0.72)";
@@ -484,8 +488,13 @@ function PhotoNewsLampParchment({
                 className="rounded-sm border border-[#8b6914]/45 bg-[#efe0b8] px-6 py-2.5 text-base tracking-[0.06em] text-[#3d2a18] shadow-sm transition hover:bg-[#f7ecd0] disabled:cursor-wait disabled:opacity-70"
                 style={{ fontFamily: parchmentStack, fontWeight: 400 }}
               >
-                {lang === "en" ? "Until tomorrow" : "내일 다시"}
+                {lang === "en" ? "Fold" : "접기"}
               </button>
+              <p className="mt-2 text-[11px] tracking-[0.04em] text-[#6b4a22]/65" style={{ fontFamily: parchmentStack }}>
+                {lang === "en"
+                  ? "Fold to keep exploring — reopen anytime today. News refreshes every 6 hours."
+                  : "접어두면 지도를 보고, 오늘 하루 언제든 다시 펼칠 수 있습니다. 뉴스는 6시간마다 갱신됩니다."}
+              </p>
             </div>
           </div>
 

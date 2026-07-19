@@ -95,7 +95,7 @@ import {
   approachFromBearing,
   inferIsraelApproachHint,
   tzevaCategoryThreatLabel,
-} from "@/lib/llm/airRaidNarrative";
+} from "@/lib/airRaidBriefHints";
 import { geocodeUkraineAlertRegion } from "@/lib/ukraineAlertZones";
 import {
   buildBriefingFromStats,

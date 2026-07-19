@@ -517,6 +517,29 @@ export const uiEvents = sqliteTable(
   }),
 );
 
+/**
+ * 웹 푸시 구독 — endpoint 단위. 개인정보 최소(UA·lang만 선택).
+ */
+export const pushSubscriptions = sqliteTable(
+  "push_subscriptions",
+  {
+    endpoint: text("endpoint").primaryKey(),
+    p256dh: text("p256dh").notNull(),
+    auth: text("auth").notNull(),
+    userAgent: text("user_agent"),
+    lang: text("lang"),
+    createdAt: text("created_at")
+      .notNull()
+      .default(sql`(datetime('now'))`),
+    updatedAt: text("updated_at")
+      .notNull()
+      .default(sql`(datetime('now'))`),
+  },
+  (t) => ({
+    updatedIdx: index("idx_push_subscriptions_updated").on(t.updatedAt),
+  }),
+);
+
 /** Cron / 빌드 실행 로그 */
 export const ingestRuns = sqliteTable("ingest_runs", {
   id: integer("id").primaryKey({ autoIncrement: true }),
@@ -556,3 +579,5 @@ export type DailyPromptRow = typeof dailyPrompts.$inferSelect;
 export type NewDailyPromptRow = typeof dailyPrompts.$inferInsert;
 export type UiEventRow = typeof uiEvents.$inferSelect;
 export type NewUiEventRow = typeof uiEvents.$inferInsert;
+export type PushSubscriptionRow = typeof pushSubscriptions.$inferSelect;
+export type NewPushSubscriptionRow = typeof pushSubscriptions.$inferInsert;

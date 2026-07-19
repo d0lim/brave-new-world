@@ -678,6 +678,83 @@ export const MapGlobeView = forwardRef<MapGlobeMethods, MapGlobeViewProps>(funct
     };
   }, [mapLoaded, notifyChange]);
 
+  /**
+   * Alt + 좌클릭 드래그 → pitch / bearing 조절.
+   * flyTo로 사선으로 눕힌 카메라를 유저가 바로잡을 수 있게 함.
+   * (기본은 우클릭·Ctrl 드래그가 MapLibre rotate — Alt는 별도 단축키)
+   */
+  useEffect(() => {
+    if (!mapLoaded) return;
+    const map = mapRef.current?.getMap();
+    if (!map) return;
+    const canvas = map.getCanvas();
+    if (!canvas) return;
+
+    let dragging = false;
+    let lastX = 0;
+    let lastY = 0;
+    let panWasEnabled = true;
+    let rotateWasEnabled = true;
+
+    const finish = () => {
+      if (!dragging) return;
+      dragging = false;
+      if (panWasEnabled) map.dragPan.enable();
+      if (rotateWasEnabled) map.dragRotate.enable();
+      canvas.style.cursor = "";
+    };
+
+    const onDown = (event: MouseEvent) => {
+      if (!event.altKey || event.button !== 0) return;
+      dragging = true;
+      lastX = event.clientX;
+      lastY = event.clientY;
+      panWasEnabled = map.dragPan.isEnabled();
+      rotateWasEnabled = map.dragRotate.isEnabled();
+      map.dragPan.disable();
+      map.dragRotate.disable();
+      canvas.style.cursor = "move";
+      event.preventDefault();
+      event.stopPropagation();
+    };
+
+    const onMove = (event: MouseEvent) => {
+      if (!dragging) return;
+      if (!event.altKey) {
+        finish();
+        return;
+      }
+      const dx = event.clientX - lastX;
+      const dy = event.clientY - lastY;
+      lastX = event.clientX;
+      lastY = event.clientY;
+      if (dx === 0 && dy === 0) return;
+      // 좌우 → 베어링(회전), 위아래 → 피치(눕히기/세우기)
+      const nextBearing = map.getBearing() - dx * 0.45;
+      const nextPitch = Math.max(0, Math.min(85, map.getPitch() - dy * 0.35));
+      map.jumpTo({ bearing: nextBearing, pitch: nextPitch });
+      event.preventDefault();
+    };
+
+    const onUp = () => finish();
+
+    const onKeyUp = (event: KeyboardEvent) => {
+      if (event.key === "Alt") finish();
+    };
+
+    canvas.addEventListener("mousedown", onDown, true);
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+    window.addEventListener("keyup", onKeyUp);
+    return () => {
+      finish();
+      canvas.removeEventListener("mousedown", onDown, true);
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+      window.removeEventListener("keyup", onKeyUp);
+    };
+  }, [mapLoaded]);
+
   const initialCamera = globeViewToMapLibre({ lat: 25, lng: 105, altitude: 2.25 });
 
   return (

@@ -18,6 +18,12 @@ const ALLOWED_EVENTS = new Set([
   "daily_predict_submit",
   "daily_predict_change",
   "mobile_home_view_toggle",
+  "pwa_prompt_shown",
+  "pwa_prompt_accept",
+  "pwa_prompt_dismiss",
+  "pwa_installed",
+  "push_subscribed",
+  "push_subscribe_denied",
 ]);
 
 const trackBodySchema = z.object({

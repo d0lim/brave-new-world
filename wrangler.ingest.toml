@@ -15,7 +15,7 @@ compatibility_date = "2025-10-11"
 workers_dev = true
 
 # Optional: allow lightweight URL/Buffer helpers if needed later
-compatibility_flags = []
+compatibility_flags = ["nodejs_compat"]
 
 [vars]
 # Theater FIRMS day window (1–5). SNPP+NOAA20+NOAA21 병합이라 2일이면 충분.
@@ -26,6 +26,9 @@ FIRMS_MAX_PER_THEATER = "400"
 GDELT_MAX_POINTS = "250"
 # Retain window for prune (hours)
 RETENTION_HOURS = "48"
+# Web Push VAPID (public — private은 wrangler secret)
+VAPID_PUBLIC_KEY = "BBVEwTmDSfLWMTtvbYbLwJhK_i4ZUvB_yW9aoUtGy80oi5GwIlWE6oVIHJJ0MR9yyGaeKVFEc4_ZvMNEff-PUhk"
+VAPID_SUBJECT = "mailto:kangps7675@gmail.com"
 
 [[d1_databases]]
 binding = "DB"

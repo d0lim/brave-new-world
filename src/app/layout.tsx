@@ -4,6 +4,7 @@ import { Analytics } from "@vercel/analytics/next";
 import { Inter, JetBrains_Mono, Merriweather } from "next/font/google";
 import localFont from "next/font/local";
 import { COMPACT_QUERY } from "@/hooks/compactQuery";
+import { PwaInstallPrompt } from "@/components/PwaInstallPrompt";
 import "./globals.css";
 
 /** Wanted Sans — jsDelivr 가변 동적 서브셋 (OFL) https://github.com/wanteddev/wanted-sans */
@@ -99,6 +100,10 @@ export const metadata: Metadata = {
   title: "멋진 신세계",
   description:
     "Aldous Huxley 《Brave New World》를 모티브로—전쟁과 이익이 같은 지도를 공유하는 3D 지구본 관측대",
+  icons: {
+    icon: [{ url: "/brand/icon-512.png", sizes: "512x512", type: "image/png" }],
+    apple: [{ url: "/brand/apple-icon-180.png", sizes: "180x180", type: "image/png" }],
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
@@ -146,6 +151,7 @@ export default function RootLayout({
           {COMPACT_BOOT_SCRIPT}
         </Script>
         {children}
+        <PwaInstallPrompt />
         <Analytics />
       </body>
     </html>

@@ -922,6 +922,9 @@ export function GlobeDashboard({
   /** 도메인 선택~세부 확정 전: 우크라/NEPTUN/인트로 자동 줌 억제 */
   const suppressAutoRegionZoomRef = useRef(false);
   const [aisVessels, setAisVessels] = useState<AisVessel[]>([]);
+  const [disguisedVessels, setDisguisedVessels] = useState<AisVessel[]>([]);
+  const [disguisedLoading, setDisguisedLoading] = useState(false);
+  const [disguisedError, setDisguisedError] = useState<string | null>(null);
   const [aisLoading, setAisLoading] = useState(false);
   const [aisError, setAisError] = useState<string | null>(null);
   const [milAircraft, setMilAircraft] = useState<MilitaryAircraft[]>([]);
@@ -1103,6 +1106,7 @@ export function GlobeDashboard({
     showCityLabels,
     showRailGlow,
     showAis,
+    showDisguisedVessels,
     showShippingLanes,
     showSubmarineCables,
     showSubmarineTunnels,
@@ -1245,6 +1249,7 @@ export function GlobeDashboard({
   const setShowCityLabels = (v: boolean) => togglePref("showCityLabels", v);
   const setShowRailGlow = (v: boolean) => togglePref("showRailGlow", v);
   const setShowAis = (v: boolean) => togglePref("showAis", v);
+  const setShowDisguisedVessels = (v: boolean) => togglePref("showDisguisedVessels", v);
   const setShowShippingLanes = (v: boolean) => togglePref("showShippingLanes", v);
   const setShowSubmarineCables = (v: boolean) => togglePref("showSubmarineCables", v);
   const setShowSubmarineTunnels = (v: boolean) => togglePref("showSubmarineTunnels", v);
@@ -2815,23 +2820,35 @@ export function GlobeDashboard({
     [civDisplayPoints],
   );
 
-  const aisDisplayPoints = useMemo<AisGlobePoint[]>(
-    () =>
-      showAis
-        ? aisVessels
-            .filter((vessel) => !carrierAisMerge.matchedMmsi.has(vessel.mmsi))
-            .filter((vessel) =>
-              isCenterInView(vessel, layerViewState, VIEWPORT_RADIUS_BY_TIER[globeLod.tier] + 6),
-            )
-            .slice(0, liveAisFetchMax())
-            .map((vessel) => ({
-              ...vessel,
-              markerId: `ais-${vessel.mmsi}`,
-              displayKind: "ais" as const,
-            }))
-        : [],
-    [aisVessels, carrierAisMerge.matchedMmsi, globeLod.tier, layerViewState, showAis],
-  );
+  const aisDisplayPoints = useMemo<AisGlobePoint[]>(() => {
+    const live = showAis
+      ? aisVessels
+          .filter((vessel) => !carrierAisMerge.matchedMmsi.has(vessel.mmsi))
+          .filter((vessel) =>
+            isCenterInView(vessel, layerViewState, VIEWPORT_RADIUS_BY_TIER[globeLod.tier] + 6),
+          )
+          .slice(0, liveAisFetchMax())
+      : [];
+    const disguised = showDisguisedVessels
+      ? disguisedVessels.filter((vessel) =>
+          isCenterInView(vessel, layerViewState, VIEWPORT_RADIUS_BY_TIER[globeLod.tier] + 12),
+        )
+      : [];
+    const seen = new Set(live.map((v) => v.mmsi));
+    return [...live, ...disguised.filter((v) => !seen.has(v.mmsi))].map((vessel) => ({
+      ...vessel,
+      markerId: vessel.disguised ? `disguised-${vessel.mmsi}` : `ais-${vessel.mmsi}`,
+      displayKind: "ais" as const,
+    }));
+  }, [
+    aisVessels,
+    carrierAisMerge.matchedMmsi,
+    disguisedVessels,
+    globeLod.tier,
+    layerViewState,
+    showAis,
+    showDisguisedVessels,
+  ]);
 
   const aisHtmlMarkers = useMemo<AisHtmlMarker[]>(
     () =>
@@ -4028,6 +4045,9 @@ export function GlobeDashboard({
             hoveredPoint.altitude != null ? `${hoveredPoint.altitude} ft` : null,
             hoveredPoint.groundSpeed != null ? `${hoveredPoint.groundSpeed} kn` : null,
             hoveredPoint.squawk ? `SQK ${hoveredPoint.squawk}` : null,
+            hoveredPoint.bellingcatMilitary
+              ? "Bellingcat adsb-history mil hex"
+              : null,
           ]
             .filter(Boolean)
             .join(" · ") || undefined,
@@ -4035,8 +4055,11 @@ export function GlobeDashboard({
         };
       }
       if (hoveredPoint.displayKind === "ais") {
-        const kind =
-          hoveredPoint.category === "military"
+        const kind = hoveredPoint.disguised
+          ? hoveredPoint.disguisedKind === "arsenal-ship"
+            ? "위장·무기고 개조 선박"
+            : "위장·다크플리트 선박"
+          : hoveredPoint.category === "military"
             ? "군용 함정"
             : hoveredPoint.category === "commercial"
               ? "민간 선박"
@@ -4045,10 +4068,15 @@ export function GlobeDashboard({
         return {
           kind: "static",
           title: hoveredPoint.shipName || `MMSI ${hoveredPoint.mmsi}`,
-          detail: `AIS · ${kind}`,
+          detail: hoveredPoint.disguised
+            ? `AIS_Tracker · ${kind}`
+            : `AIS · ${kind}`,
           meta: [
             typeLabel,
             hoveredPoint.speedOverGround != null ? `${hoveredPoint.speedOverGround} kn` : null,
+            hoveredPoint.disguised
+              ? "출처 https://github.com/arandomguyhere/AIS_Tracker.git"
+              : null,
           ]
             .filter(Boolean)
             .join(" · ") || undefined,
@@ -4378,6 +4406,27 @@ export function GlobeDashboard({
     }
   }, [isEconomyViewer]);
 
+  const refreshDisguisedVessels = useCallback(async () => {
+    if (shouldDeferLiveNetworkRefresh(isCameraMovingRef.current)) return;
+    setDisguisedLoading(true);
+    setDisguisedError(null);
+    try {
+      const response = await fetch("/api/ais-disguised", { cache: "no-store" });
+      const payload = (await response.json()) as {
+        vessels?: AisVessel[];
+        error?: string;
+      };
+      if (!response.ok || payload.error) {
+        throw new Error(payload.error || `위장선박 요청 실패: ${response.status}`);
+      }
+      setDisguisedVessels(payload.vessels || []);
+    } catch (error) {
+      setDisguisedError(error instanceof Error ? error.message : "위장선박 로드 실패");
+    } finally {
+      setDisguisedLoading(false);
+    }
+  }, []);
+
   const refreshMilAircraft = useCallback(async () => {
     if (shouldDeferLiveNetworkRefresh(isCameraMovingRef.current)) return;
     setMilLoading(true);
@@ -4606,6 +4655,14 @@ export function GlobeDashboard({
     }, liveAisPollMs());
     return () => window.clearInterval(timer);
   }, [refreshAis, showAis]);
+
+  useEffect(() => {
+    if (!showDisguisedVessels) {
+      setDisguisedVessels([]);
+      return;
+    }
+    void refreshDisguisedVessels();
+  }, [refreshDisguisedVessels, showDisguisedVessels]);
 
   useEffect(() => {
     if (!showMilitaryActivity) return;
@@ -5621,6 +5678,18 @@ export function GlobeDashboard({
             onChange: setShowAis,
             accent: "blue",
           },
+          {
+            id: "disguised-vessels",
+            label: "위장선박",
+            detail: showDisguisedVessels
+              ? disguisedLoading
+                ? "불러오는 중…"
+                : `시드 ${disguisedVessels.length.toLocaleString()}척 · AIS_Tracker`
+              : "꺼짐",
+            checked: layerPrefs.showDisguisedVessels,
+            onChange: setShowDisguisedVessels,
+            accent: "orange",
+          },
         ],
         onToggleAll: (enabled) =>
           toggleCategoryPrefs({
@@ -5639,6 +5708,7 @@ export function GlobeDashboard({
             showLogisticsRisk: enabled,
             showCriticalNodes: enabled,
             showAis: enabled,
+            showDisguisedVessels: enabled,
           }),
       },
       {
@@ -5662,7 +5732,7 @@ export function GlobeDashboard({
             id: "military-air",
             label: "군사 항공기",
             detail: showMilitaryActivity
-              ? `비행기 ${milAircraft.length.toLocaleString()}대 · 실시간 항적`
+              ? `비행기 ${milAircraft.length.toLocaleString()}대 · ADS-B · Bellingcat hex`
               : "꺼짐",
             checked: layerPrefs.showMilitaryActivity,
             onChange: setShowMilitaryActivity,
@@ -5835,6 +5905,9 @@ export function GlobeDashboard({
     lpg(layerPanelGdeltCounts.war, 0),
     lpg(ukraineGdeltNeonMarkers.length, 0),
     lpg(aisVessels.length, 0),
+    lpg(disguisedVessels.length, 0),
+    lpg(disguisedLoading, false),
+    lpg(disguisedError, null),
     lpg(armsEmbargoFramePaths.length, 0),
     lpg(cyberEvents.length, 0),
     lpg(disputeZoneOutlineCount, 0),
@@ -5866,6 +5939,7 @@ export function GlobeDashboard({
     lpg(usCarriers.length, 0),
     lpg(usCarriersLoading, false),
     lpg(showAis, false),
+    lpg(showDisguisedVessels, false),
     lpg(showAiDataCenters, false),
     lpg(showArmsEmbargo, false),
     lpg(showCityLabels, false),
@@ -9133,6 +9207,7 @@ export function GlobeDashboard({
                   applyLayerPrefs({ ...layerPrefs, [key]: true });
                   const themeByLayer: Record<string, string> = {
                     showAis: "ais",
+                    showDisguisedVessels: "disguised-vessels",
                     showUsCarriers: "carriers",
                     showFirmsFires: "firms",
                     showMilitaryActivity: "military",

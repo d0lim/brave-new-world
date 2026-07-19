@@ -20,6 +20,7 @@ function rowToAis(row: typeof aisVessels.$inferSelect): AisVessel {
   const classified = enrichAisClassification({
     shipType: row.shipType,
     shipName: row.shipName,
+    mmsi: row.mmsi,
   });
   return {
     id: row.id,
@@ -35,23 +36,33 @@ function rowToAis(row: typeof aisVessels.$inferSelect): AisVessel {
     shipTypeLabel: classified.shipTypeLabel ?? row.shipTypeLabel,
     category: classified.category,
     militaryKind: classified.militaryKind,
+    disguised: classified.disguised || undefined,
+    disguisedKind: classified.disguisedKind,
   };
 }
 
 function ensureMilitaryKind(vessel: AisVessel): AisVessel {
-  if (vessel.militaryKind != null || vessel.category !== "military") {
+  const needsKind = vessel.category === "military" && vessel.militaryKind == null;
+  const needsDisguised = vessel.disguised == null;
+  if (!needsKind && !needsDisguised) {
     if (vessel.category !== "military") return { ...vessel, militaryKind: null };
     return vessel;
   }
   const classified = enrichAisClassification({
     shipType: vessel.shipType,
     shipName: vessel.shipName,
+    mmsi: vessel.mmsi,
   });
   return {
     ...vessel,
     category: classified.category,
     shipTypeLabel: classified.shipTypeLabel ?? vessel.shipTypeLabel,
-    militaryKind: classified.militaryKind,
+    militaryKind:
+      classified.category === "military"
+        ? classified.militaryKind ?? vessel.militaryKind
+        : null,
+    disguised: classified.disguised || vessel.disguised || undefined,
+    disguisedKind: classified.disguisedKind ?? vessel.disguisedKind ?? null,
   };
 }
 

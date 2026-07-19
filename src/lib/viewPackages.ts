@@ -267,6 +267,8 @@ export const LAYER_PREF_LABELS: Partial<Record<BooleanLayerKey, string>> = {
   showAxisNetwork: "이란·중국·러시아·북한 관계망",
   showBriTradeConnectivity: "일대일로 무역 연결",
   showUsDfcSupplyChain: "미국 DFC 개발금융망",
+  showAis: "선박 AIS",
+  showDisguisedVessels: "위장선박 (AIS_Tracker)",
   showSanctionsEntities: "제재 대상",
   showOilPipelines: "송유관",
   showLngTerminals: "LNG(액화가스) 터미널",

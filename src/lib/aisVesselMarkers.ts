@@ -71,6 +71,7 @@ export function aisVesselHeadingDeg(
 }
 
 function shipColor(vessel: AisVessel): string {
+  if (vessel.disguised) return "#f59e0b";
   if (vessel.category === "military") {
     return aisMilitaryKindColor(vessel.militaryKind);
   }

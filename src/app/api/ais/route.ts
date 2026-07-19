@@ -13,10 +13,16 @@ import {
   getMarineTrafficApiKey,
 } from "@/lib/marineTrafficFetch";
 import { aisQuerySchema, parseSearchParams } from "@/lib/apiQuerySchemas";
+import {
+  CDN_CACHE,
+  NO_STORE_HEADERS,
+  publicCacheHeaders,
+} from "@/lib/httpCacheHeaders";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+const AIS_CDN = publicCacheHeaders(CDN_CACHE.ais);
 const AISSTREAM_URL = "wss://stream.aisstream.io/v0/stream";
 
 type AisRawMessage = {
@@ -57,19 +63,28 @@ function parseNumber(value: unknown) {
 }
 
 function buildVessel(
-  partial: Omit<AisVessel, "shipType" | "shipTypeLabel" | "category" | "militaryKind"> & {
+  partial: Omit<
+    AisVessel,
+    "shipType" | "shipTypeLabel" | "category" | "militaryKind" | "disguised" | "disguisedKind"
+  > & {
     shipType?: number | null;
   },
 ): AisVessel {
   const shipType = partial.shipType ?? null;
   const shipName = partial.shipName;
-  const classified = enrichAisClassification({ shipType, shipName });
+  const classified = enrichAisClassification({
+    shipType,
+    shipName,
+    mmsi: partial.mmsi,
+  });
   return {
     ...partial,
     shipType,
     shipTypeLabel: classified.shipTypeLabel,
     category: classified.category,
     militaryKind: classified.militaryKind,
+    disguised: classified.disguised || undefined,
+    disguisedKind: classified.disguisedKind,
   };
 }
 
@@ -145,7 +160,7 @@ async function websocketDataToText(data: MessageEvent["data"]) {
 
 function filterVessels(vessels: AisVessel[], classFilter: AisClassFilter, max: number) {
   return vessels
-    .filter((v) => matchesAisClassFilter(v.category, classFilter))
+    .filter((v) => matchesAisClassFilter(v.category, classFilter, v.disguised))
     .slice(0, max);
 }
 
@@ -313,38 +328,47 @@ export async function GET(request: Request) {
       max: maxVessels,
     });
     if (fromD1 && fromD1.count > 0) {
-      return NextResponse.json({
-        receivedAt: fromD1.receivedAt,
-        vessels: filterVessels(fromD1.vessels, classFilter, maxVessels),
-        provider: "d1",
-        classFilter,
-        source: "d1",
-        cached: true,
-      });
+      return NextResponse.json(
+        {
+          receivedAt: fromD1.receivedAt,
+          vessels: filterVessels(fromD1.vessels, classFilter, maxVessels),
+          provider: "d1",
+          classFilter,
+          source: "d1",
+          cached: true,
+        },
+        { headers: AIS_CDN },
+      );
     }
     const fromWorker = await readAisFromIngestWorker({
       category: d1Category,
       max: maxVessels,
     });
     if (fromWorker && fromWorker.count > 0) {
-      return NextResponse.json({
-        receivedAt: fromWorker.receivedAt,
-        vessels: filterVessels(fromWorker.vessels, classFilter, maxVessels),
-        provider: "ingest-worker",
-        classFilter,
-        source: "ingest-worker",
-        cached: true,
-      });
+      return NextResponse.json(
+        {
+          receivedAt: fromWorker.receivedAt,
+          vessels: filterVessels(fromWorker.vessels, classFilter, maxVessels),
+          provider: "ingest-worker",
+          classFilter,
+          source: "ingest-worker",
+          cached: true,
+        },
+        { headers: AIS_CDN },
+      );
     }
-    return NextResponse.json({
-      receivedAt: new Date().toISOString(),
-      vessels: [],
-      provider: "d1",
-      classFilter,
-      source: "d1",
-      waiting: true,
-      cached: false,
-    });
+    return NextResponse.json(
+      {
+        receivedAt: new Date().toISOString(),
+        vessels: [],
+        provider: "d1",
+        classFilter,
+        source: "d1",
+        waiting: true,
+        cached: false,
+      },
+      { headers: NO_STORE_HEADERS },
+    );
   }
 
   const mtKey = getMarineTrafficApiKey();
@@ -359,12 +383,15 @@ export async function GET(request: Request) {
     try {
       const mtVessels = await fetchMarineTrafficCommercial(mtKey, maxVessels);
       if (mtVessels.length > 0) {
-        return NextResponse.json({
-          receivedAt: new Date().toISOString(),
-          vessels: filterVessels(mtVessels, "commercial", maxVessels),
-          provider: "marinetraffic",
-          classFilter,
-        });
+        return NextResponse.json(
+          {
+            receivedAt: new Date().toISOString(),
+            vessels: filterVessels(mtVessels, "commercial", maxVessels),
+            provider: "marinetraffic",
+            classFilter,
+          },
+          { headers: AIS_CDN },
+        );
       }
     } catch {
       // fall through to aisstream
@@ -392,13 +419,19 @@ export async function GET(request: Request) {
     debug,
   });
 
-  return NextResponse.json({
-    receivedAt: new Date().toISOString(),
-    vessels: result.vessels,
-    provider: "aisstream",
-    classFilter,
-    rawSamples: result.rawSamples,
-    diagnostics: result.diagnostics,
-    error: result.error,
-  }, { status: result.error && result.vessels.length === 0 ? 502 : 200 });
+  return NextResponse.json(
+    {
+      receivedAt: new Date().toISOString(),
+      vessels: result.vessels,
+      provider: "aisstream",
+      classFilter,
+      rawSamples: result.rawSamples,
+      diagnostics: result.diagnostics,
+      error: result.error,
+    },
+    {
+      status: result.error && result.vessels.length === 0 ? 502 : 200,
+      headers: result.vessels.length === 0 ? NO_STORE_HEADERS : AIS_CDN,
+    },
+  );
 }

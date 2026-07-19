@@ -99,6 +99,30 @@ const CHINA_TAIWAN: NewsFeedDef[] = [
     theater: "china-taiwan",
     unfiltered: true,
   },
+  {
+    url: G(
+      '("US China" OR "US-China" OR "United States China" OR "great power competition") (military OR navy OR "South China Sea" OR Taiwan OR Indo-Pacific OR rivalry)',
+    ),
+    name: "Google News · US–China Rivalry",
+    theater: "china-taiwan",
+    unfiltered: true,
+  },
+  {
+    url: G(
+      '("South China Sea" OR Scarborough OR Spratly OR Paracel OR "West Philippine Sea") (China OR Philippines OR Vietnam OR navy OR militia OR confrontation)',
+    ),
+    name: "Google News · South China Sea",
+    theater: "china-taiwan",
+    unfiltered: true,
+  },
+  {
+    url: G(
+      '(Guam OR "Philippine Sea" OR "first island chain" OR "second island chain" OR "Pacific Fleet") (China OR PLA OR US OR Navy OR missile OR base)',
+    ),
+    name: "Google News · Pacific Theater",
+    theater: "china-taiwan",
+    unfiltered: true,
+  },
 ];
 
 const KOREA: NewsFeedDef[] = [
@@ -125,6 +149,14 @@ const KOREA: NewsFeedDef[] = [
     theater: "korea",
     unfiltered: true,
   },
+  {
+    url: G(
+      '("South Korea" OR Seoul OR USFK OR "Korean peninsula") (missile OR North OR China OR "combined exercise" OR trilateral OR defense)',
+    ),
+    name: "Google News · Korea Security",
+    theater: "korea",
+    unfiltered: true,
+  },
 ];
 
 const JAPAN: NewsFeedDef[] = [
@@ -141,6 +173,22 @@ const JAPAN: NewsFeedDef[] = [
   {
     url: G("Japan military Senkaku defense"),
     name: "Google News",
+    theater: "japan",
+    unfiltered: true,
+  },
+  {
+    url: G(
+      '(AUKUS OR Quad OR "Indo-Pacific" OR "trilateral" OR "US Japan Australia") (defense OR security OR submarine OR alliance OR exercise)',
+    ),
+    name: "Google News · AUKUS · Quad",
+    theater: "japan",
+    unfiltered: true,
+  },
+  {
+    url: G(
+      '(Japan OR Australia OR "Self-Defense Force") (China OR PLA OR missile OR "counterstrike" OR "defense budget" OR Okinawa)',
+    ),
+    name: "Google News · Japan · Indo-Pacific Defense",
     theater: "japan",
     unfiltered: true,
   },
@@ -174,6 +222,78 @@ const SOUTH_ASIA: NewsFeedDef[] = [
     url: G("Afghanistan Taliban military strike"),
     name: "Google News",
     theater: "south-asia",
+    unfiltered: true,
+  },
+  {
+    url: G(
+      '("Indian Ocean" OR Maldives OR "Bay of Bengal" OR Andaman OR "Sri Lanka" OR Hambantota) (navy OR China OR India OR port OR base OR security)',
+    ),
+    name: "Google News · Indian Ocean",
+    theater: "south-asia",
+    unfiltered: true,
+  },
+  {
+    url: G(
+      '(India OR Pakistan OR Bangladesh OR Myanmar) (navy OR missile OR border OR "Chinese port" OR BRI OR "string of pearls")',
+    ),
+    name: "Google News · South Asia Security",
+    theater: "south-asia",
+    unfiltered: true,
+  },
+];
+
+/** 북극 — 항로·자원·군사 주권 경쟁 */
+const ARCTIC: NewsFeedDef[] = [
+  {
+    url: G(
+      '(Arctic OR "Northern Sea Route" OR "Northwest Passage" OR Svalbard OR Greenland) (military OR navy OR Russia OR NATO OR China OR security OR base OR icebreaker)',
+    ),
+    name: "Google News · Arctic Security",
+    theater: "arctic",
+    unfiltered: true,
+  },
+  {
+    url: G(
+      '(Arctic OR "High North" OR Barents OR "Arctic Council") (Russia OR Norway OR "United States" OR Canada OR NATO OR submarine OR radar)',
+    ),
+    name: "Google News · High North",
+    theater: "arctic",
+    unfiltered: true,
+  },
+  {
+    url: G(
+      '("Northern Sea Route" OR "Arctic shipping" OR icebreaker OR "Arctic LNG") (Russia OR China OR sanction OR military)',
+    ),
+    name: "Google News · Arctic Route",
+    theater: "arctic",
+    unfiltered: true,
+  },
+];
+
+/** 대서양 — NATO·GIUK·대서양 동맹 해역 */
+const ATLANTIC: NewsFeedDef[] = [
+  {
+    url: G(
+      '("North Atlantic" OR GIUK OR "GIUK gap" OR Iceland OR Greenland OR "Atlantic Fleet") (NATO OR submarine OR Russia OR navy OR patrol OR exercise)',
+    ),
+    name: "Google News · North Atlantic",
+    theater: "atlantic",
+    unfiltered: true,
+  },
+  {
+    url: G(
+      '(NATO OR "North Atlantic") (submarine OR "anti-submarine" OR "maritime security" OR convoy OR "sea lines") (Russia OR Atlantic OR Arctic)',
+    ),
+    name: "Google News · NATO Atlantic",
+    theater: "atlantic",
+    unfiltered: true,
+  },
+  {
+    url: G(
+      '("Atlantic Alliance" OR "transatlantic" OR "US Navy" OR "Second Fleet") (Atlantic OR Europe OR Russia OR deployment OR exercise)',
+    ),
+    name: "Google News · Transatlantic Defense",
+    theater: "atlantic",
     unfiltered: true,
   },
 ];
@@ -785,13 +905,27 @@ const DIPLOMACY_GOOGLE: NewsFeedDef[] = [
 /** 지역별 주요 Google News RSS 쿼리 (문서·디버그용) */
 export const GOOGLE_NEWS_QUERIES: Record<string, string> = {
   "china-taiwan": '(Taiwan OR "South China Sea") AND (military OR "PLA" OR "White House")',
+  "us-china-rivalry":
+    '("US China" OR "US-China" OR "great power competition") (military OR navy OR Taiwan OR Indo-Pacific)',
+  "south-china-sea":
+    '("South China Sea" OR Scarborough OR Spratly OR "West Philippine Sea") (China OR Philippines OR navy)',
+  "pacific-theater":
+    '(Guam OR "Philippine Sea" OR "island chain") (China OR PLA OR US OR Navy)',
   korea:
     '(North Korea OR Pyongyang) AND (missile OR nuclear OR "Kim Jong Un") AND (site:nknews.org OR site:dailynk.com OR site:yna.co.kr)',
   japan:
     '(Japan OR "Tokyo") AND (security OR defense OR "maritime") AND (site:kyodonews.net OR site:nikkei.com OR site:japantimes.co.jp)',
+  "aukus-quad":
+    '(AUKUS OR Quad OR "Indo-Pacific") (defense OR security OR alliance OR submarine)',
   "south-asia-india":
     '(India OR Modi) AND (geopolitics OR "foreign policy" OR security) AND (site:thehindu.com OR site:indianexpress.com)',
   "south-asia-lac": '("Line of Actual Control" OR India OR Pakistan) AND (border OR tension)',
+  "indian-ocean":
+    '("Indian Ocean" OR Maldives OR "Bay of Bengal" OR Andaman) (navy OR China OR India OR port OR security)',
+  arctic:
+    '(Arctic OR "Northern Sea Route" OR "High North" OR Greenland) (military OR navy OR NATO OR Russia OR China)',
+  atlantic:
+    '("North Atlantic" OR GIUK OR "Atlantic Fleet") (NATO OR submarine OR Russia OR navy)',
   "central-asia": '(Central Asia) AND ("Great Game" OR "Geopolitics" OR "Security")',
   diplomacy:
     '(diplomacy OR "diplomatic relations" OR "foreign minister" OR summit OR alliance) (geopolitics OR "great power" OR realignment)',
@@ -834,13 +968,17 @@ export const THEATER_RELEVANCE: Record<NewsTheater, RegExp> = {
   "russia-ukraine":
     /ukrain|russia|russian|putin|zelensky|kyiv|kharkiv|odesa|dnipro|donbas|crimea|sevastopol|kremlin|moscow|belgorod|wagner|himars|atacms|shahed|nato|diplomacy|summit|negotiation|peace\s?talks|foreign\s?minister/i,
   "china-taiwan":
-    /china|taiwan|taipei|beijing|pla|strait|senkaku|diaoyu|south\s?china\s?sea|xi\s?jinping|cross[\s-]?strait|kinmen|diplomacy|summit|bilateral|strategic\s?dialogue|state\s?visit/i,
+    /china|taiwan|taipei|beijing|pla|strait|senkaku|diaoyu|south\s?china\s?sea|west\s?philippine\s?sea|scarborough|spratly|paracel|xi\s?jinping|cross[\s-]?strait|kinmen|us[\s-]?china|indo[\s-]?pacific|guam|philippine\s?sea|first\s?island\s?chain|second\s?island\s?chain|great\s?power\s?competition|diplomacy|summit|bilateral|strategic\s?dialogue|state\s?visit/i,
   korea:
-    /north\s?korea|south\s?korea|pyongyang|seoul|dmz|dprk|kim\s?jong|korean\s?peninsula|icbm|ballistic|diplomacy|summit|trilateral|alliance|foreign\s?minister/i,
+    /north\s?korea|south\s?korea|pyongyang|seoul|dmz|dprk|kim\s?jong|korean\s?peninsula|icbm|ballistic|rok\b|usfk|diplomacy|summit|trilateral|alliance|foreign\s?minister/i,
   japan:
-    /japan|tokyo|okinawa|senkaku|self[\s-]?defense\s?force|sdf|yasukuni|north\s?korea\s?japan|diplomacy|summit|quad|alliance|foreign\s?minister|state\s?visit/i,
+    /japan|tokyo|okinawa|senkaku|self[\s-]?defense\s?force|sdf|yasukuni|north\s?korea\s?japan|aukus|quad\b|indo[\s-]?pacific|australia|diplomacy|summit|alliance|foreign\s?minister|state\s?visit|counterstrike|defense\s?budget/i,
   "south-asia":
-    /india|pakistan|kashmir|afghanistan|taliban|myanmar|bangladesh|sri\s?lanka|nepal|modi|rawalpindi|line\s?of\s?actual\s?control|lac\b|central\s?asia|kazakh|uzbek|turkmen|kyrgyz|tajik|diplomacy|summit|brics|quad|foreign\s?policy|strategic\s?partnership/i,
+    /india|pakistan|kashmir|afghanistan|taliban|myanmar|bangladesh|sri\s?lanka|nepal|maldives|modi|rawalpindi|line\s?of\s?actual\s?control|lac\b|indian\s?ocean|bay\s?of\s?bengal|andaman|hambantota|string\s?of\s?pearls|central\s?asia|kazakh|uzbek|turkmen|kyrgyz|tajik|diplomacy|summit|brics|quad|foreign\s?policy|strategic\s?partnership/i,
+  arctic:
+    /arctic|high\s?north|northern\s?sea\s?route|northwest\s?passage|svalbard|greenland|barents|arctic\s?council|icebreaker|arctic\s?lng|polar\s?silk|북극|북해항로|그린란드|스발바르/i,
+  atlantic:
+    /north\s?atlantic|giuk|atlantic\s?fleet|second\s?fleet|transatlantic|atlantic\s?alliance|anti[\s-]?submarine|sea\s?lines|iceland|azores|대서양|대서양동맹|지유케이/i,
   global:
     /military|defense|war|conflict|strike|missile|pentagon|nato|sanction|geopolitic|great\s?game|central\s?asia|diplomacy|diplomatic|summit|alliance|embassy|foreign\s?minister|bilateral|multilateral|realignment|state\s?visit|strategic\s?partnership|brics|g7|sco\b|csto|multipolar|global\s?south|non[\s-]?aligned|venezuela|cuba|nicaragua|sahel|wagner|africa\s?corps|crink|axis\s?of\s?upheaval/i,
 };
@@ -855,6 +993,8 @@ export const ALL_NEWS_FEEDS: NewsFeedDef[] = dedupeFeedsByUrl([
   ...KOREA,
   ...JAPAN,
   ...SOUTH_ASIA,
+  ...ARCTIC,
+  ...ATLANTIC,
   ...CENTRAL_ASIA_GOOGLE,
   ...DIPLOMACY_GOOGLE,
   ...SHARED_DEFENSE,

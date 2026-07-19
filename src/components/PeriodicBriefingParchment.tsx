@@ -56,6 +56,8 @@ function PhotoNewsLampParchment({
 }: PeriodicBriefingParchmentProps) {
   const [phase, setPhase] = useState<"idle" | "folding" | "done">("idle");
   const [expandedNews, setExpandedNews] = useState(false);
+  /** 모바일 — 전장/거시 카테고리 패널 접기 (기본 접힘) */
+  const [categoryOpen, setCategoryOpen] = useState(false);
   const [isNarrow, setIsNarrow] = useState(false);
   const parchmentStack =
     lang === "en"
@@ -94,9 +96,33 @@ function PhotoNewsLampParchment({
     return Array.from(counts.entries()).map(([theater, count]) => ({ theater, count }));
   }, [isEconomy, news]);
 
+  const categoryLabel = isEconomy
+    ? lang === "en"
+      ? "Macro snapshot"
+      : "거시 스냅샷"
+    : lang === "en"
+      ? "Theaters in frame"
+      : "담긴 전장";
+  const categoryCount = isEconomy ? macroRows.length : theaterRows.length;
+  const categorySummary =
+    categoryCount > 0
+      ? lang === "en"
+        ? `${categoryCount} items`
+        : `${categoryCount}개`
+      : lang === "en"
+        ? "Empty"
+        : "없음";
+  /** 데스크톱은 항상 펼침, 모바일은 토글 */
+  const showCategoryBody = !isNarrow || categoryOpen;
+
   useEffect(() => {
     const mq = window.matchMedia("(max-width: 767px)");
-    const sync = () => setIsNarrow(mq.matches);
+    const sync = () => {
+      const narrow = mq.matches;
+      setIsNarrow(narrow);
+      // 데스크톱으로 넓어지면 패널을 열린 상태로 맞춤
+      if (!narrow) setCategoryOpen(true);
+    };
     sync();
     mq.addEventListener("change", sync);
     return () => mq.removeEventListener("change", sync);
@@ -120,6 +146,113 @@ function PhotoNewsLampParchment({
       onDismiss();
     }, reduced ? 80 : PARCHMENT_FOLD_EXIT_MS);
   }, [onDismiss, phase]);
+
+  const categoryBody = (
+    <>
+      {isEconomy ? (
+        <>
+          {!isNarrow ? (
+            <p className="mb-2 px-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-[#6b4a22]/7">
+              {categoryLabel}
+            </p>
+          ) : null}
+          {macroRows.length > 0 ? (
+            <table className="w-full border-collapse text-left text-[12px] text-[#3f2e1c] sm:text-[13px]">
+              <thead>
+                <tr className="border-b border-[#8b6914]/30 text-[10px] uppercase tracking-[0.14em] text-[#6b4a22]/65">
+                  <th className="py-2 pr-2 font-medium">
+                    {lang === "en" ? "Country" : "국가"}
+                  </th>
+                  <th className="py-2 pr-2 font-medium">
+                    {lang === "en" ? "Metric" : "지표"}
+                  </th>
+                  <th className="py-2 text-right font-medium">
+                    {lang === "en" ? "Value" : "수치"}
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {macroRows.map((row, i) => (
+                  <tr
+                    key={`${row.country}-${row.indicator}-${i}`}
+                    className="border-b border-[#8b6914]/12"
+                  >
+                    <td className="py-2.5 pr-2 align-top font-medium">{row.country}</td>
+                    <td className="py-2.5 pr-2 align-top text-[#5a4428]/9">
+                      {row.indicator}
+                    </td>
+                    <td className="py-2.5 text-right align-top tabular-nums tracking-tight">
+                      {row.value}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : (
+            <p className="px-1 text-[12px] leading-relaxed text-[#5a4428]/7">
+              {lang === "en"
+                ? "Macro table unavailable — news desk below."
+                : "거시 표 데이터를 불러오지 못했습니다. 아래 뉴스 데스크를 보세요."}
+            </p>
+          )}
+        </>
+      ) : (
+        <>
+          {briefing.wti ? (
+            <div className="mb-4 rounded-sm border border-[#8b6914]/30 bg-[#f7ecd4]/70 px-3 py-3">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#6b4a22]/7">
+                {formatWtiTitle(lang !== "en")}
+              </p>
+              <div className="mt-1 flex items-end justify-between gap-2">
+                <p className="text-[2rem] font-semibold tabular-nums leading-none tracking-tight text-[#3d2a18]">
+                  {Math.round(briefing.wti.score)}
+                </p>
+                <p className="pb-0.5 text-[11px] text-[#6b4a22]/8">
+                  {wtiBandLabel(wtiBand(briefing.wti.score), lang !== "en")}
+                  {briefing.wti.deltaScore != null &&
+                  Math.abs(briefing.wti.deltaScore) >= 0.05
+                    ? ` · ${briefing.wti.deltaScore > 0 ? "+" : ""}${Math.round(briefing.wti.deltaScore * 10) / 10}`
+                    : ""}
+                </p>
+              </div>
+              <p className="mt-2 text-[11px] leading-relaxed text-[#5a4428]/85">
+                {briefing.wti.lead}
+              </p>
+            </div>
+          ) : null}
+          {!isNarrow ? (
+            <p className="mb-2 px-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-[#6b4a22]/7">
+              {categoryLabel}
+            </p>
+          ) : null}
+          {theaterRows.length > 0 ? (
+            <ul className="space-y-1.5 px-1">
+              {theaterRows.map((row) => (
+                <li
+                  key={row.theater}
+                  className="flex items-baseline justify-between gap-2 border-b border-[#8b6914]/12 py-2 text-[13px] text-[#3f2e1c]"
+                >
+                  <span className="font-medium">{row.theater}</span>
+                  <span className="tabular-nums text-[#6b4a22]/75">{row.count}</span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="px-1 text-[12px] leading-relaxed text-[#5a4428]/7">
+              {lang === "en"
+                ? "Photo desk below — multi-theater selection."
+                : "아래 사진 데스크에서 전장별 고신뢰 뉴스를 보세요."}
+            </p>
+          )}
+          <p className="mt-4 px-1 text-[11px] leading-relaxed text-[#5a4428]/65">
+            {lang === "en"
+              ? "Summaries stay short. Open → for the full article."
+              : "등불은 요약본입니다. 원문은 → 로 이동합니다."}
+          </p>
+        </>
+      )}
+    </>
+  );
 
   return (
     <div
@@ -158,106 +291,51 @@ function PhotoNewsLampParchment({
                   <p className="mt-1.5 text-sm leading-snug text-[#5a4428]/85">{subtitle}</p>
                 </div>
 
+                {/* 모바일: 카테고리 드롭다운 / 데스크톱: 항상 펼침 */}
                 <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-4 sm:px-5">
-                  {isEconomy ? (
-                    <>
-                      <p className="mb-2 px-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-[#6b4a22]/7">
-                        {lang === "en" ? "Macro snapshot" : "거시 스냅샷"}
-                      </p>
-                      {macroRows.length > 0 ? (
-                        <table className="w-full border-collapse text-left text-[12px] text-[#3f2e1c] sm:text-[13px]">
-                          <thead>
-                            <tr className="border-b border-[#8b6914]/30 text-[10px] uppercase tracking-[0.14em] text-[#6b4a22]/65">
-                              <th className="py-2 pr-2 font-medium">
-                                {lang === "en" ? "Country" : "국가"}
-                              </th>
-                              <th className="py-2 pr-2 font-medium">
-                                {lang === "en" ? "Metric" : "지표"}
-                              </th>
-                              <th className="py-2 text-right font-medium">
-                                {lang === "en" ? "Value" : "수치"}
-                              </th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {macroRows.map((row, i) => (
-                              <tr
-                                key={`${row.country}-${row.indicator}-${i}`}
-                                className="border-b border-[#8b6914]/12"
-                              >
-                                <td className="py-2.5 pr-2 align-top font-medium">{row.country}</td>
-                                <td className="py-2.5 pr-2 align-top text-[#5a4428]/9">
-                                  {row.indicator}
-                                </td>
-                                <td className="py-2.5 text-right align-top tabular-nums tracking-tight">
-                                  {row.value}
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      ) : (
-                        <p className="px-1 text-[12px] leading-relaxed text-[#5a4428]/7">
-                          {lang === "en"
-                            ? "Macro table unavailable — news desk below."
-                            : "거시 표 데이터를 불러오지 못했습니다. 아래 뉴스 데스크를 보세요."}
-                        </p>
-                      )}
-                    </>
-                  ) : (
-                    <>
-                      {briefing.wti ? (
-                        <div className="mb-4 rounded-sm border border-[#8b6914]/30 bg-[#f7ecd4]/70 px-3 py-3">
-                          <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#6b4a22]/7">
-                            {formatWtiTitle(lang !== "en")}
-                          </p>
-                          <div className="mt-1 flex items-end justify-between gap-2">
-                            <p className="text-[2rem] font-semibold tabular-nums leading-none tracking-tight text-[#3d2a18]">
-                              {Math.round(briefing.wti.score)}
-                            </p>
-                            <p className="pb-0.5 text-[11px] text-[#6b4a22]/8">
-                              {wtiBandLabel(wtiBand(briefing.wti.score), lang !== "en")}
-                              {briefing.wti.deltaScore != null &&
-                              Math.abs(briefing.wti.deltaScore) >= 0.05
-                                ? lang === "en"
-                                  ? ` · ${briefing.wti.deltaScore > 0 ? "+" : ""}${Math.round(briefing.wti.deltaScore * 10) / 10}`
-                                  : ` · ${briefing.wti.deltaScore > 0 ? "+" : ""}${Math.round(briefing.wti.deltaScore * 10) / 10}`
-                                : ""}
-                            </p>
-                          </div>
-                          <p className="mt-2 text-[11px] leading-relaxed text-[#5a4428]/85">
-                            {briefing.wti.lead}
-                          </p>
+                  {isNarrow ? (
+                    <div className="rounded-sm border border-[#8b6914]/30 bg-[#f7ecd4]/55">
+                      <button
+                        type="button"
+                        onClick={() => setCategoryOpen((open) => !open)}
+                        aria-expanded={categoryOpen}
+                        aria-controls="lamp-category-panel"
+                        className="flex w-full items-center justify-between gap-3 px-3 py-3 text-left"
+                      >
+                        <span className="min-w-0">
+                          <span className="block text-[10px] font-semibold uppercase tracking-[0.2em] text-[#6b4a22]/7">
+                            {categoryLabel}
+                          </span>
+                          <span className="mt-0.5 block truncate text-[13px] text-[#3f2e1c]">
+                            {categorySummary}
+                            {!categoryOpen && theaterRows.length > 0
+                              ? ` · ${theaterRows
+                                  .slice(0, 2)
+                                  .map((r) => r.theater)
+                                  .join(" · ")}`
+                              : ""}
+                          </span>
+                        </span>
+                        <span
+                          className={`shrink-0 text-[#6b4a22]/8 transition-transform ${
+                            categoryOpen ? "rotate-180" : ""
+                          }`}
+                          aria-hidden
+                        >
+                          ▾
+                        </span>
+                      </button>
+                      {showCategoryBody ? (
+                        <div
+                          id="lamp-category-panel"
+                          className="border-t border-[#8b6914]/20 px-3 pb-3 pt-2"
+                        >
+                          {categoryBody}
                         </div>
                       ) : null}
-                      <p className="mb-2 px-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-[#6b4a22]/7">
-                        {lang === "en" ? "Theaters in frame" : "담긴 전장"}
-                      </p>
-                      {theaterRows.length > 0 ? (
-                        <ul className="space-y-1.5 px-1">
-                          {theaterRows.map((row) => (
-                            <li
-                              key={row.theater}
-                              className="flex items-baseline justify-between gap-2 border-b border-[#8b6914]/12 py-2 text-[13px] text-[#3f2e1c]"
-                            >
-                              <span className="font-medium">{row.theater}</span>
-                              <span className="tabular-nums text-[#6b4a22]/75">{row.count}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      ) : (
-                        <p className="px-1 text-[12px] leading-relaxed text-[#5a4428]/7">
-                          {lang === "en"
-                            ? "Photo desk below — multi-theater selection."
-                            : "아래 사진 데스크에서 전장별 고신뢰 뉴스를 보세요."}
-                        </p>
-                      )}
-                      <p className="mt-4 px-1 text-[11px] leading-relaxed text-[#5a4428]/65">
-                        {lang === "en"
-                          ? "Summaries stay short. Open → for the full article."
-                          : "등불은 요약본입니다. 원문은 → 로 이동합니다."}
-                      </p>
-                    </>
+                    </div>
+                  ) : (
+                    categoryBody
                   )}
                 </div>
               </aside>

@@ -12,6 +12,8 @@ const THEATER_LABELS: Record<NewsStreamItem["theater"], string> = {
   korea: "한반도",
   japan: "일본",
   "south-asia": "남아시아",
+  arctic: "북극",
+  atlantic: "대서양",
   global: "글로벌",
 };
 
@@ -22,6 +24,8 @@ const THEATER_GRADIENT: Record<NewsStreamItem["theater"], string> = {
   korea: "from-blue-950/80 via-indigo-950/60 to-slate-900/40",
   japan: "from-violet-950/80 via-indigo-950/60 to-slate-900/40",
   "south-asia": "from-amber-950/80 via-orange-950/60 to-red-950/40",
+  arctic: "from-cyan-950/80 via-sky-950/60 to-slate-900/40",
+  atlantic: "from-indigo-950/80 via-blue-950/60 to-slate-900/40",
   global: "from-slate-900/80 via-sky-950/60 to-slate-800/40",
 };
 

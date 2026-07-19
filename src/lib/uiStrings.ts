@@ -251,6 +251,14 @@ const UI = {
     ko: "인도·파키스탄·LAC 등 남아시아 뉴스만 필터링합니다.",
     en: "Filter to India · Pakistan · LAC / South Asia.",
   },
+  hoverTheaterArcticHint: {
+    ko: "북극 항로·하이노스·그린란드 안보 뉴스만 필터링합니다.",
+    en: "Filter to Arctic routes · High North · Greenland security.",
+  },
+  hoverTheaterAtlanticHint: {
+    ko: "북대서양·GIUK·NATO 해상 안보 뉴스만 필터링합니다.",
+    en: "Filter to North Atlantic · GIUK · NATO maritime security.",
+  },
   hoverTheaterGlobalHint: {
     ko: "글로벌 방산·안보 뉴스만 필터링합니다.",
     en: "Filter to global defense · security news.",
@@ -438,6 +446,8 @@ export const THEATER_LABELS: Record<LabelLanguage, Record<NewsTheater, string>> 
     korea: "한반도",
     japan: "일본",
     "south-asia": "남아시아",
+    arctic: "북극",
+    atlantic: "대서양",
     global: "글로벌",
   },
   en: {
@@ -447,6 +457,8 @@ export const THEATER_LABELS: Record<LabelLanguage, Record<NewsTheater, string>> 
     korea: "Korea",
     japan: "Japan",
     "south-asia": "South Asia",
+    arctic: "Arctic",
+    atlantic: "Atlantic",
     global: "Global",
   },
 };

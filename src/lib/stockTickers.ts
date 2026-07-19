@@ -34,7 +34,44 @@ export type MarketReactionItem = {
   priceAt: number | null;
   priceNow: number | null;
   changePercentSinceEvent: number | null;
+  /** 벤치마크(S&P500) 동일구간 변동을 뺀 초과 변동 — 시장 전체 흐름과 사건 반응을 분리 */
+  excessChangePercent?: number | null;
+  /** 평소 일간 변동폭(σ) 대비 몇 배로 움직였나 — 판정의 핵심 수치 */
+  sigma?: number | null;
 };
+
+/**
+ * 사건이 시장에 영향을 줬는지에 대한 판정.
+ * - impact: 2σ 이상 — 뚜렷한 반응
+ * - mild: 1~2σ — 약한 반응
+ * - none: 1σ 미만 — 평소 변동 범위(= 영향 없음)
+ * - pending: 장 마감·데이터 부족으로 아직 판정 불가
+ */
+export type MarketReactionVerdict = "impact" | "mild" | "none" | "pending";
+
+/** 이 값 이상이면 "뚜렷한 반응" — 알림 푸시 임계값이기도 하다 */
+export const REACTION_IMPACT_SIGMA = 2;
+export const REACTION_MILD_SIGMA = 1;
+
+export function verdictFromSigma(
+  sigma: number | null | undefined,
+  marketOpen: boolean,
+): MarketReactionVerdict {
+  if (sigma == null || !Number.isFinite(sigma)) return "pending";
+  // 장이 닫혀 있는데 거의 안 움직인 건 "영향 없음"이 아니라 "아직 모름"
+  if (!marketOpen && Math.abs(sigma) < REACTION_MILD_SIGMA) return "pending";
+  const abs = Math.abs(sigma);
+  if (abs >= REACTION_IMPACT_SIGMA) return "impact";
+  if (abs >= REACTION_MILD_SIGMA) return "mild";
+  return "none";
+}
+
+export function verdictLabel(verdict: MarketReactionVerdict, ko: boolean): string {
+  if (verdict === "impact") return ko ? "시장 반응 확인됨" : "Market reacted";
+  if (verdict === "mild") return ko ? "약한 반응" : "Mild reaction";
+  if (verdict === "none") return ko ? "시장은 반응하지 않음" : "No market reaction";
+  return ko ? "판정 대기 (장 마감)" : "Pending (market closed)";
+}
 
 /**
  * Yahoo 심볼 → 사람이 읽는 이름 (CL=F → WTI 원유 등).
@@ -138,6 +175,8 @@ export const THEATER_RELATED_SYMBOLS: Record<TheaterMarketFilter, string[]> = {
   korea: theaterAssetSymbols("korea"),
   japan: theaterAssetSymbols("japan"),
   "south-asia": theaterAssetSymbols("south-asia"),
+  arctic: theaterAssetSymbols("arctic"),
+  atlantic: theaterAssetSymbols("atlantic"),
   global: theaterAssetSymbols("global"),
 };
 

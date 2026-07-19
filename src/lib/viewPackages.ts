@@ -17,8 +17,8 @@ export type ViewPackageId = "conflict-watch" | "geo-trader" | "frontline-live" |
 /** 상단 스위치 — 지정학 뷰어 vs 경제·시장 뷰어 (패키지 1:1) */
 export type ViewerMode = "conflict" | "economy";
 
-export const CONFLICT_VIEWER_PACKAGE: ViewPackageId = "frontline-live";
-export const ECONOMY_VIEWER_PACKAGE: ViewPackageId = "geo-trader";
+export const CONFLICT_VIEWER_PACKAGE = "frontline-live" as const;
+export const ECONOMY_VIEWER_PACKAGE = "geo-trader" as const;
 
 export function packagesForViewerMode(mode: ViewerMode): ViewPackageId[] {
   return mode === "economy" ? [ECONOMY_VIEWER_PACKAGE] : [CONFLICT_VIEWER_PACKAGE];
@@ -26,7 +26,14 @@ export function packagesForViewerMode(mode: ViewerMode): ViewPackageId[] {
 
 export function viewerModeFromPackages(packages: ViewPackageId[]): ViewerMode {
   const ids = packages.filter((id) => id !== "custom");
-  if (ids.length === 1 && ids[0] === ECONOMY_VIEWER_PACKAGE) return "economy";
+  // 경제 패키지만 있으면 지경학 (혼재·단독 모두)
+  if (
+    ids.includes(ECONOMY_VIEWER_PACKAGE) &&
+    !ids.includes(CONFLICT_VIEWER_PACKAGE) &&
+    !ids.includes("conflict-watch")
+  ) {
+    return "economy";
+  }
   return "conflict";
 }
 
@@ -95,7 +102,7 @@ export const VIEW_PACKAGES: ViewPackageDef[] = [
   },
   {
     id: "geo-trader",
-    label: "지정학 트레이더",
+    label: "지경학 트레이더",
     tagline: "유가·VIX·제재",
     description: "VIX · 유가 · 금 · 제재 · 에너지",
     layers: {

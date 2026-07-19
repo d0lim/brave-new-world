@@ -23,6 +23,8 @@ export const THEATER_CHIP_LABELS: Record<NewsTheater, string> = {
   korea: "한반도",
   japan: "일본",
   "south-asia": "남아시아",
+  arctic: "북극",
+  atlantic: "대서양",
   global: "글로벌",
 };
 
@@ -35,10 +37,16 @@ export const THEATER_FLY_TO: Record<NewsTheater, { lat: number; lng: number; alt
   korea: { lat: 38.0, lng: 127.3, altitude: 0.7 },
   japan: { lat: 36, lng: 138, altitude: 1.7 },
   "south-asia": { lat: 22, lng: 78, altitude: 1.75 },
+  /** 북극해·그린란드·바렌츠 프레임 */
+  arctic: { lat: 75, lng: 40, altitude: 1.9 },
+  /** 북대서양·GIUK 갭 프레임 */
+  atlantic: { lat: 55, lng: -30, altitude: 2.0 },
   global: { lat: 25, lng: 20, altitude: 2.2 },
 };
 
 export function newsTheaterFromCoords(lat: number, lng: number): NewsTheater {
+  if (lat >= 66) return "arctic";
+  if (lat >= 40 && lat <= 70 && lng >= -60 && lng <= -5) return "atlantic";
   if (lat >= 12 && lat <= 42 && lng >= 34 && lng <= 63) return "middle-east";
   if (lat >= 44 && lat <= 62 && lng >= 22 && lng <= 45) return "russia-ukraine";
   if (lat >= 33 && lat <= 43 && lng >= 124 && lng <= 132) return "korea";
@@ -89,6 +97,12 @@ export function newsTheaterFromNavId(id: string): IntelTheaterFilter {
   if (key.includes("japan")) return "japan";
   if (key.includes("india") || key.includes("pakistan") || key.includes("south-asia")) {
     return "south-asia";
+  }
+  if (key.includes("arctic") || key.includes("greenland") || key.includes("svalbard")) {
+    return "arctic";
+  }
+  if (key.includes("atlantic") || key.includes("giuk") || key.includes("iceland")) {
+    return "atlantic";
   }
   return "all";
 }

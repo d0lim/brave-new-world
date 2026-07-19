@@ -51,6 +51,16 @@ export const THEATER_ASSETS: Record<TheaterMarketFilter, TheaterAssetEntry> = {
     noteKo: "유가·금·인도 인접 시장",
     noteEn: "Oil · gold · India-adjacent markets",
   },
+  arctic: {
+    symbols: ["BZ=F", "CL=F", "GC=F", "DX-Y.NYB", "^VIX", "^GSPC"],
+    noteKo: "에너지·금·달러 — 북극 항로·자원 리스크",
+    noteEn: "Energy · gold · dollar — Arctic route / resource risk",
+  },
+  atlantic: {
+    symbols: ["DX-Y.NYB", "^GSPC", "^VIX", "BZ=F", "GC=F", "^IXIC"],
+    noteKo: "달러·미국 지수 — 대서양·NATO 안보 프리미엄",
+    noteEn: "Dollar · US indices — Atlantic / NATO security premium",
+  },
   global: {
     symbols: ["^VIX", "^GSPC", "^IXIC", "BZ=F", "GC=F", "DX-Y.NYB"],
     noteKo: "방산·매크로 헤지 지표",

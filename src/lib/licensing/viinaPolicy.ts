@@ -14,6 +14,8 @@ export const VIINA_POLICY = {
   publicApiExportForbidden: true,
   /** GeoJSON/CSV 등 사용자 다운로드 금지 */
   userExportForbidden: true,
+  /** 앱 밖에서의 렌더 캐시 스크rape 차단 (세션·same-origin 게이트) */
+  scrapeGateRequired: true,
   license: "ODbL-1.0",
   licenseUrl: "https://opendatacommons.org/licenses/odbl/1-0/",
   sourceName: "VIINA",
@@ -65,6 +67,8 @@ export const VIINA_FORBIDDEN_API_PATH_PATTERNS = [
   /^\/api\/viina/i,
   /^\/api\/layers\/ukraine-control/i,
   /^\/api\/layers\/viina/i,
+  /^\/api\/export\/viina/i,
+  /^\/api\/download\/viina/i,
 ] as const;
 
 export function isForbiddenViinaApiPath(pathname: string): boolean {

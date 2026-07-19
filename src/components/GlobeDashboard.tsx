@@ -91,11 +91,17 @@ import {
   shouldOfferAirRaidFlyBrief,
 } from "@/components/AirRaidOfferBanner";
 import { matchCasualtyFrontIdsFromHover } from "@/lib/casualtyFrontHover";
+import {
+  approachFromBearing,
+  inferIsraelApproachHint,
+  tzevaCategoryThreatLabel,
+} from "@/lib/airRaidBriefHints";
 import { geocodeUkraineAlertRegion } from "@/lib/ukraineAlertZones";
 import {
   buildBriefingFromStats,
   buildLampMacroTable,
   buildPeriodicBriefing,
+  localizePeriodicBriefing,
   hasSeenPeriod,
   lampSeenKey,
   markPeriodSeen,
@@ -1897,6 +1903,17 @@ export function GlobeDashboard({
   );
 
   /** 전선 레이어 ON 또는 우크라이나 극동부를 확대해 볼 때 하단 UI 전환 */
+  /**
+   * 좌하단 텔레그램 OSINT 미니 패널 노출 조건.
+   * 일일 지수·예측 패널이 같은 좌하단을 쓰므로, 이 값으로 그 패널을 위로 띄워 겹침을 피한다.
+   */
+  const telegramMiniPanelVisible =
+    showTelegramOsint &&
+    !isEconomyViewer &&
+    !intelSheetOpen &&
+    !selected &&
+    !regionNavSelection;
+
   const isUkraineTheaterFocus = useMemo(() => {
     if (showUkraineControl) return true;
     if (!isInUkraineTheater(filterCenter.lat, filterCenter.lng)) return false;
@@ -6497,18 +6514,22 @@ export function GlobeDashboard({
       domainThenDetailTimerRef.current = null;
     }
     dismissLayerPanel(true);
+
+    // 모드·패키지는 동기 적용 — startTransition에 넣으면 entryGate가 먼저 풀리며
+    // 한 프레임(또는 더 길게) 지정학으로 남아 등불·전장 이펙트가 잘못 점화됨.
+    applyLayerPrefs(merged.layers);
+    setViewUi(merged.ui);
+    setViewTheater(theater);
+    setViewEconomyHub(economyHub);
+    setViewPackages(packages.filter((id) => id !== "custom"));
+    setIntelTheaterFilter(theater !== "auto" ? theater : "all");
+    setShowModePicker(false);
+    setModePickerLockMode(false);
+    setModePickerInitialMode(null);
+    setEntryGate(null);
+    markWelcomeGateDone();
+
     startTransition(() => {
-      applyLayerPrefs(merged.layers);
-      setViewUi(merged.ui);
-      setViewTheater(theater);
-      setViewEconomyHub(economyHub);
-      setViewPackages(packages.filter((id) => id !== "custom"));
-      setIntelTheaterFilter(theater !== "auto" ? theater : "all");
-      setShowModePicker(false);
-      setModePickerLockMode(false);
-      setModePickerInitialMode(null);
-      setEntryGate(null);
-      markWelcomeGateDone();
       if (merged.ui.openLayerPanel && !isCompactUi) {
         setShowLeftPanel(true);
       }
@@ -6572,13 +6593,11 @@ export function GlobeDashboard({
   function handleViewerModeChange(mode: ViewerMode) {
     if (viewerMode === mode) return;
     recordInterestMode(mode);
-    startTransition(() => {
-      handleModeApply(
-        mode,
-        mode === "conflict" ? viewTheater : "auto",
-        mode === "economy" ? viewEconomyHub : "auto",
-      );
-    });
+    handleModeApply(
+      mode,
+      mode === "conflict" ? viewTheater : "auto",
+      mode === "economy" ? viewEconomyHub : "auto",
+    );
   }
 
   useEffect(() => {
@@ -6707,7 +6726,7 @@ export function GlobeDashboard({
       ultraLite: ultraLiteOn,
     });
 
-    // 모드 크롬·패키지 적용 후 히어로 레이어로 덮어씀 (세부 ModePicker 없음)
+    // 패키지·크롬을 먼저 확정한 뒤 히어로 레이어로 덮음 (게이트 해제와 같은 틱에 지경학 반영)
     handleModeApply(mode, "auto", "auto");
     applyLayerPrefs(overviewPrefs);
 
@@ -7070,7 +7089,10 @@ export function GlobeDashboard({
               /* keep content without WTI */
             }
           }
-          if (content) setPeriodicBriefing(content);
+          if (content) {
+            content = await localizePeriodicBriefing(content, labelLanguage);
+            setPeriodicBriefing(content);
+          }
           setDailyLampSettled(true);
         }
       })();
@@ -7381,6 +7403,7 @@ export function GlobeDashboard({
     for (const alert of tzevaAdomActive) {
       const key = `tzeva:${alert.id}`;
       keys.push(key);
+      const langKey = labelLanguage === "en" ? "en" : "ko";
       candidates.push({
         key,
         kind: "tzeva",
@@ -7389,16 +7412,38 @@ export function GlobeDashboard({
           lng: alert.lng,
           label: translateOrefRegion(alert.region || "", labelLanguage) || alert.region,
         },
-        title: translateOrefTitle(alert.title || "", labelLanguage) || alert.title,
+        title: translateOrefTitle(alert.title || "", labelLanguage, alert.category) || alert.title,
         since: alert.alertDate,
         activeCount: tzevaAdomActive.length,
+        threatLabel: tzevaCategoryThreatLabel(alert.category, langKey),
+        approachFrom: inferIsraelApproachHint(alert.lat, alert.lng, langKey),
       });
     }
+
+    const nearestNeptunThreat = (lat: number, lng: number) => {
+      let best: (typeof neptunThreats)[number] | null = null;
+      let bestKm = 120;
+      for (const threat of neptunThreats) {
+        const dy = (threat.lat - lat) * 111;
+        const dx =
+          (threat.lon - lng) * 111 * Math.cos((lat * Math.PI) / 180);
+        const km = Math.hypot(dx, dy);
+        if (km < bestKm) {
+          bestKm = km;
+          best = threat;
+        }
+      }
+      return best;
+    };
 
     for (const region of neptunAlerts?.raions ?? []) {
       const key = `neptun:r:${region.key}`;
       keys.push(key);
       const coords = geocodeUkraineAlertRegion(region.name, region.oblast, region.key);
+      const near = nearestNeptunThreat(coords.lat, coords.lng);
+      const langKey = labelLanguage === "en" ? "en" : "ko";
+      const bearing =
+        near?.velocity?.bearingDeg ?? near?.heading ?? null;
       candidates.push({
         key,
         kind: "neptun",
@@ -7411,12 +7456,22 @@ export function GlobeDashboard({
         since: region.since,
         activeCount:
           (neptunAlerts?.raions?.length ?? 0) + (neptunAlerts?.oblasts?.length ?? 0),
+        threatLabel: near ? getNeptunTypeLabel(near.type, langKey) : undefined,
+        approachFrom:
+          bearing != null && Number.isFinite(bearing)
+            ? approachFromBearing(bearing, langKey)
+            : undefined,
+        locationDetail: [region.name, region.oblast].filter(Boolean).join(" · ") || undefined,
       });
     }
     for (const region of neptunAlerts?.oblasts ?? []) {
       const key = `neptun:o:${region.key}`;
       keys.push(key);
       const coords = geocodeUkraineAlertRegion(region.name, region.oblast, region.key);
+      const near = nearestNeptunThreat(coords.lat, coords.lng);
+      const langKey = labelLanguage === "en" ? "en" : "ko";
+      const bearing =
+        near?.velocity?.bearingDeg ?? near?.heading ?? null;
       candidates.push({
         key,
         kind: "neptun",
@@ -7429,6 +7484,12 @@ export function GlobeDashboard({
         since: region.since,
         activeCount:
           (neptunAlerts?.raions?.length ?? 0) + (neptunAlerts?.oblasts?.length ?? 0),
+        threatLabel: near ? getNeptunTypeLabel(near.type, langKey) : undefined,
+        approachFrom:
+          bearing != null && Number.isFinite(bearing)
+            ? approachFromBearing(bearing, langKey)
+            : undefined,
+        locationDetail: [region.name, region.oblast].filter(Boolean).join(" · ") || undefined,
       });
     }
 
@@ -7459,6 +7520,7 @@ export function GlobeDashboard({
     issueUiPausedForLamp,
     labelLanguage,
     neptunAlerts,
+    neptunThreats,
     periodicBriefing,
     showModePicker,
     tzevaAdomActive,
@@ -7512,6 +7574,9 @@ export function GlobeDashboard({
             lng: offer.target.lng,
             since: offer.since,
             activeCount: offer.activeCount,
+            threatLabel: offer.threatLabel,
+            approachFrom: offer.approachFrom,
+            locationDetail: offer.locationDetail,
           }),
         });
         const data = (await res.json().catch(() => null)) as {
@@ -7527,12 +7592,16 @@ export function GlobeDashboard({
             ? data.paragraphs
             : lang === "en"
               ? [
-                  `An air-raid alert was received for ${regionLabel}.`,
-                  "Attacker and munition type are not confirmed by this alert feed alone.",
+                  `An air-raid alert was received for ${regionLabel}${offer.since ? ` from ${offer.since}` : ""}.`,
+                  offer.approachFrom ||
+                    "Which direction the threat came from is not confirmed by this alert feed alone.",
+                  "Shelter guidance for that locality comes first; attacker and munition type stay unverified unless stated.",
                 ]
               : [
-                  `${regionLabel} 일대에 공습경보가 수신되었습니다.`,
-                  "공격 주체·무기 유형은 이 경보 피드만으로 확정할 수 없습니다.",
+                  `${regionLabel} 일대에 공습경보가 수신되었습니다${offer.since ? ` · 발령 시각 ${offer.since}` : ""}.`,
+                  offer.approachFrom ||
+                    "어느 쪽에서 날아왔는지는 이 경보 피드만으로 확정할 수 없습니다.",
+                  "해당 위치의 대피·엄폐가 우선이며, 발사 주체·무기 유형은 미확인으로 둡니다.",
                 ];
 
         window.setTimeout(() => {
@@ -8045,7 +8114,15 @@ export function GlobeDashboard({
                   usLinkCount={usDfcSupplyPaths.length}
                   chinaLinkCount={briTradePaths.length}
                 />
-              ) : null}
+              ) : (
+                /* 미 항모 추적 — 모바일에선 상단 우측 대신 검색창 아래 드롭다운 안에 */
+                <UsCarrierFixedToggle
+                  checked={showUsCarriers}
+                  onChange={setShowUsCarriers}
+                  carrierCount={usCarriers.length}
+                  deployedCount={deployedCarrierCount}
+                />
+              )}
               {!showLeftPanel ? (
                 <CompactPresetChips
                   mode={viewerMode}
@@ -8970,7 +9047,7 @@ export function GlobeDashboard({
           </div>
         )}
         {/* Telegram OSINT — Intel 시트 Telegram 탭과 중복 방지 (시트 닫힘 + 레이어 ON일 때만 미니 패널) */}
-        {showTelegramOsint && !isEconomyViewer && !intelSheetOpen && !selected && !regionNavSelection && (
+        {telegramMiniPanelVisible && (
           <TelegramOsintPanel
             alerts={telegramAlerts}
             live={telegramLive}
@@ -9192,21 +9269,13 @@ export function GlobeDashboard({
       </div>
       ) : null}
 
-      {/* 데스크톱: 우상단 공습·주요전장·도움말 / 모바일: 항모만 — 뉴스 시트 열리면 상단을 가리지 않도록 숨김 */}
+      {/* 데스크톱: 우상단 공습·주요전장·도움말 — 뉴스 시트 열리면 상단을 가리지 않도록 숨김 */}
       {!intelSheetOpen ? (
       <div
         className="pointer-events-none absolute right-3 z-[60] flex flex-col items-end gap-2"
         style={{ top: "max(0.75rem, env(safe-area-inset-top, 0px))" }}
       >
-        {isCompactUi && !isEconomyViewer ? (
-          <UsCarrierFixedToggle
-            compact
-            checked={showUsCarriers}
-            onChange={setShowUsCarriers}
-            carrierCount={usCarriers.length}
-            deployedCount={deployedCarrierCount}
-          />
-        ) : null}
+        {/* 모바일 항모 토글은 검색창 아래 드롭다운(compactMenuExtra)으로 이동 — 상단 혼잡 완화 */}
         {!isCompactUi &&
         !issueUiPausedForLamp &&
         ((!isEconomyViewer &&
@@ -9778,8 +9847,14 @@ export function GlobeDashboard({
         />
       ) : null}
 
-      {entryGate === null && !showModePicker ? (
-        <div className="pointer-events-none fixed bottom-5 right-4 z-[60] sm:bottom-6 sm:right-5">
+      {/*
+        음소거 FAB — 첫 진입부터 항상 우측 하단 고정.
+        모바일에서 소리가 갑자기 나올 때 즉시 끌 수 있어야 하므로, 모드 선택 오버레이
+        (z-[10000]) 위에도 뜨도록 z를 올린다. 단 입장 주의 오버레이(entryGate, z-[10010])는
+        자체 인라인 음소거 토글을 이미 크게 노출하고 있어 중복·겹침을 피해 제외.
+      */}
+      {entryGate === null ? (
+        <div className="pointer-events-none fixed bottom-5 right-4 z-[10020] sm:bottom-6 sm:right-5">
           <SoundMuteControl lang={labelLanguage} variant="fab" />
         </div>
       ) : null}
@@ -9883,7 +9958,10 @@ export function GlobeDashboard({
       !periodicBriefing &&
       !tomorrowTensionPrompt ? (
         <div
-          className={`cv-desktop-only pointer-events-auto absolute bottom-24 left-3 z-[28] ${
+          className={`cv-desktop-only pointer-events-auto absolute left-3 z-[28] ${
+            // 텔레그램 OSINT 미니 패널(좌하단, 본문 최대 42vh/320px)이 떠 있으면 그 위로 비켜준다
+            telegramMiniPanelVisible ? "bottom-[27rem]" : "bottom-24"
+          } ${
             // 접었을 때 420px 폭을 유지하면 보이지 않는 영역이 지도 클릭을 막는다
             showDailyRankPanel ? "w-[min(420px,calc(100vw-1.5rem))]" : "w-fit"
           }`}
@@ -9899,7 +9977,16 @@ export function GlobeDashboard({
               >
                 ✕
               </button>
-              <DailyRankSharePanel lang={labelLanguage} />
+              {/* 위로 올라간 만큼 화면 위로 넘치지 않게 — 넘치면 내부 스크롤 */}
+              <div
+                className={`overflow-y-auto overscroll-contain ${
+                  telegramMiniPanelVisible
+                    ? "max-h-[calc(100vh-29rem)]"
+                    : "max-h-[calc(100vh-9rem)]"
+                }`}
+              >
+                <DailyRankSharePanel lang={labelLanguage} />
+              </div>
             </div>
           ) : (
             <LegendReopenButton

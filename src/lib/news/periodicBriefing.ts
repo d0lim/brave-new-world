@@ -900,10 +900,16 @@ export function pickEconomyLampNews(
   return out.slice(0, Math.max(out.length, Math.min(target, scored.length)));
 }
 
-/** 지정학 등불 최소 건수 */
-export const CONFLICT_LAMP_NEWS_MIN = 8;
+/** 지정학 등불 최소 건수 — 중동·러우 + 아태·북극·대서양 슬롯 확보 */
+export const CONFLICT_LAMP_NEWS_MIN = 10;
 /** 등불 안 외교 슬롯 상한 — 전쟁만/회담만으로 치우치지 않게 */
 export const CONFLICT_LAMP_DIPLOMACY_MAX = 3;
+/** 아태·인도양 계열 최소 확보 건수 (후보가 있을 때) */
+const CONFLICT_LAMP_APAC_MIN = 3;
+/** 북극·대서양 최소 확보 건수 (후보가 있을 때) */
+const CONFLICT_LAMP_ARCTIC_ATLANTIC_MIN = 1;
+/** 중동+러우 합산 소프트 캡 — 아태·북극·대서양 자리를 비워 둠 */
+const CONFLICT_LAMP_ME_UA_SOFT_CAP = 5;
 
 type ConflictTheater =
   | "middle-east"
@@ -912,7 +918,18 @@ type ConflictTheater =
   | "korea"
   | "japan"
   | "south-asia"
+  | "arctic"
+  | "atlantic"
   | "global";
+
+const APAC_CONFLICT_THEATERS: ConflictTheater[] = [
+  "china-taiwan",
+  "korea",
+  "japan",
+  "south-asia",
+];
+
+const ARCTIC_ATLANTIC_THEATERS: ConflictTheater[] = ["arctic", "atlantic"];
 
 const CONFLICT_THEATER_PRIORITY: ConflictTheater[] = [
   "middle-east",
@@ -921,26 +938,32 @@ const CONFLICT_THEATER_PRIORITY: ConflictTheater[] = [
   "korea",
   "japan",
   "south-asia",
+  "arctic",
+  "atlantic",
   "global",
 ];
 
 const THEATER_FOCUS_KO: Record<ConflictTheater, string> = {
   "middle-east": "중동",
   "russia-ukraine": "러·우",
-  "china-taiwan": "대만해협",
+  "china-taiwan": "미·중·아태",
   korea: "한반도",
   japan: "일본·인도태평양",
-  "south-asia": "남아시아",
+  "south-asia": "남아시아·인도양",
+  arctic: "북극",
+  atlantic: "대서양",
   global: "글로벌 국방",
 };
 
 const THEATER_FOCUS_EN: Record<ConflictTheater, string> = {
   "middle-east": "Middle East",
   "russia-ukraine": "Russia–Ukraine",
-  "china-taiwan": "Taiwan Strait",
+  "china-taiwan": "US–China · Asia-Pacific",
   korea: "Korean Peninsula",
   japan: "Japan · Indo-Pacific",
-  "south-asia": "South Asia",
+  "south-asia": "South Asia · Indian Ocean",
+  arctic: "Arctic",
+  atlantic: "Atlantic",
   global: "Global defense",
 };
 
@@ -952,7 +975,18 @@ const CONFLICT_ACTOR_RE: Array<{ id: string; labelKo: string; labelEn: string; r
   { id: "israel", labelKo: "이스라엘", labelEn: "Israel", re: /\bisrael\b|\bisraeli\b|\b이스라엘\b/i },
   { id: "ukraine", labelKo: "우크라이나", labelEn: "Ukraine", re: /\bukraine\b|\bukrainian\b|\bkyiv\b|\bkiev\b|\b우크라이나\b|\b키이우\b/i },
   { id: "russia", labelKo: "러시아", labelEn: "Russia", re: /\brussia\b|\brussian\b|\bkremlin\b|\b러시아\b|\b크렘린\b/i },
+  { id: "china", labelKo: "중국", labelEn: "China", re: /\bchina\b|\bchinese\b|\bbeijing\b|\b중국\b|\b베이징\b/i },
   { id: "nk", labelKo: "북한", labelEn: "North Korea", re: /\bnorth korea\b|\bpyongyang\b|\bkim jong\b|\b북한\b|\b평양\b/i },
+  { id: "sk", labelKo: "한국", labelEn: "South Korea", re: /\bsouth korea\b|\bseoul\b|\brok\b|\b한국\b|\b서울\b/i },
+  { id: "japan", labelKo: "일본", labelEn: "Japan", re: /\bjapan\b|\bjapanese\b|\btokyo\b|\b일본\b|\b도쿄\b/i },
+  { id: "india", labelKo: "인도", labelEn: "India", re: /\bindia\b|\bindian\b|\bmodi\b|\b인도\b|\b모디\b/i },
+  { id: "pakistan", labelKo: "파키스탄", labelEn: "Pakistan", re: /\bpakistan\b|\bpakistani\b|\b파키스탄\b/i },
+  { id: "philippines", labelKo: "필리핀", labelEn: "Philippines", re: /\bphilippines\b|\bphilippine\b|\bmanila\b|\b필리핀\b/i },
+  { id: "australia", labelKo: "호주", labelEn: "Australia", re: /\baustralia\b|\baukus\b|\b호주\b/i },
+  { id: "quad", labelKo: "QUAD", labelEn: "QUAD", re: /\bquad\b|\b쿼드\b/i },
+  { id: "norway", labelKo: "노르웨이", labelEn: "Norway", re: /\bnorway\b|\bnorwegian\b|\b노르웨이\b/i },
+  { id: "greenland", labelKo: "그린란드", labelEn: "Greenland", re: /\bgreenland\b|\b그린란드\b/i },
+  { id: "canada", labelKo: "캐나다", labelEn: "Canada", re: /\bcanada\b|\bcanadian\b|\b캐나다\b/i },
   { id: "hamas", labelKo: "하마스", labelEn: "Hamas", re: /\bhamas\b|\b하마스\b/i },
   { id: "houthis", labelKo: "후티", labelEn: "Houthis", re: /\bhouthi\b|\b후티\b/i },
   { id: "hezbollah", labelKo: "헤즈볼라", labelEn: "Hezbollah", re: /\bhezbollah\b|\b헤즈볼라\b/i },
@@ -972,7 +1006,7 @@ const CONFLICT_HARD_NEWS_RE =
 
 /** 외교·동맹 재편 — 전쟁과 함께 지정학 등불에 올릴 축 */
 const CONFLICT_DIPLOMACY_RE =
-  /diplomacy|diplomatic|summit|alliance|foreign\s?minister|bilateral|multilateral|normalization|state\s?visit|treaty|accord|strategic\s?dialogue|strategic\s?partnership|peace\s?talks|mediation|realignment|embassy|ambassador|g7|brics|quad\b|nato\s?summit|sco\b|csto|multipolar|global\s?south|no[\s-]?limits|crink|axis\s?of\s?upheaval|외교|정상회담|동맹|외무장관|전략대화|정상화|조약|대사|다극|브릭스/i;
+  /diplomacy|diplomatic|summit|alliance|foreign\s?minister|bilateral|multilateral|normalization|state\s?visit|treaty|accord|strategic\s?dialogue|strategic\s?partnership|peace\s?talks|mediation|realignment|embassy|ambassador|g7|brics|quad\b|aukus|indo[\s-]?pacific|arctic\s?council|nato\s?summit|sco\b|csto|multipolar|global\s?south|no[\s-]?limits|crink|axis\s?of\s?upheaval|외교|정상회담|동맹|외무장관|전략대화|정상화|조약|대사|다극|브릭스|인도태평양|북극이사회/i;
 
 const CONFLICT_SOFT_NEWS_RE =
   /celebrity|sport|football|soccer|nba|oscar|grammy|fashion|recipe|연예|스포츠|축구|야구|영화제/i;
@@ -985,11 +1019,113 @@ function normalizeConflictTheater(theater?: string): ConflictTheater {
     theater === "korea" ||
     theater === "japan" ||
     theater === "south-asia" ||
+    theater === "arctic" ||
+    theater === "atlantic" ||
     theater === "global"
   ) {
     return theater;
   }
   return "global";
+}
+
+/**
+ * global·공유 피드에 묻힌 지역 이슈를 텍스트로 재분류.
+ * 피드 태그(중동/러우)는 유지하고, 강한 키워드가 있으면 덮어쓴다.
+ */
+function inferGeoTheater(text: string): ConflictTheater | null {
+  if (
+    /arctic|high\s?north|northern\s?sea\s?route|northwest\s?passage|svalbard|barents|arctic\s?council|icebreaker|arctic\s?lng|북극|북해항로|스발바르|하이\s?노스/i.test(
+      text,
+    ) ||
+    (/greenland|그린란드/i.test(text) &&
+      /military|base|security|nato|russia|china|mine|rare\s?earth|국방|기지|안보|나토|러시아|중국/i.test(
+        text,
+      ))
+  ) {
+    return "arctic";
+  }
+  if (
+    /giuk|north\s?atlantic|atlantic\s?fleet|second\s?fleet|transatlantic|atlantic\s?alliance|anti[\s-]?submarine|대서양|지유케이/i.test(
+      text,
+    ) ||
+    (/\biceland\b|\bazores\b|아이슬란드/i.test(text) &&
+      /nato|navy|submarine|patrol|military|나토|해군|잠수함/i.test(text))
+  ) {
+    return "atlantic";
+  }
+  if (
+    /north\s?korea|pyongyang|kim\s?jong|dprk|korean\s?peninsula|dmz|icbm|북한|평양|한반도/i.test(
+      text,
+    )
+  ) {
+    return "korea";
+  }
+  if (
+    /indian\s?ocean|bay\s?of\s?bengal|maldives|sri\s?lanka|hambantota|andaman|kashmir|line\s?of\s?actual|lac\b|pakistan|modi|string\s?of\s?pearls|인도양|카슈미르|파키스탄|몰디브/i.test(
+      text,
+    ) &&
+    /india|pakistan|china|navy|port|missile|border|security|인도|중국|해군|항구/i.test(text)
+  ) {
+    return "south-asia";
+  }
+  if (
+    /\bindia\b|\bpakistan\b|\bbangladesh\b|\bmyanmar\b|\bafghanistan\b|\btaliban\b|인도\b|미얀마|아프간/i.test(
+      text,
+    ) &&
+    /military|missile|border|navy|security|conflict|geopolit|defense|전쟁|미사일|국경|안보/i.test(
+      text,
+    )
+  ) {
+    return "south-asia";
+  }
+  if (
+    /taiwan|pla\b|south\s?china\s?sea|west\s?philippine|scarborough|spratly|paracel|us[\s-]?china|china[\s-]?us|great\s?power\s?competition|first\s?island|second\s?island|guam|philippine\s?sea|대만|남중국해|미중|괌/i.test(
+      text,
+    )
+  ) {
+    return "china-taiwan";
+  }
+  if (
+    /aukus|quad\b|indo[\s-]?pacific|okinawa|senkaku|self[\s-]?defense\s?force|\bsdf\b|인도태평양|오키나와|센카쿠/i.test(
+      text,
+    )
+  ) {
+    return "japan";
+  }
+  if (
+    /\bjapan\b|\btokyo\b|일본|도쿄/i.test(text) &&
+    /defense|military|security|missile|alliance|china|korea|국방|안보|미사일|동맹|중국/i.test(text)
+  ) {
+    return "japan";
+  }
+  return null;
+}
+
+function resolveConflictTheater(item: NewsPickInput): ConflictTheater {
+  const feedTheater = normalizeConflictTheater(item.theater);
+  const blob = `${item.title} ${item.summary ?? ""}`;
+  const inferred = inferGeoTheater(blob);
+
+  if (!inferred) return feedTheater;
+
+  // 중동·러우 피드는 유지하되, 아태·북극·대서양 키워드가 뚜렷하면 재분류
+  if (feedTheater === "middle-east" || feedTheater === "russia-ukraine") {
+    const strongGeo =
+      /taiwan|south\s?china\s?sea|indo[\s-]?pacific|aukus|north\s?korea|pyongyang|indian\s?ocean|arctic|high\s?north|northern\s?sea\s?route|giuk|north\s?atlantic|대만|남중국해|인도태평양|북한|인도양|북극|북해항로|대서양|지유케이/i.test(
+        blob,
+      );
+    return strongGeo ? inferred : feedTheater;
+  }
+
+  if (
+    feedTheater === "global" ||
+    APAC_CONFLICT_THEATERS.includes(feedTheater) ||
+    ARCTIC_ATLANTIC_THEATERS.includes(feedTheater)
+  ) {
+    return inferred;
+  }
+
+  return inferred;
 }
 
 function matchedConflictActors(text: string) {
@@ -1023,7 +1159,7 @@ type ScoredConflictNews = {
 
 function scoreConflictCandidate(item: NewsPickInput, clusterSize: number): ScoredConflictNews {
   const blob = `${item.title} ${item.summary ?? ""}`;
-  const theater = normalizeConflictTheater(item.theater);
+  const theater = resolveConflictTheater(item);
   const summaryLen = (item.summary ?? "").trim().length;
   const ageMin = ageMinutes(item.pubDate);
   const tierScore = (item.trustTier - 1) * 30;
@@ -1044,14 +1180,18 @@ function scoreConflictCandidate(item: NewsPickInput, clusterSize: number): Score
       ? 12
       : 0;
   const softPenalty = CONFLICT_SOFT_NEWS_RE.test(blob) ? 50 : 0;
+  // 아태·남아시아·북극·대서양을 중동·러우와 동급으로
   const theaterBonus =
-    theater === "middle-east" || theater === "russia-ukraine"
+    theater === "middle-east" ||
+    theater === "russia-ukraine" ||
+    theater === "china-taiwan" ||
+    theater === "korea" ||
+    theater === "japan" ||
+    theater === "south-asia" ||
+    theater === "arctic" ||
+    theater === "atlantic"
       ? -12
-      : theater === "china-taiwan" || theater === "korea"
-        ? -10
-        : theater === "japan" || theater === "south-asia"
-          ? -8
-          : -2;
+      : -2;
   const freshnessBonus = isLocalCalendarToday(item.pubDate)
     ? ageMin <= 180
       ? -28
@@ -1138,6 +1278,7 @@ function toConflictFeatured(row: ScoredConflictNews, lang: "ko" | "en"): LampFea
 
 /**
  * 지정학 등불 — 사진 필수 · 고신뢰 · 전장 다양성 · 본문 스니펫으로 심층 후보.
+ * 중동·러우에 치우치지 않도록 아태·인도양·북극·대서양 슬롯을 먼저 확보.
  * 등불 카드 summary는 LAMP_DISPLAY_SUMMARY_MAX로 축약.
  */
 export function pickConflictLampNews(
@@ -1173,10 +1314,22 @@ export function pickConflictLampNews(
     korea: 0,
     japan: 0,
     "south-asia": 0,
+    arctic: 0,
+    atlantic: 0,
     global: 0,
   };
-  const maxPerTheater = Math.max(2, Math.ceil(target / 3));
+  const maxPerTheater = Math.max(2, Math.ceil(target / 4));
   let diplomacyCount = 0;
+
+  const apacCount = () =>
+    APAC_CONFLICT_THEATERS.reduce((n, t) => n + theaterCounts[t], 0);
+  const arcticAtlanticCount = () =>
+    ARCTIC_ATLANTIC_THEATERS.reduce((n, t) => n + theaterCounts[t], 0);
+  const meUaCount = () => theaterCounts["middle-east"] + theaterCounts["russia-ukraine"];
+  const diversityShort =
+    () =>
+      apacCount() < CONFLICT_LAMP_APAC_MIN ||
+      arcticAtlanticCount() < CONFLICT_LAMP_ARCTIC_ATLANTIC_MIN;
 
   const tryPush = (row: ScoredConflictNews, relax = false): boolean => {
     const item = row.item;
@@ -1192,6 +1345,16 @@ export function pickConflictLampNews(
 
     if (theaterCounts[row.theater] >= maxPerTheater && !relax) return false;
 
+    // 중동·러우가 아태·북극·대서양 자리를 잠식하지 않도록 소프트 캡
+    if (
+      !relax &&
+      (row.theater === "middle-east" || row.theater === "russia-ukraine") &&
+      meUaCount() >= CONFLICT_LAMP_ME_UA_SOFT_CAP &&
+      diversityShort()
+    ) {
+      return false;
+    }
+
     const blob = `${item.title} ${item.summary ?? ""}`;
     const isDiplomacy = CONFLICT_DIPLOMACY_RE.test(blob);
     if (isDiplomacy && diplomacyCount >= CONFLICT_LAMP_DIPLOMACY_MAX && !relax) return false;
@@ -1204,12 +1367,56 @@ export function pickConflictLampNews(
     return true;
   };
 
-  // 전장별 최소 1건 시도
-  for (const theater of CONFLICT_THEATER_PRIORITY) {
+  // 1) 아태·남아시아 전장별 최소 1건
+  for (const theater of APAC_CONFLICT_THEATERS) {
     if (out.length >= target) break;
     for (const row of scored) {
       if (row.theater !== theater) continue;
       if (tryPush(row)) break;
+    }
+  }
+
+  // 2) 북극·대서양 전장별 최소 1건
+  for (const theater of ARCTIC_ATLANTIC_THEATERS) {
+    if (out.length >= target) break;
+    for (const row of scored) {
+      if (row.theater !== theater) continue;
+      if (tryPush(row)) break;
+    }
+  }
+
+  // 3) 중동·러우·글로벌도 전장별 1건
+  for (const theater of CONFLICT_THEATER_PRIORITY) {
+    if (out.length >= target) break;
+    if (
+      (APAC_CONFLICT_THEATERS.includes(theater) || ARCTIC_ATLANTIC_THEATERS.includes(theater)) &&
+      theaterCounts[theater] > 0
+    ) {
+      continue;
+    }
+    for (const row of scored) {
+      if (row.theater !== theater) continue;
+      if (tryPush(row)) break;
+    }
+  }
+
+  // 4) 아태 최소 건수 미달이면 추가 채움
+  if (apacCount() < CONFLICT_LAMP_APAC_MIN) {
+    for (const row of scored) {
+      if (out.length >= target) break;
+      if (!APAC_CONFLICT_THEATERS.includes(row.theater)) continue;
+      if (apacCount() >= CONFLICT_LAMP_APAC_MIN) break;
+      tryPush(row);
+    }
+  }
+
+  // 5) 북극·대서양 최소 미달이면 추가 채움
+  if (arcticAtlanticCount() < CONFLICT_LAMP_ARCTIC_ATLANTIC_MIN) {
+    for (const row of scored) {
+      if (out.length >= target) break;
+      if (!ARCTIC_ATLANTIC_THEATERS.includes(row.theater)) continue;
+      if (arcticAtlanticCount() >= CONFLICT_LAMP_ARCTIC_ATLANTIC_MIN) break;
+      tryPush(row);
     }
   }
 
@@ -1286,4 +1493,69 @@ export function shortenEconomyLampParagraphs(paragraphs: string[], max = 1): str
     .filter(Boolean)
     .slice(0, max)
     .map((p) => (p.length > 220 ? `${p.slice(0, 217)}…` : p));
+}
+
+/**
+ * 한글 UI일 때 등불 본문(제목·문단·뉴스 카드·거시표·WTI)을 최대한 한국어로 맞춤.
+ * 이미 한글이 주를 이루면 재번역하지 않음.
+ */
+export async function localizePeriodicBriefing(
+  briefing: PeriodicBriefing,
+  lang: LabelLanguage,
+): Promise<PeriodicBriefing> {
+  if (lang === "en") return briefing;
+
+  const { isMostlyKorean, mapPool, translateTextToKorean } = await import(
+    "@/lib/koreanTranslate"
+  );
+
+  const toKo = async (text: string | undefined | null): Promise<string> => {
+    if (!text?.trim()) return text ?? "";
+    if (isMostlyKorean(text)) return text;
+    return translateTextToKorean(text);
+  };
+
+  const [title, paragraphs, featuredNews, macroTable] = await Promise.all([
+    toKo(briefing.title),
+    mapPool(briefing.paragraphs, toKo, 3),
+    briefing.featuredNews
+      ? mapPool(
+          briefing.featuredNews,
+          async (item) => ({
+            ...item,
+            title: await toKo(item.title),
+            summary: await toKo(item.summary),
+            focusLabel: item.focusLabel ? await toKo(item.focusLabel) : item.focusLabel,
+            matterHook: item.matterHook ? await toKo(item.matterHook) : item.matterHook,
+          }),
+          4,
+        )
+      : undefined,
+    briefing.macroTable
+      ? mapPool(
+          briefing.macroTable,
+          async (row) => ({
+            ...row,
+            country: await toKo(row.country),
+            indicator: isMostlyKorean(row.indicator)
+              ? row.indicator
+              : await toKo(row.indicator),
+          }),
+          4,
+        )
+      : undefined,
+  ]);
+
+  const wti = briefing.wti
+    ? { ...briefing.wti, lead: await toKo(briefing.wti.lead) }
+    : briefing.wti;
+
+  return {
+    ...briefing,
+    title,
+    paragraphs,
+    featuredNews,
+    macroTable,
+    wti,
+  };
 }

@@ -204,6 +204,8 @@ Cron ingest: `npm run cf:ingest:deploy` · [`docs/cloudflare-deploy.md`](docs/cl
 | `API_STUB_MODE` | `true` | stub 정책 (외부 API 차단, 시드 JSON) |
 | `DATA_PROFILE` | `lite` | `lite` \| `full` — 서버 전용 |
 | `VIINA_RENDERING_ONLY` | `true` | VIINA ODbL 렌더링 전용 |
+| `VIINA_RENDER_GATE_SECRET` | (권장) | 렌더 세션 쿠키 HMAC 시크릿 — 없으면 cron 시크릿 폴백 |
+| `VIINA_RENDER_GATE_RELAX` | — | `true`면 게이트 해제 (로컬 curl 디버그만, 프로덕션 금지) |
 | `NEPTUN_ENABLED` | — | NEPTUN 레이어·API |
 | `TZEVA_ADOM_ENABLED` | — | 이스라엘 공습 경보 |
 | `TELEGRAM_OSINT_ENABLED` | `true` | 텔레그램 OSINT |

@@ -178,6 +178,8 @@ const THEATER_LABELS: Record<NewsStreamItem["theater"], string> = {
   korea: "한반도",
   japan: "일본",
   "south-asia": "남아시아",
+  arctic: "북극",
+  atlantic: "대서양",
   global: "글로벌",
 };
 
@@ -920,6 +922,8 @@ function TheaterChipBar({
     korea: t("hoverTheaterKoreaHint"),
     japan: t("hoverTheaterJapanHint"),
     "south-asia": t("hoverTheaterSouthAsiaHint"),
+    arctic: t("hoverTheaterArcticHint"),
+    atlantic: t("hoverTheaterAtlanticHint"),
     global: t("hoverTheaterGlobalHint"),
   };
 

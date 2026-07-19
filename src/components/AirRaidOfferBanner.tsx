@@ -36,6 +36,12 @@ export type AirRaidOffer = {
   title?: string;
   since?: string;
   activeCount: number;
+  /** 로켓·미사일 / UAV 등 */
+  threatLabel?: string;
+  /** 어느 쪽에서 접근하는지 */
+  approachFrom?: string;
+  /** 주·구 등 상세 위치 */
+  locationDetail?: string;
 };
 
 type AirRaidOfferBannerProps = {

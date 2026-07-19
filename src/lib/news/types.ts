@@ -7,6 +7,8 @@ export type NewsTheater =
   | "korea"
   | "japan"
   | "south-asia"
+  | "arctic"
+  | "atlantic"
   | "global";
 
 export type MediaTrustTier = 1 | 2 | 3;

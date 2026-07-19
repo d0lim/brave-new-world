@@ -7,7 +7,7 @@ import type { LayerPrefs } from "@/lib/layerPrefs";
 export const ACTIVE_LAYER_CAP_DEFAULT = Number.POSITIVE_INFINITY;
 
 /** ultra-lite — 무거운 폴링 레이어를 줄이는 소프트 상한 */
-export const ACTIVE_LAYER_CAP_ULTRA = 12;
+export const ACTIVE_LAYER_CAP_ULTRA = 16;
 
 /**
  * 캡 집계에서 제외:
@@ -46,6 +46,12 @@ export const LAYER_CAP_KEEP_PRIORITY: Array<keyof LayerPrefs> = [
   "showLogisticsRisk",
   "showCriticalNodes",
   "showSubmarineCables",
+  "showOilPipelines",
+  "showGasPipelines",
+  "showResources",
+  "showGemOilGasExtraction",
+  "showGemCoalMines",
+  "showLngTerminals",
   "showCityLabels",
 ];
 

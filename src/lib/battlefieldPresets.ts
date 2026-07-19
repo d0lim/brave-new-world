@@ -47,6 +47,10 @@ export function applyBattlefieldPreset(
         showShippingLanes: true,
         showLogisticsRisk: true,
         showSubmarineCables: true,
+        showOilPipelines: true,
+        showGasPipelines: true,
+        showResources: true,
+        showGemOilGasExtraction: true,
         showGdeltWar: true,
         showGdeltDiplomatic: true,
         // 주요전장 이동 뒤에도 전쟁구역 빨간 빗금은 기본 유지

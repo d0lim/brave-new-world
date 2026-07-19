@@ -2703,7 +2703,21 @@ export function GlobeDashboard({
   const airportPortHtmlMarkers = useMemo(() => {
     const html = staticGlobePoints.filter((point) => isHtmlStaticKind(point.kind));
     if (html.length <= INFRA_HTML_MARKER_CAP) return html;
-    return html.slice(0, INFRA_HTML_MARKER_CAP);
+    // 자원·에너지 마커가 공항·항구 뒤에 밀려 전부 잘리지 않도록 우선 확보
+    const priorityKinds = new Set([
+      "resource",
+      "lng-terminal",
+      "nuclear-site",
+      "chokepoint",
+      "logistics-hub",
+      "critical-node",
+    ]);
+    const priority = html.filter((p) => priorityKinds.has(p.kind));
+    const rest = html.filter((p) => !priorityKinds.has(p.kind));
+    const priorityBudget = Math.min(priority.length, Math.max(24, Math.floor(INFRA_HTML_MARKER_CAP * 0.45)));
+    const pickedPriority = priority.slice(0, priorityBudget);
+    const restBudget = Math.max(0, INFRA_HTML_MARKER_CAP - pickedPriority.length);
+    return [...pickedPriority, ...rest.slice(0, restBudget)];
   }, [staticGlobePoints]);
 
   const chokeGlowRings = useMemo<PulseRingPoint[]>(() => {
@@ -8761,6 +8775,8 @@ export function GlobeDashboard({
                 if (path.kind === "country-border") {
                   return globeTextures.vectorBase ? globeTextures.borderColor : COUNTRY_BORDER_PATH_COLOR;
                 }
+                if (path.kind === "oil-pipeline") return PATH_LAYER_COLORS["oil-pipeline"];
+                if (path.kind === "gas-pipeline") return PATH_LAYER_COLORS["gas-pipeline"];
                 if (FLOW_PATH_KINDS.has(path.kind)) return INTEL_MISSILE_ARC;
                 if (path.kind === "dispute-boundary") return "rgba(251, 191, 36, 0.92)";
                 if (path.kind === "dispute-zone") {
@@ -8783,8 +8799,6 @@ export function GlobeDashboard({
                 }
                 if (path.kind === "shipping-lane") return PATH_LAYER_COLORS["shipping-lane"];
                 if (path.kind === "submarine-cable") return PATH_LAYER_COLORS["submarine-cable"];
-                if (path.kind === "oil-pipeline") return PATH_LAYER_COLORS["oil-pipeline"];
-                if (path.kind === "gas-pipeline") return PATH_LAYER_COLORS["gas-pipeline"];
                 if (path.kind === "arms-embargo") return ARMS_EMBARGO_STROKE;
                 if (path.kind === "msr") return "rgba(250, 204, 21, 0.9)";
                 if (
@@ -8851,13 +8865,12 @@ export function GlobeDashboard({
                 if (path.kind === "dispute-hatch") return 0.55;
                 if (path.kind === "conflict-hatch") return 0.62;
                 if (path.kind === "shipping-lane") return 0.48;
-                // 해저 케이블·송유관·가스관: cableInverseLineWidth (줌아웃↑굵게 · 줌인→~0.1)
-                if (
-                  path.kind === "submarine-cable" ||
-                  path.kind === "oil-pipeline" ||
-                  path.kind === "gas-pipeline"
-                ) {
+                if (path.kind === "submarine-cable") {
+                  // 해저 케이블: cableInverseLineWidth (줌아웃↑굵게 · 줌인→~0.1)
                   return 0.1;
+                }
+                if (path.kind === "oil-pipeline" || path.kind === "gas-pipeline") {
+                  return 1.05;
                 }
                 if (path.kind === "arms-embargo") return ARMS_EMBARGO_STROKE_WIDTH;
                 if (path.kind === "msr") return 0.55;

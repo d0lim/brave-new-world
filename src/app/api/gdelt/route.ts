@@ -3,7 +3,11 @@ import { fetchLatestGdeltEvents } from "@/lib/gdeltParse";
 import { fetchGdeltThemeCached, type GdeltTheme } from "@/lib/gdeltTheme";
 import { apiStubResponse } from "@/lib/apiStub";
 import { readGdeltPointsFromD1, readGdeltFromIngestWorker } from "@/lib/d1LiveSnapshots";
-import { gdeltQuerySchema, parseSearchParams } from "@/lib/apiQuerySchemas";
+import {
+  GDELT_THEMES,
+  gdeltQuerySchema,
+  parseSearchParams,
+} from "@/lib/apiQuerySchemas";
 import { fetchOceanGeopoliticsGdelt } from "@/lib/gdeltOceanGeo";
 import type { ConflictEvent, EventTier } from "@/data/geoTypes";
 import { isOceanGeopoliticsTag } from "@/lib/oceanGeopoliticsTheaters";
@@ -70,7 +74,13 @@ export async function GET(request: Request) {
     const parsed = parseSearchParams(searchParams, gdeltQuerySchema);
     if (!parsed.ok) {
       return NextResponse.json(
-        { error: parsed.error, issues: parsed.issues, events: [] },
+        {
+          error: parsed.error,
+          issues: parsed.issues,
+          hint: "theme은 cyber|election만 허용. 전쟁·외교 등은 theme 없이 GET /api/gdelt → events[].eventTier",
+          allowedThemes: GDELT_THEMES,
+          events: [],
+        },
         { status: 400 },
       );
     }

@@ -39,9 +39,11 @@ import {
 import {
   islandChainsBasesGeoJson,
   islandChainsChinaGeoJson,
+  islandChainsChinaHighlightGeoJson,
   islandChainsRadarGeoJson,
   islandChainsTaiwanPulseGeoJson,
   islandChainsUsGeoJson,
+  islandChainsUsHighlightGeoJson,
 } from "@/data/islandChains";
 
 /**
@@ -556,8 +558,26 @@ export const MapGlobeView = forwardRef<MapGlobeMethods, MapGlobeViewProps>(funct
   );
 
   const handleMapClick = useCallback(
-    (event: { lngLat: { lat: number; lng: number }; features?: { layer?: { id?: string }; properties?: { index?: number } }[] }) => {
+    (event: {
+      lngLat: { lat: number; lng: number };
+      features?: { layer?: { id?: string }; properties?: { index?: number; id?: unknown } }[];
+    }) => {
       const features = event.features ?? [];
+
+      /**
+       * 모바일엔 호버가 없다 — 기지를 탭하면 같은 방식으로 선이 드러나고,
+       * 빈 곳을 탭하면 닫힌다. (데스크톱 호버 동작은 그대로 유지)
+       */
+      const baseFeature = features.find((f) => f.layer?.id === "island-chains-bases");
+      const tappedBaseId = baseFeature?.properties?.id;
+      if (typeof tappedBaseId === "string" && tappedBaseId.length > 0) {
+        // 토글이 아니라 항상 선택 — 터치에서는 tap 직전 합성 mousemove가 이미
+        // 같은 값을 넣어두는 경우가 있어, 토글로 두면 즉시 꺼져 버린다.
+        setHoveredIslandBaseId(tappedBaseId);
+        return;
+      }
+      if (hoveredIslandBaseId) setHoveredIslandBaseId(null);
+
       for (const feature of features) {
         const layerId = feature.layer?.id;
         const index = feature.properties?.index;
@@ -579,7 +599,14 @@ export const MapGlobeView = forwardRef<MapGlobeMethods, MapGlobeViewProps>(funct
       }
       onGlobeClick?.({ lat: event.lngLat.lat, lng: event.lngLat.lng });
     },
-    [onGlobeClick, onPathClick, onPointClick, onPolygonClick, resolveFeature],
+    [
+      hoveredIslandBaseId,
+      onGlobeClick,
+      onPathClick,
+      onPointClick,
+      onPolygonClick,
+      resolveFeature,
+    ],
   );
 
   const handleMapMouseMove = useCallback(
@@ -728,13 +755,27 @@ export const MapGlobeView = forwardRef<MapGlobeMethods, MapGlobeViewProps>(funct
     };
   }, [mapLoaded, notifyChange]);
 
+  /**
+   * 체크박스가 켜지면 전체 선을 은은하게 상시 표시하고(발견성·안정감),
+   * 기지를 호버(모바일은 탭)하면 그 기지가 걸친 선만 위에 겹쳐 강조한다.
+   * 호버 전용으로 두면 선이 있는지조차 모르는 유저가 생겨서 둘을 함께 둔다.
+   */
+  const activeIslandBaseId = showIslandChains ? hoveredIslandBaseId : null;
   const chinaChainsFc = useMemo(() => islandChainsChinaGeoJson(), []);
   const usLinesFc = useMemo(() => islandChainsUsGeoJson(), []);
+  const chinaHighlightFc = useMemo(
+    () => islandChainsChinaHighlightGeoJson(activeIslandBaseId),
+    [activeIslandBaseId],
+  );
+  const usHighlightFc = useMemo(
+    () => islandChainsUsHighlightGeoJson(activeIslandBaseId),
+    [activeIslandBaseId],
+  );
   const basesFc = useMemo(() => islandChainsBasesGeoJson(), []);
   const taiwanPulseFc = useMemo(() => islandChainsTaiwanPulseGeoJson(), []);
   const radarFc = useMemo(
-    () => islandChainsRadarGeoJson(showIslandChains ? hoveredIslandBaseId : null),
-    [showIslandChains, hoveredIslandBaseId],
+    () => islandChainsRadarGeoJson(activeIslandBaseId),
+    [activeIslandBaseId],
   );
 
   /** 중국 도련선 점선 흐름 + 대만 펄스 — 100ms (내장 GPU 친화) */
@@ -1065,14 +1106,15 @@ export const MapGlobeView = forwardRef<MapGlobeMethods, MapGlobeViewProps>(funct
 
         {showIslandChains ? (
           <>
+            {/* 상시 표시 — 체크박스만 켜도 전체 선이 은은하게 보인다 */}
             <Source id="island-chains-china-source" type="geojson" data={chinaChainsFc}>
               <Layer
                 id="island-chains-china"
                 type="line"
                 paint={{
                   "line-color": ["coalesce", ["get", "color"], "#ef4444"],
-                  "line-width": 2,
-                  "line-opacity": 0.72,
+                  "line-width": 1.8,
+                  "line-opacity": 0.42,
                   "line-dasharray": [0, 4, 3],
                 }}
               />
@@ -1083,8 +1125,8 @@ export const MapGlobeView = forwardRef<MapGlobeMethods, MapGlobeViewProps>(funct
                 type="line"
                 paint={{
                   "line-color": ["coalesce", ["get", "color"], "#3b82f6"],
-                  "line-width": 7,
-                  "line-opacity": 0.22,
+                  "line-width": 6,
+                  "line-opacity": 0.14,
                   "line-blur": 1.2,
                 }}
               />
@@ -1093,11 +1135,62 @@ export const MapGlobeView = forwardRef<MapGlobeMethods, MapGlobeViewProps>(funct
                 type="line"
                 paint={{
                   "line-color": ["coalesce", ["get", "color"], "#3b82f6"],
-                  "line-width": 3.6,
-                  "line-opacity": 0.92,
+                  "line-width": 2.4,
+                  "line-opacity": 0.5,
                 }}
               />
             </Source>
+
+            {/* 호버·탭 강조 — 해당 기지가 걸친 선만 위에 겹쳐 촤악 살아난다 */}
+            {chinaHighlightFc.features.length > 0 ? (
+              <Source
+                id="island-chains-china-highlight-source"
+                type="geojson"
+                data={chinaHighlightFc}
+              >
+                <Layer
+                  id="island-chains-china-highlight"
+                  type="line"
+                  paint={{
+                    "line-color": ["coalesce", ["get", "color"], "#ef4444"],
+                    "line-width": 3.2,
+                    "line-opacity": 0.95,
+                    "line-dasharray": [0, 4, 3],
+                    "line-opacity-transition": { duration: 280, delay: 0 },
+                    "line-width-transition": { duration: 280, delay: 0 },
+                  }}
+                />
+              </Source>
+            ) : null}
+            {usHighlightFc.features.length > 0 ? (
+              <Source
+                id="island-chains-us-highlight-source"
+                type="geojson"
+                data={usHighlightFc}
+              >
+                <Layer
+                  id="island-chains-us-highlight-glow"
+                  type="line"
+                  paint={{
+                    "line-color": ["coalesce", ["get", "color"], "#3b82f6"],
+                    "line-width": 9,
+                    "line-opacity": 0.3,
+                    "line-blur": 1.4,
+                    "line-opacity-transition": { duration: 280, delay: 0 },
+                  }}
+                />
+                <Layer
+                  id="island-chains-us-highlight"
+                  type="line"
+                  paint={{
+                    "line-color": ["coalesce", ["get", "color"], "#3b82f6"],
+                    "line-width": 4,
+                    "line-opacity": 1,
+                    "line-opacity-transition": { duration: 280, delay: 0 },
+                  }}
+                />
+              </Source>
+            ) : null}
             <Source id="island-chains-taiwan-source" type="geojson" data={taiwanPulseFc}>
               <Layer
                 id="island-chains-taiwan-pulse"

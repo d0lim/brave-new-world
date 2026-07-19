@@ -31,8 +31,8 @@ export const THEATER_CHIP_LABELS: Record<NewsTheater, string> = {
 export const THEATER_FLY_TO: Record<NewsTheater, { lat: number; lng: number; altitude: number }> = {
   "middle-east": { lat: 29.2, lng: 42.5, altitude: 2.05 },
   "russia-ukraine": { lat: 48.5, lng: 34, altitude: 1.72 },
-  /** 푸젠·대만·오키나와·루손 북부 프레임 — navRegions `taiwan` 과 맞춤 */
-  "china-taiwan": { lat: 22.7, lng: 122.9, altitude: 0.98 },
+  /** 대만 해협 중심 핀포인트 (북위 24°29′ · 동경 119°30′) */
+  "china-taiwan": { lat: 24.48, lng: 119.5, altitude: 0.98 },
   /** 한반도 거의 풀프레임 — navRegions `korea` 과 맞춤 */
   korea: { lat: 38.0, lng: 127.3, altitude: 0.7 },
   japan: { lat: 36, lng: 138, altitude: 1.7 },

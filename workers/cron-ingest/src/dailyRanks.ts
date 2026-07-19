@@ -3,6 +3,14 @@
  * D1 라이브 스냅샷(GDELT / FIRMS / AIS)으로 UTC 날짜별 TOP 스냅샷을 upsert.
  */
 
+import { severityTierFromText } from "./telegramSeverity";
+import {
+  googleNewsVerificationByTheater,
+  verificationLevelFor,
+  VERIFICATION_FACTOR,
+  type VerificationLevel,
+} from "./newsVerification";
+
 export type DailyRankKind = "theater" | "chokepoint" | "world";
 
 export type DailyRankRow = {
@@ -205,8 +213,8 @@ const EMA_TODAY = 0.55;
 const EMA_PREV = 0.45;
 /** 전일 대비 하루 최대 변동 비율 */
 const MAX_DAY_DELTA_RATIO = 0.4;
-/** 전장별 베이스라인 창 — 최근 N일 대비 이탈(z-score) */
-const BASELINE_DAYS = 7;
+/** 전장별 베이스라인 창 — 최근 N일 대비 이탈(z-score). 가용 일수만큼 사용. */
+const BASELINE_DAYS = 90;
 /** 세계 긴장도 = 평균·최고치 혼합 (HOI World Tension / GPR 스타일 간판 숫자) */
 const WORLD_AVG_WEIGHT = 0.55;
 const WORLD_MAX_WEIGHT = 0.45;
@@ -217,13 +225,19 @@ type TheaterSignals = {
   points: number;
   fireCount: number;
   telegramCount: number;
+  airRaidScore: number;
 };
 
+/**
+ * soft: GDELT + telegram + air raid / hard: FIRMS
+ * soft 합 0.75 + hard 0.25 = 1.0
+ */
 const SIGNAL_WEIGHTS: Record<keyof TheaterSignals, number> = {
-  mentions: 0.22,
-  points: 0.28,
+  mentions: 0.2,
+  points: 0.25,
   fireCount: 0.25,
-  telegramCount: 0.25,
+  telegramCount: 0.2,
+  airRaidScore: 0.1,
 };
 
 /**
@@ -268,6 +282,7 @@ function extractTheaterSignals(detail: Record<string, unknown> | null): TheaterS
     points: Number(src?.points) || 0,
     fireCount: Number(src?.fireCount) || 0,
     telegramCount: Number(src?.telegramCount) || 0,
+    airRaidScore: Number(src?.airRaidScore) || 0,
   };
 }
 
@@ -300,30 +315,36 @@ function shiftUtcDate(isoDate: string, deltaDays: number): string {
   return utcRankDate(dt);
 }
 
-async function telegramCountByRegion(db: D1Database): Promise<Map<string, number>> {
-  const map = new Map<string, number>();
+/**
+ * 텔레그램 알림 하나하나의 내용 심각도(1/3/5)를 합산 — 아직 검증 게이팅 전 원값.
+ * 실제 점수 반영 시 scoreTheaters에서 구글뉴스 검증 상태에 따라
+ * (미확인이면 count로, 확인되면 severitySum으로) 최종 선택한다.
+ */
+async function telegramSeverityByTheater(
+  db: D1Database,
+): Promise<Map<string, { count: number; severitySum: number }>> {
+  const map = new Map<string, { count: number; severitySum: number }>();
   try {
     const { results } = await db
       .prepare(
-        `SELECT region AS id, COUNT(*) AS c
-         FROM telegram_alerts
-         WHERE region IS NOT NULL AND region != ''
-         GROUP BY region`,
+        `SELECT region, text FROM telegram_alerts
+         WHERE region IS NOT NULL AND region != ''`,
       )
-      .all<{ id: string; c: number }>();
+      .all<{ region: string; text: string | null }>();
     for (const row of results ?? []) {
-      map.set(String(row.id), Number(row.c) || 0);
+      const theaterId =
+        row.region === "ukraine" ? "ukraine" : row.region === "middle-east" ? "middle-east" : null;
+      if (!theaterId) continue;
+      const tier = severityTierFromText(row.text || "");
+      const entry = map.get(theaterId) ?? { count: 0, severitySum: 0 };
+      entry.count += 1;
+      entry.severitySum += tier;
+      map.set(theaterId, entry);
     }
   } catch {
     // ignore
   }
   return map;
-}
-
-function telegramForTheater(theaterId: string, byRegion: Map<string, number>): number {
-  if (theaterId === "ukraine") return byRegion.get("ukraine") ?? 0;
-  if (theaterId === "middle-east") return byRegion.get("middle-east") ?? 0;
-  return 0;
 }
 
 async function loadTheaterSignalHistory(
@@ -333,46 +354,143 @@ async function loadTheaterSignalHistory(
 ): Promise<Map<string, TheaterSignals[]>> {
   const map = new Map<string, TheaterSignals[]>();
   const startDate = shiftUtcDate(beforeDate, -days);
+
+  // 1) 내구 일별 집계 테이블 우선 (90일 기준선)
   try {
     const { results } = await db
       .prepare(
-        `SELECT entity_id, detail_json FROM daily_entity_ranks
-         WHERE kind = 'theater'
-           AND entity_id != ?1
-           AND rank_date >= ?2
-           AND rank_date < ?3`,
+        `SELECT signal_date, theater_id, mentions, points, fire_count,
+                telegram_count, air_raid_score
+         FROM theater_signal_daily
+         WHERE signal_date >= ?1 AND signal_date < ?2`,
       )
-      .bind(WORLD_ENTITY_ID, startDate, beforeDate)
-      .all<{ entity_id: string; detail_json: string | null }>();
+      .bind(startDate, beforeDate)
+      .all<{
+        signal_date: string;
+        theater_id: string;
+        mentions: number;
+        points: number;
+        fire_count: number;
+        telegram_count: number;
+        air_raid_score: number;
+      }>();
     for (const row of results ?? []) {
-      let parsed: Record<string, unknown> | null = null;
-      try {
-        parsed = row.detail_json ? (JSON.parse(row.detail_json) as Record<string, unknown>) : null;
-      } catch {
-        parsed = null;
-      }
-      const signals = extractTheaterSignals(parsed);
-      const list = map.get(row.entity_id) ?? [];
+      const signals: TheaterSignals = {
+        mentions: Number(row.mentions) || 0,
+        points: Number(row.points) || 0,
+        fireCount: Number(row.fire_count) || 0,
+        telegramCount: Number(row.telegram_count) || 0,
+        airRaidScore: Number(row.air_raid_score) || 0,
+      };
+      const list = map.get(row.theater_id) ?? [];
       list.push(signals);
-      map.set(row.entity_id, list);
+      map.set(row.theater_id, list);
     }
   } catch {
-    // first run / missing table
+    // migration 0014 전
   }
+
+  // 갭 보완: daily_entity_ranks.detail_json (표본이 얇을 때)
+  const needFallback = [...map.values()].every((l) => l.length < Math.min(7, days));
+  if (needFallback || map.size === 0) {
+    try {
+      const { results } = await db
+        .prepare(
+          `SELECT entity_id, detail_json FROM daily_entity_ranks
+           WHERE kind = 'theater'
+             AND entity_id != ?1
+             AND rank_date >= ?2
+             AND rank_date < ?3`,
+        )
+        .bind(WORLD_ENTITY_ID, startDate, beforeDate)
+        .all<{ entity_id: string; detail_json: string | null }>();
+      for (const row of results ?? []) {
+        if ((map.get(row.entity_id)?.length ?? 0) >= days) continue;
+        let parsed: Record<string, unknown> | null = null;
+        try {
+          parsed = row.detail_json
+            ? (JSON.parse(row.detail_json) as Record<string, unknown>)
+            : null;
+        } catch {
+          parsed = null;
+        }
+        const signals = extractTheaterSignals(parsed);
+        const list = map.get(row.entity_id) ?? [];
+        list.push(signals);
+        map.set(row.entity_id, list);
+      }
+    } catch {
+      // first run / missing table
+    }
+  }
+
   return map;
 }
 
+async function persistTheaterSignalDaily(
+  db: D1Database,
+  rankDate: string,
+  byTheater: Map<string, TheaterSignals>,
+): Promise<void> {
+  const updatedAt = new Date().toISOString();
+  const stmts: D1PreparedStatement[] = [];
+  for (const [theaterId, s] of byTheater) {
+    stmts.push(
+      db
+        .prepare(
+          `INSERT INTO theater_signal_daily (
+             signal_date, theater_id, mentions, points, fire_count,
+             telegram_count, air_raid_score, updated_at
+           ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)
+           ON CONFLICT(signal_date, theater_id) DO UPDATE SET
+             mentions = excluded.mentions,
+             points = excluded.points,
+             fire_count = excluded.fire_count,
+             telegram_count = excluded.telegram_count,
+             air_raid_score = excluded.air_raid_score,
+             updated_at = excluded.updated_at`,
+        )
+        .bind(
+          rankDate,
+          theaterId,
+          s.mentions,
+          s.points,
+          s.fireCount,
+          s.telegramCount,
+          s.airRaidScore,
+          updatedAt,
+        ),
+    );
+  }
+  if (stmts.length > 0) {
+    try {
+      await db.batch(stmts);
+    } catch {
+      // table may not exist until migration 0014
+    }
+  }
+}
+
 /**
- * 전장 긴장도 — 절대 카운트가 아니라 최근 7일 베이스라인 대비 z-score 가중합.
+ * 전장 긴장도 — 절대 카운트가 아니라 최근 최대 90일 베이스라인 대비 z-score 가중합.
  * 우크라 일상 포격은 평범, 대만해협 평소 3배 활동이 진짜 신호.
+ *
+ * soft(주장 기반: GDELT mentions·points, 텔레그램, 공습경보) / hard(FIRMS 위성 열원) 로 나눠서,
+ * soft 쪽에만 구글뉴스 검증계수(0.5/1.0/1.2)를 곱한다. 텔레그램 내용 심각도(1/3/5)도
+ * 그 전장이 구글뉴스로 확인되기 전엔 무조건 1(기본)로 클램프 — 검증 안 된 자극적
+ * 문구가 그 자체로 점수를 올리는 조작 구멍을 막는다.
  */
 async function scoreTheaters(db: D1Database, rankDate: string): Promise<ScoredEntity[]> {
   const gdelt = await gdeltMentionByTag(db);
   const firms = await firmsCountByTheater(db);
-  const telegram = await telegramCountByRegion(db);
+  const telegramSeverity = await telegramSeverityByTheater(db);
+  const verification = await googleNewsVerificationByTheater(db);
+  const { airRaidScoreByTheater } = await import("./airRaidIngest");
+  const airRaids = await airRaidScoreByTheater(db, 24);
   const history = await loadTheaterSignalHistory(db, rankDate, BASELINE_DAYS);
+  const todayByTheater = new Map<string, TheaterSignals>();
 
-  return THEATERS.map((theater) => {
+  const scored = THEATERS.map((theater) => {
     let mentions = 0;
     let points = 0;
     for (const tag of theater.gdeltTags) {
@@ -385,8 +503,22 @@ async function scoreTheaters(db: D1Database, rankDate: string): Promise<ScoredEn
     for (const id of theater.firmsIds) {
       fireCount += firms.get(id) ?? 0;
     }
-    const telegramCount = telegramForTheater(theater.id, telegram);
-    const today: TheaterSignals = { mentions, points, fireCount, telegramCount };
+
+    const level: VerificationLevel = verificationLevelFor(theater.id, verification);
+    const verificationFactor = VERIFICATION_FACTOR[level];
+    const tSeverity = telegramSeverity.get(theater.id) ?? { count: 0, severitySum: 0 };
+    // 미확인이면 내용 등급 무시하고 count(전부 tier 1 취급)만, 확인되면 심각도 합산치 사용
+    const telegramCount = level === "unverified" ? tSeverity.count : tSeverity.severitySum;
+    const airRaidScore = airRaids.get(theater.id) ?? 0;
+
+    const today: TheaterSignals = {
+      mentions,
+      points,
+      fireCount,
+      telegramCount,
+      airRaidScore,
+    };
+    todayByTheater.set(theater.id, today);
     const past = history.get(theater.id) ?? [];
 
     const zMentions = zScore(
@@ -405,12 +537,18 @@ async function scoreTheaters(db: D1Database, rankDate: string): Promise<ScoredEn
       today.telegramCount,
       past.map((p) => p.telegramCount),
     );
+    const zAirRaid = zScore(
+      today.airRaidScore,
+      past.map((p) => p.airRaidScore),
+    );
 
-    const weightedZ =
+    const softZ =
       zMentions * SIGNAL_WEIGHTS.mentions +
       zPoints * SIGNAL_WEIGHTS.points +
-      zFire * SIGNAL_WEIGHTS.fireCount +
-      zTelegram * SIGNAL_WEIGHTS.telegramCount;
+      zTelegram * SIGNAL_WEIGHTS.telegramCount +
+      zAirRaid * SIGNAL_WEIGHTS.airRaidScore;
+    const hardZ = zFire * SIGNAL_WEIGHTS.fireCount;
+    const weightedZ = softZ * verificationFactor + hardZ;
 
     const rawScore = weightedZToScore(weightedZ);
     return {
@@ -419,24 +557,35 @@ async function scoreTheaters(db: D1Database, rankDate: string): Promise<ScoredEn
       labelEn: theater.labelEn,
       score: rawScore,
       detail: {
-        methodology: "baseline-zscore-7d",
+        methodology: "baseline-zscore-90d-verified-airraid",
         baselineDays: BASELINE_DAYS,
         baselineSamples: past.length,
         mentions,
         points,
         fireCount,
         telegramCount,
+        airRaidScore,
+        telegramRawCount: tSeverity.count,
+        telegramSeveritySum: tSeverity.severitySum,
+        verificationLevel: level,
+        verificationFactor,
         tags: theater.gdeltTags,
         zScores: {
           mentions: Math.round(zMentions * 100) / 100,
           points: Math.round(zPoints * 100) / 100,
           fireCount: Math.round(zFire * 100) / 100,
           telegramCount: Math.round(zTelegram * 100) / 100,
+          airRaidScore: Math.round(zAirRaid * 100) / 100,
+          soft: Math.round(softZ * 100) / 100,
+          hard: Math.round(hardZ * 100) / 100,
           weighted: Math.round(weightedZ * 100) / 100,
         },
       },
     };
   });
+
+  await persistTheaterSignalDaily(db, rankDate, todayByTheater);
+  return scored;
 }
 
 function computeWorldTension(theaterScores: number[]): number {

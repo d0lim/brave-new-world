@@ -5,11 +5,12 @@ import type { LabelLanguage } from "@/lib/layerPrefs";
 import type { ViewerMode } from "@/lib/viewPackages";
 
 /**
- * 매일 등불 브리핑 — 지정학·지경학 각각 하루 1회.
+ * 매일 등불 브리핑 — 지정학·지경학 각각 하루 종일 이용.
  *
  * - 첫 방문: 입장 인트로(경고→편지→도메인)가 끝난 뒤에 점화
- * - 재방문: 로컬 자정 기준 그날 아직 안 봤으면 모드별 양피지
- * - seen 키 = `daily-YYYY-MM-DD-{conflict|economy}`
+ * - 접기: 양피지를 접어 두고, 같은 날 칩으로 다시 펼칠 수 있음
+ * - 뉴스 본문: 로컬 시각 기준 6시간 슬롯(0·6·12·18시)마다 갱신
+ * - 모드 키 = `daily-YYYY-MM-DD-{conflict|economy}`
  * - 본문 = (지경학) SOTW market-lamp → D1 집계 → 큐레이션 폴백
  * - 서술 뼈대 = 육하원칙(누가·언제·어디서·무엇을·왜·어떻게)을 논리 순서로 따르는 정부 정례 브리핑 어조
  */
@@ -18,6 +19,9 @@ export type BriefingTier = "monthly" | "weekly" | "daily";
 
 /** 등불 카드에 보이는 요약 상한 — RSS 본문 스니펫(1000)과 분리 */
 export const LAMP_DISPLAY_SUMMARY_MAX = 320;
+
+/** 등불 뉴스 콘텐츠 갱신 주기 (6시간) */
+export const LAMP_CONTENT_SLOT_HOURS = 6;
 
 /** 지경학·지정학 등불 — 사진 필수 초대형 뉴스 카드 */
 export type LampFeaturedNews = {
@@ -46,8 +50,10 @@ export type LampMacroRow = {
 
 export type PeriodicBriefing = {
   tier: BriefingTier;
-  /** 등불 seen 키 — 캘린더 일 + 뷰어 모드 */
+  /** 등불 모드 키 — 캘린더 일 + 뷰어 모드 */
   key: string;
+  /** 콘텐츠 슬롯 — `daily-YYYY-MM-DD-s0` … s3 (6시간) */
+  contentSlot?: string;
   title: string;
   paragraphs: string[];
   /** 대형 양피지 — 사진 있는 시장·전장 뉴스 */
@@ -63,14 +69,42 @@ export type PeriodicBriefing = {
 };
 
 const STORAGE_PREFIX = "cv-periodic-brief-seen-";
+/** 그날 접어 둔 등불 — 다시 펼치기용 (하루 종일 유지) */
+const FOLDED_PREFIX = "cv-periodic-brief-folded-";
+/** 월요일 주간 회고 접힘 */
+const WEEKLY_RECAP_FOLDED_PREFIX = "cv-weekly-recap-folded-";
 
 function pad2(n: number): string {
   return String(n).padStart(2, "0");
 }
 
-/** 브라우저 로컬 캘린더 날짜 키 — 등불 seen / 자정 감지의 기준 */
+/** 브라우저 로컬 캘린더 날짜 키 — 등불 모드 키 / 자정 감지의 기준 */
 export function localCalendarDayKey(now: Date = new Date()): string {
   return `daily-${now.getFullYear()}-${pad2(now.getMonth() + 1)}-${pad2(now.getDate())}`;
+}
+
+/** 0–3: 0–5시 / 6–11시 / 12–17시 / 18–23시 */
+export function lampContentSlotIndex(now: Date = new Date()): number {
+  return Math.floor(now.getHours() / LAMP_CONTENT_SLOT_HOURS);
+}
+
+/** 등불 뉴스 콘텐츠 슬롯 키 (6시간 단위) */
+export function lampContentSlotKey(now: Date = new Date()): string {
+  return `${localCalendarDayKey(now)}-s${lampContentSlotIndex(now)}`;
+}
+
+/** 다음 6시간 슬롯까지 남은 ms */
+export function msUntilNextLampContentSlot(now: Date = new Date()): number {
+  const slotHours = LAMP_CONTENT_SLOT_HOURS;
+  const nextHour = (Math.floor(now.getHours() / slotHours) + 1) * slotHours;
+  const next = new Date(now);
+  if (nextHour >= 24) {
+    next.setDate(next.getDate() + 1);
+    next.setHours(0, 0, 0, 0);
+  } else {
+    next.setHours(nextHour, 0, 0, 0);
+  }
+  return Math.max(1_000, next.getTime() - now.getTime());
 }
 
 function isoWeek(date: Date): { year: number; week: number } {
@@ -96,7 +130,32 @@ function isWeekend(date: Date): boolean {
   return day === 0 || day === 6;
 }
 
-/** 카피/집계 티어 — 월말 > 주말 > 평일 (동시에 하나만) */
+/** 로컬 월요일 — 지난 ISO 주 회고 양피지를 띄울 때 */
+export function isLocalMonday(now: Date = new Date()): boolean {
+  return now.getDay() === 1;
+}
+
+/** 지난주 ISO 주 period_key (`weekly-YYYY-Www`) — 월요일 회고용 */
+export function previousWeeklyPeriodKey(now: Date = new Date()): string {
+  const ref = new Date(now);
+  ref.setDate(ref.getDate() - 3); // 월요일이면 지난주로 확실히 들어감
+  const { year, week } = isoWeek(ref);
+  return `weekly-${year}-W${pad2(week)}`;
+}
+
+/**
+ * 월요일 지난주 회고 오퍼.
+ * 평일·주말엔 null — 등불 일간 파이프와 분리.
+ */
+export function resolveMondayWeeklyRecap(now: Date = new Date()): {
+  weekKey: string;
+  tier: "weekly";
+} | null {
+  if (!isLocalMonday(now)) return null;
+  return { weekKey: previousWeeklyPeriodKey(now), tier: "weekly" };
+}
+
+/** 카피/집계 티어 — 월말 > 주말 > 평일 (동시에 하나만). 월요일 회고는 resolveMondayWeeklyRecap 사용. */
 export function resolvePeriodTier(now: Date = new Date()): { tier: BriefingTier; key: string } {
   if (isMonthEndWindow(now)) {
     const ref =
@@ -116,21 +175,28 @@ export function resolvePeriodTier(now: Date = new Date()): { tier: BriefingTier;
   };
 }
 
-/** 등불 주기 = 로컬 캘린더 하루. 티어는 카피용. */
+/** 등불 주기 = 로컬 캘린더 하루. 티어는 카피용. 콘텐츠는 6시간 슬롯. */
 export function resolveLampPeriod(now: Date = new Date()): {
   dayKey: string;
   tier: BriefingTier;
   statsKey: string;
+  contentSlot: string;
 } {
   const { tier, key: statsKey } = resolvePeriodTier(now);
-  return { dayKey: localCalendarDayKey(now), tier, statsKey };
+  return {
+    dayKey: localCalendarDayKey(now),
+    tier,
+    statsKey,
+    contentSlot: lampContentSlotKey(now),
+  };
 }
 
-/** 모드별 일일 등불 seen 키 — 지정학·지경학 각각 하루 1회 */
+/** 모드별 일일 등불 키 — 지정학·지경학 각각 하루 단위 */
 export function lampSeenKey(dayKey: string, mode: ViewerMode): string {
   return `${dayKey}-${mode}`;
 }
 
+/** @deprecated 하루 종일 이용으로 전환 — 접힘 상태는 hasFoldedLamp 사용 */
 export function hasSeenPeriod(key: string): boolean {
   if (typeof window === "undefined") return true;
   try {
@@ -140,6 +206,7 @@ export function hasSeenPeriod(key: string): boolean {
   }
 }
 
+/** @deprecated 접기만으로는 하루 종료하지 않음 */
 export function markPeriodSeen(key: string): void {
   if (typeof window === "undefined") return;
   try {
@@ -147,6 +214,92 @@ export function markPeriodSeen(key: string): void {
   } catch {
     /* ignore */
   }
+}
+
+export function hasFoldedLamp(key: string): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    return window.localStorage.getItem(FOLDED_PREFIX + key) === "1";
+  } catch {
+    return false;
+  }
+}
+
+export function markLampFolded(key: string): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(FOLDED_PREFIX + key, "1");
+  } catch {
+    /* ignore */
+  }
+}
+
+export function clearLampFolded(key: string): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.removeItem(FOLDED_PREFIX + key);
+  } catch {
+    /* ignore */
+  }
+}
+
+/** 월요일 주간 회고 storage 키 — `weekly-YYYY-Www-{conflict|economy}` */
+export function weeklyRecapStorageKey(weekKey: string, mode: ViewerMode): string {
+  return `${weekKey}-${mode}`;
+}
+
+export function hasFoldedWeeklyRecap(key: string): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    return window.localStorage.getItem(WEEKLY_RECAP_FOLDED_PREFIX + key) === "1";
+  } catch {
+    return false;
+  }
+}
+
+export function markWeeklyRecapFolded(key: string): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(WEEKLY_RECAP_FOLDED_PREFIX + key, "1");
+  } catch {
+    /* ignore */
+  }
+}
+
+export function clearWeeklyRecapFolded(key: string): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.removeItem(WEEKLY_RECAP_FOLDED_PREFIX + key);
+  } catch {
+    /* ignore */
+  }
+}
+
+/** 주간 회고 양피지 제목 — 「지난주 리캡」리듬 */
+export function weeklyRecapTitle(
+  viewerMode: ViewerMode,
+  lang: LabelLanguage,
+  focusLine?: string,
+): string {
+  const ko = lang !== "en";
+  const econ = viewerMode === "economy";
+  const kicker = ko
+    ? econ
+      ? "지난주 시장 회고"
+      : "지난주 전장 회고"
+    : econ
+      ? "Last week's market recap"
+      : "Last week's theater recap";
+  const focus =
+    focusLine?.trim() ||
+    (ko
+      ? econ
+        ? "한 주간의 가격·물류·제재 신호"
+        : "한 주간의 전선·외교·열원 신호"
+      : econ
+        ? "A week of prices, logistics, and sanctions"
+        : "A week of fronts, diplomacy, and heat");
+  return `${kicker}\n${focus}`;
 }
 
 function hashKeyToIndex(key: string, mod: number): number {
@@ -224,12 +377,12 @@ function buildGeoFallback(tier: BriefingTier, dayKey: string, lang: LabelLanguag
           // 무엇을 · 왜
           episode.briefing,
           // 어떻게
-          "이상은 확인된 과거 기록에 근거한 정리이며, 오늘의 긴장을 판단하는 참고 자료입니다. 상세 내용은 지도 허브 「반서방국 충돌사」에서 확인하실 수 있습니다. 다음 보고는 자정 기준으로 갱신됩니다.",
+          "이상은 확인된 과거 기록에 근거한 정리이며, 오늘의 긴장을 판단하는 참고 자료입니다. 상세 내용은 지도 허브 「반서방국 충돌사」에서 확인하실 수 있습니다. 다음 보고는 6시간마다 갱신됩니다.",
         ]
       : [
           `Briefing. In ${yearText}, at ${episode.locationName}, ${who} collided. With live aggregates empty, today's report uses this case as reference material.`,
           episode.briefing,
-          "The above is drawn from verified historical record and serves as reference for reading today's tension. Full detail is available in the Frictions hub. The next report updates at local midnight.",
+          "The above is drawn from verified historical record and serves as reference for reading today's tension. Full detail is available in the Frictions hub. The next report updates every 6 hours.",
         ],
   };
 }
@@ -260,7 +413,7 @@ function buildEconFallback(tier: BriefingTier, dayKey: string, lang: LabelLangua
         // 무엇을 · 왜
         ...whatWhy.slice(0, 2),
         // 어떻게
-        "이상은 확인된 자료에 근거한 정리이며, 수치는 시리즈별 기준 시점이 다를 수 있습니다. 다음 보고는 자정 기준으로 갱신됩니다.",
+        "이상은 확인된 자료에 근거한 정리이며, 수치는 시리즈별 기준 시점이 다를 수 있습니다. 다음 보고는 6시간마다 갱신됩니다.",
       ],
     };
   }
@@ -273,7 +426,7 @@ function buildEconFallback(tier: BriefingTier, dayKey: string, lang: LabelLangua
       `Briefing. Today's market report covers ${brief.titleEn}. With live aggregates empty, this draws on standing analysis.`,
       brief.impactLine,
       ...brief.paragraphs.slice(0, 2),
-      "This organizes verified material only; series may differ in reference date. The next report updates at local midnight.",
+      "This organizes verified material only; series may differ in reference date. The next report updates every 6 hours.",
     ],
   };
 }
@@ -386,8 +539,8 @@ export function buildBriefingFromStats(
     // 어떻게
     paragraphs.push(
       econ
-        ? "종합하면, 본 보고는 누가·언제·어디서·무엇을·왜·어떻게 순서로 확인된 사실만 정리한 것입니다. 수치는 시리즈별 기준 시점이 달라 단정적 해석은 유보합니다. 다음 보고는 자정 기준으로 갱신됩니다."
-        : "종합하면, 본 보고는 확인된 관측 사실을 육하원칙 순서로 정리한 것이며 추정·전망은 포함하지 않았습니다. 다음 보고는 자정 기준으로 갱신됩니다.",
+        ? "종합하면, 본 보고는 누가·언제·어디서·무엇을·왜·어떻게 순서로 확인된 사실만 정리한 것입니다. 수치는 시리즈별 기준 시점이 달라 단정적 해석은 유보합니다. 다음 보고는 6시간마다 갱신됩니다."
+        : "종합하면, 본 보고는 확인된 관측 사실을 육하원칙 순서로 정리한 것이며 추정·전망은 포함하지 않았습니다. 다음 보고는 6시간마다 갱신됩니다.",
     );
   } else {
     paragraphs.push(
@@ -413,7 +566,7 @@ export function buildBriefingFromStats(
       paragraphs.push(`Context: ${hot || placeNames} responded first and most strongly in this window.`);
     }
     paragraphs.push(
-      "In summary, this report organizes verified observations in 5W1H order and excludes projection. The next report updates at local midnight.",
+      "In summary, this report organizes verified observations in 5W1H order and excludes projection. The next report updates every 6 hours.",
     );
   }
 

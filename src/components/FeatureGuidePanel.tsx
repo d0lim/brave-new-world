@@ -10,6 +10,8 @@ type FeatureGuidePanelProps = {
   open: boolean;
   viewerMode?: ViewerMode;
   onClose: () => void;
+  /** 첫 방문 1~10 투어 다시 보기 */
+  onRestartTour?: () => void;
 };
 
 type GuideSection = {
@@ -169,7 +171,12 @@ const ECONOMY_GUIDE_SECTIONS: GuideSection[] = [
   ...ACCOUNT_GUIDE_SECTIONS,
 ];
 
-export function FeatureGuidePanel({ open, viewerMode = "conflict", onClose }: FeatureGuidePanelProps) {
+export function FeatureGuidePanel({
+  open,
+  viewerMode = "conflict",
+  onClose,
+  onRestartTour,
+}: FeatureGuidePanelProps) {
   if (!open) return null;
   const sections = viewerMode === "economy" ? ECONOMY_GUIDE_SECTIONS : GUIDE_SECTIONS;
 
@@ -200,6 +207,21 @@ export function FeatureGuidePanel({ open, viewerMode = "conflict", onClose }: Fe
           </button>
         </div>
         <div className="flex-1 space-y-4 overflow-y-auto px-4 py-4">
+          {onRestartTour ? (
+            <button
+              type="button"
+              onClick={() => {
+                onClose();
+                onRestartTour();
+              }}
+              className="w-full rounded-xl border border-amber-300/35 bg-amber-500/10 px-3 py-2.5 text-left text-[12px] font-medium text-amber-50 transition hover:border-amber-200/50 hover:bg-amber-500/15"
+            >
+              화면 투어 1→10 다시 보기
+              <span className="mt-0.5 block text-[10px] font-normal text-amber-100/60">
+                지구본·탐색·레이어·뉴스 시트·알림을 순서대로 가리킵니다
+              </span>
+            </button>
+          ) : null}
           {sections.map((section) => (
             <section key={section.title} className="rounded-xl border border-sky-300/12 bg-black/20 p-3">
               <h3 className="text-sm font-medium text-sky-50/95">{section.title}</h3>
@@ -233,6 +255,7 @@ export function FeatureGuideButton({
     >
       <button
         type="button"
+        id="feature-guide-button"
         aria-label={t("hoverHelpOpenAria")}
         onClick={onClick}
         className="flex h-10 shrink-0 items-center justify-center rounded-xl border border-sky-200/15 bg-[#1e3a5f]/55 px-2.5 text-[11px] font-medium text-sky-50/90 shadow-lg backdrop-blur-md transition hover:border-sky-200/30 hover:bg-[#254875]/65"

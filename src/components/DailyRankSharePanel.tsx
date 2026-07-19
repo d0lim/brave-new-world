@@ -21,6 +21,7 @@ import {
   wtiBand,
   wtiBandLabel,
 } from "@/lib/wti";
+import { BunkerSentimentVote } from "@/components/BunkerSentimentVote";
 
 type DailyRankSharePanelProps = {
   lang: LabelLanguage;
@@ -84,6 +85,7 @@ function WorldTensionHero({
           ? "서비스의 단일 기축. 전장별 GDELT·FIRMS·텔레그램을 7일 평균 대비 z-score로 정규화한 뒤 가중합. VIX·GPR처럼 이 숫자가 사운드·브리핑·예측을 구동합니다."
           : "Product spine index. Theater GDELT / FIRMS / Telegram z-scored vs 7-day baseline, then blended. Like VIX or GPR — this number drives sound, briefing, and the daily puzzle."}
       </p>
+      <BunkerSentimentVote lang={lang} />
     </div>
   );
 }

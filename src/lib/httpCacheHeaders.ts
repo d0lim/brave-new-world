@@ -50,6 +50,8 @@ export const CDN_CACHE = {
   /** briefing / daily-prompt */
   briefing: { sMaxAge: 60, swr: 180 } satisfies PublicCacheOpts,
   dailyPrompt: { sMaxAge: 120, swr: 300 } satisfies PublicCacheOpts,
+  /** 진행형 분쟁 — 일일 갱신, CDN 짧게 */
+  livingConflict: { sMaxAge: 120, swr: 600 } satisfies PublicCacheOpts,
   carriers: { sMaxAge: 120, swr: 300 } satisfies PublicCacheOpts,
   tunnels: { sMaxAge: 300, swr: 900 } satisfies PublicCacheOpts,
 } as const;

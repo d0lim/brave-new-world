@@ -124,6 +124,12 @@ export function TomorrowTensionModal({ lang, prompt, onDismiss }: Props) {
   const share = useCallback(async () => {
     setShareBusy(true);
     try {
+      const prefs = readDailyPredictPrefs();
+      const tierLabel = localAnalystTierLabel(ko ? "ko" : "en", prefs);
+      const rate =
+        prefs.attempts > 0
+          ? Math.round((100 * prefs.hits) / prefs.attempts)
+          : null;
       const blob = await renderTensionStreakCard({
         lang: ko ? "ko" : "en",
         streak,
@@ -131,24 +137,47 @@ export function TomorrowTensionModal({ lang, prompt, onDismiss }: Props) {
         label: ko ? prompt.labelKo : prompt.labelEn,
         pick,
         date: targetDate,
+        tierLabel,
+        hits: prefs.hits,
+        attempts: prefs.attempts,
       });
       if (!blob) return;
       await shareOrDownloadImageBlob(
         blob,
-        `tension-streak-${targetDate}.png`,
-        ko ? `${WTI.ticker} 예측` : `${WTI.ticker} call`,
+        `analyst-tier-${targetDate}.png`,
+        ko ? `${WTI.ticker} 애널리스트` : `${WTI.ticker} analyst`,
         ko
-          ? `🎯 ${streak}일 연속 · ${WTI.ticker} · 멋진 신세계`
-          : `🎯 ${streak}-day streak · ${WTI.ticker} · Brave New World`,
+          ? rate != null
+            ? `적중률 ${rate}% · ${tierLabel} · ${WTI.ticker}`
+            : `${tierLabel} · ${WTI.ticker}`
+          : rate != null
+            ? `${rate}% hit · ${tierLabel} · ${WTI.ticker}`
+            : `${tierLabel} · ${WTI.ticker}`,
       );
-      trackEvent("daily_predict_share", { streak, targetDate, spine: "WTI" }, { lang });
+      trackEvent(
+        "analyst_tier_share_success",
+        {
+          streak,
+          targetDate,
+          spine: "WTI",
+          hits: prefs.hits,
+          attempts: prefs.attempts,
+          tier: tierLabel,
+        },
+        { lang },
+      );
     } finally {
       setShareBusy(false);
     }
   }, [ko, streak, lastHit, prompt, pick, targetDate, lang]);
 
   const question = ko ? prompt.questionKo : prompt.questionEn;
-  const tierLabel = localAnalystTierLabel(ko ? "ko" : "en");
+  const prefsSnap = readDailyPredictPrefs();
+  const tierLabel = localAnalystTierLabel(ko ? "ko" : "en", prefsSnap);
+  const hitRate =
+    prefsSnap.attempts > 0
+      ? Math.round((100 * prefsSnap.hits) / prefsSnap.attempts)
+      : null;
 
   return (
     <div
@@ -162,9 +191,24 @@ export function TomorrowTensionModal({ lang, prompt, onDismiss }: Props) {
           <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-amber-300/90">
             {ko ? `${WTI.ticker} · 내일의 세계 긴장도` : `${WTI.ticker} · Tomorrow’s tension`}
           </p>
+          <p className="mt-2 text-2xl font-semibold leading-tight text-amber-50">
+            {hitRate != null
+              ? ko
+                ? `적중률 ${hitRate}% · ${tierLabel}`
+                : `${hitRate}% hit · ${tierLabel}`
+              : tierLabel}
+          </p>
+          <p className="mt-1 text-[11px] text-slate-500">
+            {ko ? `연속 ${streak}일` : `streak ${streak}d`}
+            {yesterdayPct != null
+              ? ko
+                ? ` · 어제 전체 ${yesterdayPct}% 적중`
+                : ` · yesterday crowd ${yesterdayPct}%`
+              : ""}
+          </p>
           <h2
             id="tomorrow-tension-title"
-            className="mt-2 text-lg font-medium leading-snug text-slate-100"
+            className="mt-3 text-base font-medium leading-snug text-slate-200"
           >
             {question}
           </h2>
@@ -203,15 +247,6 @@ export function TomorrowTensionModal({ lang, prompt, onDismiss }: Props) {
         </div>
 
         <div className="flex flex-wrap items-center justify-between gap-2 border-t border-white/10 px-5 py-3 text-[11px] text-slate-500">
-          <span>
-            {tierLabel}
-            {ko ? ` · 연속 ${streak}일` : ` · streak ${streak}d`}
-            {yesterdayPct != null
-              ? ko
-                ? ` · 어제 ${yesterdayPct}% 적중`
-                : ` · yesterday ${yesterdayPct}%`
-              : ""}
-          </span>
           <span className="tabular-nums">UTC {targetDate}</span>
         </div>
 
@@ -220,7 +255,10 @@ export function TomorrowTensionModal({ lang, prompt, onDismiss }: Props) {
             <button
               type="button"
               disabled={shareBusy}
-              onClick={() => void share()}
+              onClick={() => {
+                trackEvent("analyst_tier_share_click", { targetDate }, { lang });
+                void share();
+              }}
               className="flex-1 rounded-lg border border-amber-500/40 bg-amber-950/40 py-2.5 text-sm text-amber-100 hover:bg-amber-900/40 disabled:opacity-50"
             >
               {shareBusy
@@ -228,8 +266,8 @@ export function TomorrowTensionModal({ lang, prompt, onDismiss }: Props) {
                   ? "카드 만드는 중…"
                   : "Rendering…"
                 : ko
-                  ? "결과 카드 공유"
-                  : "Share card"}
+                  ? "등급 카드 공유"
+                  : "Share tier card"}
             </button>
           ) : null}
           <button

@@ -510,6 +510,17 @@ export const NEWS_LAYER_SOURCE_CATALOG: NewsLayerSourceNote[] = [
     status: "shipped",
     ingest: "cached-api",
   },
+  {
+    layerId: "living-conflict-taiwan",
+    source: "GDELT Doc 2.0 (query_tag=taiwan-tension) · optional Telegram OSINT",
+    url: "/api/living-conflict/taiwan-strait",
+    cadence: "Cron heuristic curate · daily · seed baseline always available",
+    attribution: "GDELT Project · Telegram public channels (when available)",
+    notes:
+      "진행형 대만해협 타임라인. LLM 없이 점수·시간 상위 헤드라인을 1~2줄로 압축. 「자동 요약 · 오보 가능」 고지. 수동 검수는 시드/JSON 덮어쓰기.",
+    status: "shipped",
+    ingest: "cached-api",
+  },
 ];
 
 export function getSourceNote(layerId: string): NewsLayerSourceNote | undefined {

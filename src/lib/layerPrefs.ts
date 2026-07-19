@@ -1,3 +1,8 @@
+import {
+  finalizeLayerPrefsWithAffinity,
+  noteLayerAffinityAttendance,
+} from "@/lib/layerAffinityPrefs";
+
 export type LabelLanguage = "en" | "ko";
 
 export type LayerPrefs = {
@@ -316,14 +321,16 @@ export function loadLayerPrefs(): LayerPrefs {
   try {
     const v21Raw = localStorage.getItem(LAYER_PREFS_KEY);
     if (v21Raw) {
-      return mergeSavedPrefs(JSON.parse(v21Raw) as SavedLayerPrefs);
+      return finalizeLayerPrefsWithAffinity(
+        mergeSavedPrefs(JSON.parse(v21Raw) as SavedLayerPrefs),
+      );
     }
 
     const v19Raw = localStorage.getItem("geowatch-layers-v19");
     if (v19Raw) {
       const migrated = migrateV19ToV20(JSON.parse(v19Raw) as SavedLayerPrefs);
       saveLayerPrefs(migrated);
-      return migrated;
+      return finalizeLayerPrefsWithAffinity(migrated);
     }
 
     for (const legacyKey of LEGACY_LAYER_KEYS) {
@@ -331,11 +338,14 @@ export function loadLayerPrefs(): LayerPrefs {
       if (!legacyRaw) continue;
       const migrated = mergeSavedPrefs(JSON.parse(legacyRaw) as SavedLayerPrefs);
       saveLayerPrefs(migrated);
-      return migrated;
+      return finalizeLayerPrefsWithAffinity(migrated);
     }
 
     // 첫 방문(저장된 prefs 없음) — 리퍼러/브라우저 언어로 기본 표시 언어만 추정
-    return { ...DEFAULT_LAYER_PREFS, labelLanguage: detectDefaultLabelLanguage() };
+    return finalizeLayerPrefsWithAffinity({
+      ...DEFAULT_LAYER_PREFS,
+      labelLanguage: detectDefaultLabelLanguage(),
+    });
   } catch {
     return DEFAULT_LAYER_PREFS;
   }
@@ -345,4 +355,5 @@ export function saveLayerPrefs(prefs: LayerPrefs) {
   if (typeof window === "undefined") return;
   if (!shouldPersistLayerPrefs()) return;
   localStorage.setItem(LAYER_PREFS_KEY, JSON.stringify(prefs));
+  noteLayerAffinityAttendance(prefs);
 }

@@ -35,6 +35,9 @@ export function DailyPredictPanel({
   const [prefs, setPrefs] = useState<DailyPredictPrefs | null>(null);
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<"idle" | "ok" | "err">("idle");
+  /** 어제 정산 결과 — 1:1 맞대결 표시용 */
+  const [yesterdayWinner, setYesterdayWinner] = useState<string | null>(null);
+  const [opponentPick, setOpponentPick] = useState<"up" | "down" | null>(null);
 
   useEffect(() => {
     const local = readDailyPredictPrefs();
@@ -45,7 +48,8 @@ export function DailyPredictPanel({
     let cancelled = false;
     void (async () => {
       try {
-        const [promptRes, statsRes] = await Promise.all([
+        const deviceId = getOrCreatePredictionDeviceId();
+        const [promptRes, statsRes, opponentRes] = await Promise.all([
           fetch(`/api/daily-prompt?date=${encodeURIComponent(targetDate)}`, {
             cache: "no-store",
           }),
@@ -53,6 +57,13 @@ export function DailyPredictPanel({
             `/api/daily-predict/stats?date=${encodeURIComponent(prevUtcRankDate())}&kind=tension-dir`,
             { cache: "no-store" },
           ),
+          // 1:1 맞대결 — 어제 픽 풀에서 나를 뺀 임의의 다른 요원 하나
+          deviceId
+            ? fetch(
+                `/api/daily-predict/opponent?date=${encodeURIComponent(prevUtcRankDate())}&kind=tension-dir&deviceId=${encodeURIComponent(deviceId)}`,
+                { cache: "no-store" },
+              )
+            : null,
         ]);
         if (promptRes.ok && !cancelled) {
           const data = (await promptRes.json()) as { prompt?: DailyPrompt | null };
@@ -63,11 +74,18 @@ export function DailyPredictPanel({
             stats?: { winnerEntityId?: string | null; total?: number } | null;
           };
           if (data.stats?.winnerEntityId && (data.stats.total ?? 0) > 0) {
+            setYesterdayWinner(data.stats.winnerEntityId);
             const next = applyLocalSettle({
               targetDate: prevUtcRankDate(),
               winnerEntityId: data.stats.winnerEntityId,
             });
             setPrefs(next);
+          }
+        }
+        if (opponentRes?.ok && !cancelled) {
+          const data = (await opponentRes.json()) as { opponentPick?: string | null };
+          if (data.opponentPick === "up" || data.opponentPick === "down") {
+            setOpponentPick(data.opponentPick);
           }
         }
       } catch {
@@ -135,6 +153,23 @@ export function DailyPredictPanel({
   const streak = prefs?.streak ?? 0;
   const question = ko ? prompt.questionKo : prompt.questionEn;
   const tierLabel = localAnalystTierLabel(ko ? "ko" : "en", prefs ?? undefined);
+  const hits = prefs?.hits ?? 0;
+  const attempts = prefs?.attempts ?? 0;
+  const hitRate = attempts > 0 ? Math.round((100 * hits) / attempts) : null;
+
+  // 1:1 맞대결 — 어제 내 픽 vs 랜덤 상대 픽, 정답(yesterdayWinner)로 승패 판정
+  const yesterdayPickRaw = prefs?.picks[prevUtcRankDate()];
+  const myYesterdayPick =
+    yesterdayPickRaw === "up" || yesterdayPickRaw === "down" ? yesterdayPickRaw : null;
+  const duelReady = Boolean(myYesterdayPick && opponentPick && yesterdayWinner);
+  const duelResult = duelReady
+    ? (() => {
+        const myHit = myYesterdayPick === yesterdayWinner;
+        const oppHit = opponentPick === yesterdayWinner;
+        if (myHit === oppHit) return "draw" as const;
+        return myHit ? ("win" as const) : ("lose" as const);
+      })()
+    : null;
 
   return (
     <div className="rounded-lg border border-amber-500/25 bg-slate-950/50 p-3 sm:col-span-2">
@@ -144,6 +179,61 @@ export function DailyPredictPanel({
         </h3>
         <p className="text-[11px] tabular-nums text-slate-400">{pctLabel}</p>
       </div>
+      <p className="mb-1 text-lg font-semibold leading-snug text-amber-50">
+        {hitRate != null
+          ? ko
+            ? `적중률 ${hitRate}% · ${tierLabel}`
+            : `${hitRate}% hit · ${tierLabel}`
+          : tierLabel}
+      </p>
+      <p className="mb-3 text-[11px] text-slate-500">
+        {ko ? `연속 ${streak}일` : `streak ${streak}d`}
+        {status === "ok"
+          ? ko
+            ? " · 저장됨"
+            : " · saved"
+          : status === "err"
+            ? ko
+              ? " · 저장 실패"
+              : " · save failed"
+            : ""}
+      </p>
+      {duelReady && myYesterdayPick && duelResult ? (
+        <p className="mb-3 text-[11px] leading-snug text-slate-400">
+          {ko ? "어제 맞대결 · " : "Yesterday’s duel · "}
+          <span className={myYesterdayPick === "up" ? "text-emerald-300" : "text-rose-300"}>
+            {ko ? "나 " : "You "}
+            {myYesterdayPick === "up" ? "UP" : "DOWN"}
+          </span>
+          {" vs "}
+          <span className={opponentPick === "up" ? "text-emerald-300" : "text-rose-300"}>
+            {ko ? "상대 " : "Opp "}
+            {opponentPick === "up" ? "UP" : "DOWN"}
+          </span>
+          {" — "}
+          <span
+            className={
+              duelResult === "win"
+                ? "font-semibold text-amber-300"
+                : duelResult === "lose"
+                  ? "font-semibold text-slate-500"
+                  : "font-semibold text-slate-400"
+            }
+          >
+            {duelResult === "win"
+              ? ko
+                ? "승리"
+                : "You won"
+              : duelResult === "lose"
+                ? ko
+                  ? "패배"
+                  : "You lost"
+                : ko
+                  ? "무승부"
+                  : "Draw"}
+          </span>
+        </p>
+      ) : null}
       <p className="mb-3 text-[12px] leading-snug text-slate-300">{question}</p>
       <div className="grid grid-cols-2 gap-2">
         <button
@@ -172,19 +262,6 @@ export function DailyPredictPanel({
         </button>
       </div>
       <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-[10px] text-slate-500">
-        <span>
-          {tierLabel}
-          {ko ? ` · 연속 ${streak}일` : ` · streak ${streak}d`}
-          {status === "ok"
-            ? ko
-              ? " · 저장됨"
-              : " · saved"
-            : status === "err"
-              ? ko
-                ? " · 저장 실패"
-                : " · save failed"
-              : ""}
-        </span>
         <span className="tabular-nums text-slate-600">UTC {targetDate}</span>
       </div>
       <p className="mt-2 text-[10px] leading-snug text-slate-600">

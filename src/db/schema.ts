@@ -494,6 +494,69 @@ export const dailyPredictionStats = sqliteTable(
 );
 
 /**
+ * 벙커 감성지수 — UTC 날짜·device당 STABLE | BUNKER 1표.
+ * 집계: bunker / total = 패닉 %.
+ */
+export const bunkerSentimentVotes = sqliteTable(
+  "bunker_sentiment_votes",
+  {
+    voteDate: text("vote_date").notNull(),
+    deviceId: text("device_id").notNull(),
+    /** stable | bunker */
+    pick: text("pick").notNull(),
+    createdAt: text("created_at").notNull(),
+  },
+  (t) => ({
+    pk: primaryKey({ columns: [t.voteDate, t.deviceId] }),
+    dateIdx: index("idx_bunker_sentiment_date").on(t.voteDate),
+  }),
+);
+
+/** Tzeva Adom / NEPTUN 공습경보 스냅샷 — soft rank 신호 */
+export const airRaidAlerts = sqliteTable(
+  "air_raid_alerts",
+  {
+    id: text("id").primaryKey(),
+    source: text("source").notNull(),
+    theaterId: text("theater_id").notNull(),
+    region: text("region"),
+    title: text("title"),
+    severity: integer("severity").notNull().default(3),
+    alertAt: text("alert_at").notNull(),
+    active: integer("active").notNull().default(0),
+    detailJson: text("detail_json"),
+    ingestedAt: text("ingested_at").notNull(),
+  },
+  (t) => ({
+    theaterAtIdx: index("idx_air_raid_theater_at").on(t.theaterId, t.alertAt),
+    sourceAtIdx: index("idx_air_raid_source_at").on(t.source, t.alertAt),
+    ingestedIdx: index("idx_air_raid_ingested").on(t.ingestedAt),
+  }),
+);
+
+/** 전장 일별 신호 집계 — FIRMS/GDELT prune 후에도 90일 기준선 유지 */
+export const theaterSignalDaily = sqliteTable(
+  "theater_signal_daily",
+  {
+    signalDate: text("signal_date").notNull(),
+    theaterId: text("theater_id").notNull(),
+    mentions: real("mentions").notNull().default(0),
+    points: real("points").notNull().default(0),
+    fireCount: real("fire_count").notNull().default(0),
+    telegramCount: real("telegram_count").notNull().default(0),
+    airRaidScore: real("air_raid_score").notNull().default(0),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (t) => ({
+    pk: primaryKey({ columns: [t.signalDate, t.theaterId] }),
+    theaterIdx: index("idx_theater_signal_daily_theater").on(
+      t.theaterId,
+      t.signalDate,
+    ),
+  }),
+);
+
+/**
  * 경량 UI 이벤트 로그 — 공유 버튼 등 바이럴 기능이 실제로 눌리는지 확인용.
  * 개인식별 정보 없음(세션/유저 식별자 저장 안 함). 순수 append-only 카운팅 목적.
  */
@@ -514,6 +577,30 @@ export const uiEvents = sqliteTable(
   (t) => ({
     eventIdx: index("idx_ui_events_event").on(t.event),
     createdIdx: index("idx_ui_events_created").on(t.createdAt),
+  }),
+);
+
+/**
+ * 진행형 분쟁 타임라인 — cron이 GDELT(taiwan-tension 등)에서 휴리스틱 큐레이션.
+ * PK (conflict_id, entry_date, id) — 날짜당 1~3행 상한은 앱/큐레이터가 강제.
+ */
+export const livingTimelineEntries = sqliteTable(
+  "living_timeline_entries",
+  {
+    id: text("id").primaryKey(),
+    conflictId: text("conflict_id").notNull(),
+    entryDate: text("entry_date").notNull(),
+    headlineKo: text("headline_ko").notNull(),
+    headlineEn: text("headline_en").notNull(),
+    sourceUrlsJson: text("source_urls_json"),
+    createdAt: text("created_at").notNull(),
+  },
+  (t) => ({
+    conflictDateIdx: index("idx_living_timeline_conflict_date").on(
+      t.conflictId,
+      t.entryDate,
+    ),
+    dateIdx: index("idx_living_timeline_date").on(t.entryDate),
   }),
 );
 
@@ -577,7 +664,11 @@ export type DailyPredictionStatsRow = typeof dailyPredictionStats.$inferSelect;
 export type NewDailyPredictionStatsRow = typeof dailyPredictionStats.$inferInsert;
 export type DailyPromptRow = typeof dailyPrompts.$inferSelect;
 export type NewDailyPromptRow = typeof dailyPrompts.$inferInsert;
+export type BunkerSentimentVoteRow = typeof bunkerSentimentVotes.$inferSelect;
+export type NewBunkerSentimentVoteRow = typeof bunkerSentimentVotes.$inferInsert;
 export type UiEventRow = typeof uiEvents.$inferSelect;
 export type NewUiEventRow = typeof uiEvents.$inferInsert;
 export type PushSubscriptionRow = typeof pushSubscriptions.$inferSelect;
 export type NewPushSubscriptionRow = typeof pushSubscriptions.$inferInsert;
+export type LivingTimelineEntryRow = typeof livingTimelineEntries.$inferSelect;
+export type NewLivingTimelineEntryRow = typeof livingTimelineEntries.$inferInsert;

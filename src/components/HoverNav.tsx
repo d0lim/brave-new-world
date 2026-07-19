@@ -125,7 +125,9 @@ export function HoverNav({
         className={`pointer-events-auto w-full transition-all duration-300 ease-out ${
           compact
             ? "max-w-full"
-            : `max-w-md sm:max-w-lg ${menuExpanded ? "max-w-3xl sm:max-w-4xl" : ""}`
+            : isEconomy
+              ? `max-w-md sm:max-w-lg ${menuExpanded ? "max-w-3xl sm:max-w-4xl" : ""}`
+              : "max-w-md sm:max-w-lg"
         } ${isEconomy ? "hover-nav--economy font-nav-economy" : "hover-nav--conflict"}`}
       >
         <div
@@ -231,11 +233,11 @@ export function HoverNav({
           <div
             className={`overflow-hidden rounded-b-2xl border ${borderTone} border-t-0 ${menuBg} shadow-xl backdrop-blur-xl transition-all duration-300 ease-out ${
               hubMenuOpen
-                ? "max-h-[min(70vh,28rem)] opacity-100"
+                ? "max-h-[min(78vh,36rem)] opacity-100"
                 : "pointer-events-none max-h-0 border-transparent opacity-0 shadow-none"
             }`}
           >
-            <div className="max-h-[min(70vh,28rem)] space-y-2 overflow-y-auto px-2 py-2">
+            <div className="max-h-[min(78vh,36rem)] space-y-2 overflow-y-auto px-2 py-2">
               <button
                 type="button"
                 onClick={() => handleHubNavigate(selectionForRegimeOverview())}
@@ -245,7 +247,7 @@ export function HoverNav({
                 반서방국 분쟁사
                 <span className="text-[9px] font-normal text-violet-200/60">11대 현장</span>
               </button>
-              <div className={`grid gap-1.5 ${compact ? "grid-cols-2" : "grid-cols-2 sm:grid-cols-4"}`}>
+              <ul className="space-y-1">
                 {HUB_DEFINITIONS.map((hub) => (
                   <HubDropdown
                     key={hub.id}
@@ -255,10 +257,9 @@ export function HoverNav({
                       setOpenHubId((prev) => (prev === hub.id ? null : hub.id))
                     }
                     onNavigate={handleHubNavigate}
-                    compact
                   />
                 ))}
-              </div>
+              </ul>
               {compact && compactMenuExtra ? (
                 <div className="space-y-2 border-t border-sky-200/10 pt-2">{compactMenuExtra}</div>
               ) : null}
@@ -371,54 +372,53 @@ function HubDropdown({
   open,
   onToggle,
   onNavigate,
-  compact = false,
 }: {
   hub: HubDefinition;
   open: boolean;
   onToggle: () => void;
   onNavigate: (selection: NavSelection) => void;
-  compact?: boolean;
 }) {
   return (
-    <div className="relative min-w-0">
+    <li className="min-w-0">
       <button
         type="button"
         onClick={onToggle}
-        className={`flex w-full items-center justify-center gap-0.5 rounded-full border px-1 py-1 text-[10px] sm:gap-1 sm:px-2 sm:py-1.5 sm:text-[11px] md:text-xs transition ${
-          compact ? "px-2 py-2 text-[11px]" : ""
-        } ${
+        aria-expanded={open}
+        className={`flex w-full items-center justify-between gap-2 rounded-full border px-3 py-2 text-left text-xs transition ${
           open
             ? "border-sky-300/35 bg-sky-400/15 text-sky-50"
             : "border-sky-200/15 bg-sky-400/5 text-sky-100/85 hover:border-sky-300/30 hover:bg-sky-400/10"
         }`}
         style={open ? { boxShadow: `inset 0 0 0 1px ${hub.color}` } : undefined}
       >
-        <span
-          className="h-1.5 w-1.5 shrink-0 rounded-full"
-          style={{ background: hub.color }}
-          aria-hidden
-        />
-        <span className="truncate">{hub.label}</span>
-        <ChevronDown className={`hidden shrink-0 opacity-50 transition sm:block ${open ? "rotate-180" : ""}`} />
+        <span className="flex min-w-0 items-center gap-1.5">
+          <span
+            className="h-1.5 w-1.5 shrink-0 rounded-full"
+            style={{ background: hub.color }}
+            aria-hidden
+          />
+          <span className="truncate font-medium">{hub.label}</span>
+        </span>
+        <ChevronDown className={`shrink-0 opacity-50 transition ${open ? "rotate-180" : ""}`} />
       </button>
 
-      {open ? (
-        <div
-          className={`absolute z-[80] mt-1.5 w-[min(92vw,280px)] rounded-xl border border-sky-200/15 bg-[#0c1a30]/95 p-2 shadow-2xl backdrop-blur-xl ${
-            compact ? "left-0 top-full translate-x-0" : "left-1/2 top-full -translate-x-1/2"
-          }`}
-        >
+      <div
+        className={`overflow-hidden transition-all duration-300 ease-out ${
+          open ? "mt-1 max-h-[28rem] opacity-100" : "max-h-0 opacity-0"
+        }`}
+      >
+        <div className="space-y-0.5 rounded-xl border border-sky-200/10 bg-[#0c1a30]/75 py-1.5 pl-2 pr-1.5">
           <button
             type="button"
             onClick={() => onNavigate(selectionForHubNetwork(hub))}
             className="w-full rounded-lg px-2.5 py-2 text-left text-xs text-sky-50 transition hover:bg-sky-400/10"
           >
             <span className="font-medium">{hub.label} · 국경 · 우군 관계망</span>
-            <span className="mt-0.5 block text-[10px] text-sky-100/45">{hub.description}</span>
+            <span className="mt-0.5 block text-[10px] leading-4 text-sky-100/45">{hub.description}</span>
           </button>
 
-          <p className="mt-2 px-2 text-[9px] uppercase tracking-[0.18em] text-sky-200/45">우군 국가</p>
-          <div className="mt-1 max-h-28 space-y-0.5 overflow-y-auto">
+          <p className="mt-1.5 px-2 text-[9px] uppercase tracking-[0.18em] text-sky-200/45">우군 국가</p>
+          <div className="mt-0.5 space-y-0.5">
             {hub.allies.map((ally) => (
               <button
                 key={ally.code}
@@ -431,10 +431,10 @@ function HubDropdown({
             ))}
           </div>
 
-          <p className="mt-2 px-2 text-[9px] uppercase tracking-[0.18em] text-sky-200/45">
+          <p className="mt-1.5 px-2 text-[9px] uppercase tracking-[0.18em] text-sky-200/45">
             영유권 주장 및 영향
           </p>
-          <div className="mt-1 space-y-0.5">
+          <div className="mt-0.5 space-y-0.5">
             {hub.claims.map((claim) => (
               <button
                 key={claim.id}
@@ -443,12 +443,12 @@ function HubDropdown({
                 className="block w-full rounded-md px-2.5 py-1.5 text-left text-[11px] transition hover:bg-white/5"
               >
                 <span className="text-sky-50/95">{claim.label}</span>
-                <span className="mt-0.5 block text-[10px] text-sky-100/40">{claim.description}</span>
+                <span className="mt-0.5 block text-[10px] leading-4 text-sky-100/40">{claim.description}</span>
               </button>
             ))}
           </div>
 
-          <div className="mt-2 grid grid-cols-1 gap-0.5 border-t border-sky-200/10 pt-2">
+          <div className="mt-1.5 grid grid-cols-1 gap-0.5 border-t border-sky-200/10 pt-1.5">
             <button
               type="button"
               onClick={() => onNavigate(selectionForArms(hub))}
@@ -465,8 +465,8 @@ function HubDropdown({
             </button>
           </div>
         </div>
-      ) : null}
-    </div>
+      </div>
+    </li>
   );
 }
 

@@ -359,6 +359,8 @@ const UI = {
     ko: "경고·편지를 건너뛰고 GEOINT·FININT 선택으로",
     en: "Skip caution & letter — GEOINT / FININT choice",
   },
+  /** 하단 메인 CTA 옆 — 처음 방문자가 놓치기 쉬운 코너 스킵 대신 눈에 띄는 위치에 배치 */
+  entryCautionSkipCta: { ko: "지금 바로 보기 →", en: "Skip straight to the map →" },
   domainGateSubtitle: {
     ko: "창을 고르면 바로 입장합니다 — 추가 세부 설정창 없음. 빠른 선택을 원하면 아래 초기화 모드를 켜세요.",
     en: "Pick a window and enter at once — no extra setup screens. For a lighter start, turn on Init mode below.",

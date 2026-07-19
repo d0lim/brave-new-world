@@ -955,22 +955,43 @@ export const MapGlobeView = forwardRef<MapGlobeMethods, MapGlobeViewProps>(funct
         ) : null}
 
         {axisHubCountriesGeoJson.features.length > 0 ? (
-          <Source id="axis-hub-countries-source" type="geojson" data={axisHubCountriesGeoJson}>
+          <Source
+            id="axis-hub-countries-source"
+            type="geojson"
+            data={axisHubCountriesGeoJson}
+            tolerance={0}
+            buffer={64}
+          >
             <Layer
               id="axis-hub-countries-fill"
               type="fill"
               paint={{
                 "fill-color": ["coalesce", ["get", "fill"], "#dc2626"],
                 "fill-opacity": ["coalesce", ["get", "fillOpacity"], 0.28],
+                "fill-antialias": true,
               }}
             />
             <Layer
               id="axis-hub-countries-outline"
               type="line"
+              layout={{
+                "line-join": "round",
+                "line-cap": "round",
+              }}
               paint={{
-                "line-color": ["coalesce", ["get", "stroke"], "rgba(248,113,113,0.75)"],
-                "line-width": 1.2,
-                "line-opacity": 0.85,
+                "line-color": ["coalesce", ["get", "stroke"], "rgba(248,113,113,0.9)"],
+                "line-width": [
+                  "interpolate",
+                  ["linear"],
+                  ["zoom"],
+                  2,
+                  0.6,
+                  6,
+                  1.1,
+                  10,
+                  1.6,
+                ],
+                "line-opacity": 0.92,
               }}
             />
           </Source>

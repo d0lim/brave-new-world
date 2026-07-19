@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, ne, sql } from "drizzle-orm";
 import { getDb } from "@/db";
 import { dailyPredictionStats, dailyRankPredictions } from "@/db/schema";
 import { ingestWorkerBase } from "@/lib/d1LiveSnapshots";
@@ -196,6 +196,35 @@ export async function readPredictionStatsFromWorker(options: {
       winnerEntityId: payload.stats.winnerEntityId,
       resolvedAt: payload.stats.resolvedAt,
     };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * 예측 1:1 맞대결용 — 같은 날짜·kind에서 나를 제외한 임의의 다른 deviceId 픽 하나.
+ * 실시간 매칭이 아니라 "이미 쌓인 픽 풀에서 랜덤 상대" — 새 인프라 없이 기존 테이블만 읽는다.
+ */
+export async function readOpponentPickFromD1(options: {
+  date: string;
+  kind: PredictKind;
+  excludeDeviceId: string;
+}): Promise<string | null> {
+  try {
+    const db = await getDb();
+    const rows = await db
+      .select({ pickEntityId: dailyRankPredictions.pickEntityId })
+      .from(dailyRankPredictions)
+      .where(
+        and(
+          eq(dailyRankPredictions.targetDate, options.date),
+          eq(dailyRankPredictions.kind, options.kind),
+          ne(dailyRankPredictions.deviceId, options.excludeDeviceId),
+        ),
+      )
+      .orderBy(sql`RANDOM()`)
+      .limit(1);
+    return rows[0]?.pickEntityId ?? null;
   } catch {
     return null;
   }

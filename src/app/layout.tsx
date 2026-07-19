@@ -5,6 +5,8 @@ import { Inter, JetBrains_Mono, Merriweather } from "next/font/google";
 import localFont from "next/font/local";
 import { COMPACT_QUERY } from "@/hooks/compactQuery";
 import { PwaInstallPrompt } from "@/components/PwaInstallPrompt";
+import { UiFontBoot } from "@/components/UiFontBoot";
+import { UI_FONT_BOOT_SCRIPT } from "@/lib/fontPrefs";
 import "./globals.css";
 
 /** Wanted Sans — jsDelivr 가변 동적 서브셋 (OFL) https://github.com/wanteddev/wanted-sans */
@@ -150,6 +152,10 @@ export default function RootLayout({
         <Script id="cv-compact-boot" strategy="beforeInteractive">
           {COMPACT_BOOT_SCRIPT}
         </Script>
+        <Script id="cv-ui-font-boot" strategy="beforeInteractive">
+          {UI_FONT_BOOT_SCRIPT}
+        </Script>
+        <UiFontBoot />
         {children}
         <PwaInstallPrompt />
         <Analytics />

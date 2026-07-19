@@ -23,6 +23,9 @@ import { fetchGdeltTensionPoints } from "./gdeltExport";
 import { fetchTelegramAlerts } from "./telegram";
 import { readBriefingStats, upsertBriefingPeriodStats } from "./briefingStats";
 import { readDailyRanks, readWorldTension, upsertDailyRanks } from "./dailyRanks";
+import { curateLivingTaiwan } from "./livingTaiwan";
+import { fetchAndUpsertAirRaids } from "./airRaidIngest";
+import { maybeLightBaselineBackfill, runBaselineBackfill } from "./baselineBackfill";
 import {
   broadcastPush,
   deletePushSubscription,
@@ -62,8 +65,22 @@ type IngestResult = {
     aisDeleted?: number;
     adsbDeleted?: number;
     telegramDeleted?: number;
+    airRaidDeleted?: number;
+    signalDailyDeleted?: number;
     cutoff: string;
   };
+  airRaid?: {
+    count: number;
+    tzevaCount: number;
+    neptunCount: number;
+    geoRestricted: boolean;
+    errors: string[];
+  } | null;
+  baselineBackfill?: {
+    ran: boolean;
+    rowsUpserted?: number;
+    errors?: string[];
+  } | null;
   briefingStats?: {
     dailyKey: string;
     weeklyKey: string;
@@ -74,6 +91,13 @@ type IngestResult = {
     theaterCount: number;
     chokepointCount: number;
     worldTension: number;
+  } | null;
+  livingTaiwan?: {
+    conflictId: string;
+    entryDate: string;
+    upserted: number;
+    skipped: boolean;
+    reason?: string;
   } | null;
   error: string | null;
 };
@@ -177,6 +201,26 @@ async function runIngest(env: IngestEnv): Promise<IngestResult> {
       telegramCount = await upsertTelegramAlerts(env.DB, telegram.alerts);
     }
 
+    let airRaid: IngestResult["airRaid"] = null;
+    try {
+      const air = await fetchAndUpsertAirRaids(env);
+      airRaid = {
+        count: air.count,
+        tzevaCount: air.tzevaCount,
+        neptunCount: air.neptunCount,
+        geoRestricted: air.geoRestricted,
+        errors: air.errors.slice(0, 6),
+      };
+    } catch (error) {
+      airRaid = {
+        count: 0,
+        tzevaCount: 0,
+        neptunCount: 0,
+        geoRestricted: false,
+        errors: [error instanceof Error ? error.message : "air raid ingest failed"],
+      };
+    }
+
     pruned = await pruneOldRows(env.DB, retentionHours);
     newsWarm = await warmEndpoint(env.NEWS_WARM_URL, env, "news");
     videoNewsWarm = await warmEndpoint(env.VIDEO_NEWS_WARM_URL, env, "video-news");
@@ -210,6 +254,33 @@ async function runIngest(env: IngestEnv): Promise<IngestResult> {
       );
     }
 
+    let baselineBackfill: IngestResult["baselineBackfill"] = null;
+    try {
+      const light = await maybeLightBaselineBackfill(env);
+      baselineBackfill = light.ran
+        ? {
+            ran: true,
+            rowsUpserted: light.detail?.rowsUpserted,
+            errors: light.detail?.errors,
+          }
+        : { ran: false };
+    } catch (error) {
+      baselineBackfill = {
+        ran: false,
+        errors: [error instanceof Error ? error.message : "baseline backfill failed"],
+      };
+    }
+
+    let livingTaiwan: IngestResult["livingTaiwan"] = null;
+    try {
+      livingTaiwan = await curateLivingTaiwan(env.DB);
+    } catch (error) {
+      console.warn(
+        "[ingest] living taiwan curate skipped:",
+        error instanceof Error ? error.message : error,
+      );
+    }
+
     const result: IngestResult = {
       ok: !hardFail,
       startedAt,
@@ -234,6 +305,9 @@ async function runIngest(env: IngestEnv): Promise<IngestResult> {
       pruned,
       briefingStats,
       dailyRanks,
+      airRaid,
+      baselineBackfill,
+      livingTaiwan,
       error: hardFail ? firmsErrors.join("; ") || "ingest failed" : null,
     };
 
@@ -263,6 +337,7 @@ async function runIngest(env: IngestEnv): Promise<IngestResult> {
         ukraineHatchWarm,
         briefingStats,
         dailyRanks,
+        livingTaiwan,
       },
     });
 
@@ -986,6 +1061,30 @@ const worker = {
       }
       const result = await runIngest(env);
       ctx.waitUntil(Promise.resolve());
+      return Response.json(result, { status: result.ok ? 200 : 502 });
+    }
+
+    if (
+      url.pathname === "/backfill-baseline" &&
+      (request.method === "POST" || request.method === "GET")
+    ) {
+      if (!authorizeManual(request, env)) {
+        return Response.json({ error: "unauthorized" }, { status: 401 });
+      }
+      const days = Math.min(
+        90,
+        Math.max(7, Number(url.searchParams.get("days") || "90") || 90),
+      );
+      const archiveChunks = Math.min(
+        12,
+        Math.max(0, Number(url.searchParams.get("archiveChunks") || "6") || 6),
+      );
+      const result = await runBaselineBackfill(env, {
+        days,
+        firmsDays: 5,
+        includeArchive: archiveChunks > 0,
+        archiveChunks,
+      });
       return Response.json(result, { status: result.ok ? 200 : 502 });
     }
 

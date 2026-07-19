@@ -29,7 +29,8 @@ export const ENTRY_GATE: {
    * LOD tier: global (> 1.65).
    */
   bootAltitude: 2.85,
-  bootLookAt: { lat: 18, lng: 35 },
+  /** 대만 해협 중심 — 첫 화면·도메인 선택 후 flyTo 핀포인트 ([lng, lat] = [119.5, 24.48]) */
+  bootLookAt: { lat: 24.48, lng: 119.5 },
   /** 입구 종료 후 첫 화면도 로딩과 동일 크기 — 추가 줌아웃 없음 */
   zoomOutAltitude: 2.85,
   zoomOutFlyMs: 1200,

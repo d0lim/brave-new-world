@@ -70,6 +70,16 @@ export type IngestEnv = {
   VAPID_PUBLIC_KEY?: string;
   /** mailto: or https: contact for VAPID JWT */
   VAPID_SUBJECT?: string;
+  /**
+   * OREF(이스라엘 공습경보) 프록시 — CF Worker가 403이면 이스라엘 IP 경유 URL.
+   * 예: https://your-proxy.example/oref/history.json
+   */
+  OREF_HISTORY_URL?: string;
+  OREF_ACTIVE_URL?: string;
+  /** "false"/"0" 이면 공습경보 인제스트 비활성 */
+  AIR_RAID_INGEST_ENABLED?: string;
+  /** NEPTUN 베이스 (기본 https://neptun.in.ua) */
+  NEPTUN_API_BASE?: string;
 };
 
 export type FirmsFireRow = {

@@ -27,7 +27,9 @@ export type ApiStubRoute =
   | "daily-ranks"
   | "daily-prompt"
   | "daily-predict"
-  | "daily-predict-stats";
+  | "daily-predict-stats"
+  | "daily-predict-opponent"
+  | "bunker-sentiment";
 
 function stubBody(route: ApiStubRoute, request?: Request): Record<string, unknown> {
   const at = STUB_AT();
@@ -35,6 +37,16 @@ function stubBody(route: ApiStubRoute, request?: Request): Record<string, unknow
   switch (route) {
     case "briefing-stats":
       return { fetchedAt: at, source: "stub", stats: null };
+    case "bunker-sentiment":
+      return {
+        date: at.slice(0, 10),
+        total: 0,
+        stable: 0,
+        bunker: 0,
+        panicPct: null,
+        myPick: null,
+        ok: true,
+      };
     case "daily-ranks":
       return {
         date: at.slice(0, 10),
@@ -65,6 +77,12 @@ function stubBody(route: ApiStubRoute, request?: Request): Record<string, unknow
         today: at.slice(0, 10),
         fetchedAt: at,
         stats: null,
+      };
+    case "daily-predict-opponent":
+      return {
+        date: at.slice(0, 10),
+        kind: "tension-dir",
+        opponentPick: null,
       };
     case "ais": {
       const classFilter = request

@@ -77,6 +77,9 @@ const CONFLICT_FORCE_ON: Partial<LayerPrefs> = {
   showGasPipelines: true,
   showLngTerminals: true,
   showResources: true,
+  showGemOilGasExtraction: true,
+  showGemCoalMines: true,
+  showGemIronOre: true,
   showNuclearSites: true,
 };
 
@@ -94,6 +97,11 @@ const ECONOMY_FORCE_ON: Partial<LayerPrefs> = {
   showSubmarineCables: true,
   showOilPipelines: true,
   showGasPipelines: true,
+  showLngTerminals: true,
+  showResources: true,
+  showGemOilGasExtraction: true,
+  showGemCoalMines: true,
+  showGemIronOre: true,
   showNuclearSites: true,
   showAiDataCenters: true,
   showPorts: true,

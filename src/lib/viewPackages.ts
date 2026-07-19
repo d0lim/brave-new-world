@@ -225,12 +225,10 @@ const LAYER_DROP_PRIORITY: BooleanLayerKey[] = [
   "showUsCarriers",
   "showConflictZones",
   "showDiplomaticTension",
-  "showLngTerminals",
-  "showGasPipelines",
-  "showOilPipelines",
   "showTelegramOsint",
-  // showWarZones · showFirmsFires · showLogisticsRisk · showShippingLanes · showGdeltWar
-  // 는 이란·우크라 등 활성 전장 핵심 — 후순위 드롭
+  "showLngTerminals",
+  // showOilPipelines · showGasPipelines · showWarZones · showFirmsFires · showLogisticsRisk
+  // 는 에너지·전장 핵심 — 후순위 드롭
 ];
 
 const ECONOMY_LAYER_DROP_PRIORITY: BooleanLayerKey[] = [
@@ -238,12 +236,10 @@ const ECONOMY_LAYER_DROP_PRIORITY: BooleanLayerKey[] = [
   "showEconomicCenters",
   "showPorts",
   "showInternetExchanges",
-  "showGasPipelines",
-  "showLngTerminals",
-  "showOilPipelines",
-  "showSubmarineCables",
   "showAirports",
-  // showWarZones 유지 — 호르무즈 등 초크포인트와 함께 해석
+  "showLngTerminals",
+  "showSubmarineCables",
+  // showOilPipelines · showGasPipelines 유지 — 에너지 지도 핵심
 ];
 
 export const LAYER_PREF_LABELS: Partial<Record<BooleanLayerKey, string>> = {

@@ -19,7 +19,8 @@ function asFn<T, R>(value: unknown, fallback: Accessor<T, R>): Accessor<T, R> {
 export const MAX_ANGULAR_POINT_RADIUS_PX = 48;
 export const MAX_ANGULAR_LINE_WIDTH_PX = 26;
 
-const CABLE_KINDS = new Set(["submarine-cable", "oil-pipeline", "gas-pipeline"]);
+/** 해저 케이블만 — 줌인 시 가늘어짐. 송유관·가스관은 일반 path (줌인해도 보이도록). */
+const CABLE_KINDS = new Set(["submarine-cable"]);
 
 /**
  * 해저 케이블·송유관·가스관 — 일반 path와 반대:

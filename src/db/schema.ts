@@ -2,6 +2,7 @@ import { sql } from "drizzle-orm";
 import {
   index,
   integer,
+  primaryKey,
   real,
   sqliteTable,
   text,
@@ -408,6 +409,91 @@ export const briefingPeriodStats = sqliteTable(
 );
 
 /**
+ * 일일 전장 긴장도 / 초크포인트 공급망 스트레스 / 세계 긴장도 랭킹.
+ * Cron이 UTC 날짜별로 upsert — 전장 점수는 7일 베이스라인 z-score,
+ * kind=world entity=global 은 전장 점수 평균·최고치 혼합 간판 숫자.
+ * 전일 rank와 비교해 delta_rank / delta_score 채움.
+ */
+export const dailyEntityRanks = sqliteTable(
+  "daily_entity_ranks",
+  {
+    rankDate: text("rank_date").notNull(),
+    /** theater | chokepoint */
+    kind: text("kind").notNull(),
+    entityId: text("entity_id").notNull(),
+    labelKo: text("label_ko").notNull(),
+    labelEn: text("label_en").notNull(),
+    score: real("score").notNull().default(0),
+    rank: integer("rank").notNull(),
+    prevRank: integer("prev_rank"),
+    deltaRank: integer("delta_rank"),
+    deltaScore: real("delta_score"),
+    detailJson: text("detail_json"),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (t) => ({
+    pk: primaryKey({ columns: [t.rankDate, t.kind, t.entityId] }),
+    dateKindRankIdx: index("idx_daily_ranks_date_kind_rank").on(t.rankDate, t.kind, t.rank),
+    updatedIdx: index("idx_daily_ranks_updated").on(t.updatedAt),
+  }),
+);
+
+/**
+ * 게스트 일일 예측 — 내일 긴장도 1위 전장 고르기 / 긴장도 UP·DOWN.
+ * PK (target_date, kind, device_id) — 하루 1표 upsert.
+ */
+export const dailyRankPredictions = sqliteTable(
+  "daily_rank_predictions",
+  {
+    targetDate: text("target_date").notNull(),
+    /** theater | tension-dir */
+    kind: text("kind").notNull(),
+    deviceId: text("device_id").notNull(),
+    /** theater id 또는 up|down */
+    pickEntityId: text("pick_entity_id").notNull(),
+    createdAt: text("created_at").notNull(),
+  },
+  (t) => ({
+    pk: primaryKey({ columns: [t.targetDate, t.kind, t.deviceId] }),
+    dateKindIdx: index("idx_daily_pred_date_kind").on(t.targetDate, t.kind),
+  }),
+);
+
+/**
+ * 매일 동일 문제 — 「내일 이 지표 긴장도는 오를까/내릴까」
+ * target_date = 정산일(UTC). 전날 유저가 투표.
+ */
+export const dailyPrompts = sqliteTable("daily_prompts", {
+  targetDate: text("target_date").primaryKey(),
+  /** theater | chokepoint | world */
+  subjectKind: text("subject_kind").notNull(),
+  subjectId: text("subject_id").notNull(),
+  labelKo: text("label_ko").notNull(),
+  labelEn: text("label_en").notNull(),
+  baselineScore: real("baseline_score").notNull().default(0),
+  questionKo: text("question_ko").notNull(),
+  questionEn: text("question_en").notNull(),
+  createdAt: text("created_at").notNull(),
+});
+
+/** 예측 정산 집계 — 「어제 맞춘 N%」 */
+export const dailyPredictionStats = sqliteTable(
+  "daily_prediction_stats",
+  {
+    targetDate: text("target_date").notNull(),
+    kind: text("kind").notNull(),
+    total: integer("total").notNull().default(0),
+    correct: integer("correct").notNull().default(0),
+    correctPct: real("correct_pct").notNull().default(0),
+    winnerEntityId: text("winner_entity_id"),
+    resolvedAt: text("resolved_at").notNull(),
+  },
+  (t) => ({
+    pk: primaryKey({ columns: [t.targetDate, t.kind] }),
+  }),
+);
+
+/**
  * 경량 UI 이벤트 로그 — 공유 버튼 등 바이럴 기능이 실제로 눌리는지 확인용.
  * 개인식별 정보 없음(세션/유저 식별자 저장 안 함). 순수 append-only 카운팅 목적.
  */
@@ -460,5 +546,13 @@ export type TelegramAlertRow = typeof telegramAlerts.$inferSelect;
 export type NewTelegramAlertRow = typeof telegramAlerts.$inferInsert;
 export type BriefingPeriodStatsRow = typeof briefingPeriodStats.$inferSelect;
 export type NewBriefingPeriodStatsRow = typeof briefingPeriodStats.$inferInsert;
+export type DailyEntityRankRow = typeof dailyEntityRanks.$inferSelect;
+export type NewDailyEntityRankRow = typeof dailyEntityRanks.$inferInsert;
+export type DailyRankPredictionRow = typeof dailyRankPredictions.$inferSelect;
+export type NewDailyRankPredictionRow = typeof dailyRankPredictions.$inferInsert;
+export type DailyPredictionStatsRow = typeof dailyPredictionStats.$inferSelect;
+export type NewDailyPredictionStatsRow = typeof dailyPredictionStats.$inferInsert;
+export type DailyPromptRow = typeof dailyPrompts.$inferSelect;
+export type NewDailyPromptRow = typeof dailyPrompts.$inferInsert;
 export type UiEventRow = typeof uiEvents.$inferSelect;
 export type NewUiEventRow = typeof uiEvents.$inferInsert;

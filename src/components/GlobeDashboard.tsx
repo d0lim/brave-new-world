@@ -12,6 +12,15 @@ import { MethodologySourcesPanel, SourcesLinkButton } from "@/components/Methodo
 import { NewsTrustTierPanel } from "@/components/NewsTrustTierPanel";
 import { TrustBadgeChip } from "@/components/TrustBadgeChip";
 import { ShareViewButton } from "@/components/ShareViewButton";
+import { DailyRankSharePanel } from "@/components/DailyRankSharePanel";
+import { TomorrowTensionModal } from "@/components/TomorrowTensionModal";
+import {
+  hasSeenTensionPrompt,
+  markTensionPromptSeen,
+  type DailyPrompt,
+} from "@/lib/dailyPrompt";
+import { nextUtcRankDate, type WorldTensionSnapshot } from "@/lib/dailyRanks";
+import { formatWtiBriefingLead } from "@/lib/wti";
 import { MobileAlertFeed } from "@/components/MobileAlertFeed";
 import { GdeltAlertPanel } from "@/components/GdeltAlertPanel";
 import { TelegramOsintPanel } from "@/components/TelegramOsintPanel";
@@ -780,6 +789,9 @@ export function GlobeDashboard({
   const [periodicBriefing, setPeriodicBriefing] = useState<PeriodicBriefing | null>(null);
   /** 오늘 등불 파이프라인 종료 여부(표시·스킵·이미 봄). false면 공습/이슈 UI 보류 */
   const [dailyLampSettled, setDailyLampSettled] = useState(false);
+  const [tomorrowTensionPrompt, setTomorrowTensionPrompt] = useState<DailyPrompt | null>(null);
+  /** 오늘의 WTI — 사운드·등불·예측 기축 */
+  const [wtiSnapshot, setWtiSnapshot] = useState<WorldTensionSnapshot | null>(null);
   const [showLampRoleTip, setShowLampRoleTip] = useState(false);
   const [airRaidBriefing, setAirRaidBriefing] = useState<AirRaidBriefingContent | null>(null);
   const [airRaidOffer, setAirRaidOffer] = useState<AirRaidOffer | null>(null);
@@ -6987,6 +6999,34 @@ export function GlobeDashboard({
           }
         }
         if (!cancelled) {
+          if (content && viewerMode === "conflict") {
+            try {
+              const ranksRes = await fetch("/api/daily-ranks?limit=1", {
+                cache: "no-store",
+                headers: { Accept: "application/json" },
+              });
+              if (ranksRes.ok) {
+                const ranks = (await ranksRes.json()) as {
+                  worldTension?: WorldTensionSnapshot | null;
+                };
+                const wt = ranks.worldTension;
+                if (wt && Number.isFinite(wt.score)) {
+                  setWtiSnapshot(wt);
+                  const langKey = labelLanguage === "en" ? "en" : "ko";
+                  content = {
+                    ...content,
+                    wti: {
+                      score: wt.score,
+                      deltaScore: wt.deltaScore,
+                      lead: formatWtiBriefingLead(wt, langKey),
+                    },
+                  };
+                }
+              }
+            } catch {
+              /* keep content without WTI */
+            }
+          }
           if (content) setPeriodicBriefing(content);
           setDailyLampSettled(true);
         }
@@ -7014,10 +7054,63 @@ export function GlobeDashboard({
     viewerMode,
   ]);
 
+  // 오늘의 WTI — 사운드 강도·등불 기축 (등불보다 먼저 확보)
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await fetch("/api/daily-ranks?limit=1", {
+          cache: "no-store",
+          headers: { Accept: "application/json" },
+        });
+        if (!res.ok || cancelled) return;
+        const data = (await res.json()) as {
+          worldTension?: WorldTensionSnapshot | null;
+        };
+        if (!cancelled && data.worldTension) setWtiSnapshot(data.worldTension);
+      } catch {
+        /* ignore */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [calendarDayKey]);
+
+  // 등불 종료 후 · 하루 1회 WTI UP/DOWN
+  useEffect(() => {
+    if (!dailyLampSettled || periodicBriefing || entryGate || showModePicker) return;
+    if (hasSeenTensionPrompt(calendarDayKey)) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await fetch(
+          `/api/daily-prompt?date=${encodeURIComponent(nextUtcRankDate())}`,
+          { cache: "no-store" },
+        );
+        if (!res.ok || cancelled) return;
+        const data = (await res.json()) as { prompt?: DailyPrompt | null };
+        if (!cancelled && data.prompt) setTomorrowTensionPrompt(data.prompt);
+      } catch {
+        /* ignore */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    calendarDayKey,
+    dailyLampSettled,
+    entryGate,
+    periodicBriefing,
+    showModePicker,
+  ]);
+
   // 모드·일자 전환 시 등불 게이트 재시작 (공습·이슈 UI는 settled 전까지 보류)
   useEffect(() => {
     setPeriodicBriefing(null);
     setDailyLampSettled(false);
+    setTomorrowTensionPrompt(null);
     setAirRaidOffer(null);
     setShowAirRaidCoach(false);
   }, [viewerMode, calendarDayKey]);
@@ -7865,6 +7958,7 @@ export function GlobeDashboard({
         economyAmbient={soundEconomyAmbient}
         cameraAltitude={layerAltitude}
         globeLodTier={globeLod.tier}
+        wtiScore={wtiSnapshot?.score ?? null}
       />
 
       {!intelSheetOpen ? (
@@ -9726,6 +9820,27 @@ export function GlobeDashboard({
             }
           }}
         />
+      ) : null}
+
+      {tomorrowTensionPrompt && !periodicBriefing ? (
+        <TomorrowTensionModal
+          lang={labelLanguage}
+          prompt={tomorrowTensionPrompt}
+          onDismiss={() => {
+            markTensionPromptSeen(calendarDayKey);
+            setTomorrowTensionPrompt(null);
+          }}
+        />
+      ) : null}
+
+      {!isCompactUi &&
+      entryGate === null &&
+      !showModePicker &&
+      !periodicBriefing &&
+      !tomorrowTensionPrompt ? (
+        <div className="cv-desktop-only pointer-events-auto absolute bottom-24 left-3 z-[28] w-[min(420px,calc(100vw-1.5rem))]">
+          <DailyRankSharePanel lang={labelLanguage} />
+        </div>
       ) : null}
 
       <LampRoleTipBanner

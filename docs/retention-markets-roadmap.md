@@ -78,6 +78,18 @@
 
 ---
 
+## 3.6 일일 긴장도 랭킹 · 내일 1위 예측 (P0 MVP)
+
+> **상태:** P0 구현 — 점수 안정화 + 게스트 예측 + 「어제 맞춘 %」.
+
+**점수 공식 (cron `dailyRanks.ts`):** 성분 `log1p` 가중 → `0.55*raw + 0.45*prev` EMA → 일일 `|Δ| ≤ max(prev,12)*0.4` 캡. 순위는 안정화 점수, `detail_json`에 `rawScore`/`smoothScore`/`displayScore`(당일 max 대비 0–100).
+
+**예측 루프:** 오늘 전장 TOP에서 **내일 긴장도 1위** 고르기 → `deviceId`(localStorage) 익명 1표 upsert → UTC cron이 랭킹 upsert 직후 정산 → `daily_prediction_stats.correct_pct` → UI 「어제 맞춘 N%」. 로그인·포인트·복수 문항은 다음 단계 (`guestPolicy` 키만 예고).
+
+코드: `workers/cron-ingest/src/dailyRanks.ts` · `dailyPredictions.ts` · `DailyPredictPanel` · `POST /api/daily-predict`.
+
+---
+
 ## 4. 전장 → 심볼 매핑 (해석 테이블)
 
 기존 `STOCK_TICKER_SYMBOLS` / `heroHighlightSymbols`를 **명시적 테이블**로 승격.
@@ -148,5 +160,7 @@ UI: Intel 관련 시장 패널 · 경제 허브 패널에 “왜 이 심볼?” 
   - [ ] “오늘 핫한 곳”이 24h 내 갱신되거나 stale 표시
   - [ ] 기본 세션이 무음/저음으로도 사용 가능
   - [ ] 심볼 UI에 투자 권유 아님 고지
-  - [x] 로컬 관심 신호 → For you 칩 (게스 트 기기)
+  - [x] 로컬 관심 신호 → For you 칩 (게스트 기기)
+  - [x] 긴장도 점수 log1p+EMA+일일 cap + 내일 1위 예측 MVP
   - [ ] 로그인 시 관심 프로필 계정 merge
+  - [ ] 로그인 시 예측 deviceId → 계정 연동

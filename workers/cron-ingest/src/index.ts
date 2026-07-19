@@ -22,6 +22,7 @@ import { fetchFirmsForTheaters } from "./firms";
 import { fetchGdeltTensionPoints } from "./gdeltExport";
 import { fetchTelegramAlerts } from "./telegram";
 import { readBriefingStats, upsertBriefingPeriodStats } from "./briefingStats";
+import { readDailyRanks, readWorldTension, upsertDailyRanks } from "./dailyRanks";
 
 export type { IngestEnv };
 
@@ -62,6 +63,12 @@ type IngestResult = {
     dailyKey: string;
     weeklyKey: string;
     monthlyKey: string;
+  } | null;
+  dailyRanks?: {
+    rankDate: string;
+    theaterCount: number;
+    chokepointCount: number;
+    worldTension: number;
   } | null;
   error: string | null;
 };
@@ -188,6 +195,16 @@ async function runIngest(env: IngestEnv): Promise<IngestResult> {
       );
     }
 
+    let dailyRanks: IngestResult["dailyRanks"] = null;
+    try {
+      dailyRanks = await upsertDailyRanks(env.DB);
+    } catch (error) {
+      console.warn(
+        "[ingest] daily ranks upsert skipped:",
+        error instanceof Error ? error.message : error,
+      );
+    }
+
     const result: IngestResult = {
       ok: !hardFail,
       startedAt,
@@ -211,6 +228,7 @@ async function runIngest(env: IngestEnv): Promise<IngestResult> {
       adsbErrors,
       pruned,
       briefingStats,
+      dailyRanks,
       error: hardFail ? firmsErrors.join("; ") || "ingest failed" : null,
     };
 
@@ -239,6 +257,7 @@ async function runIngest(env: IngestEnv): Promise<IngestResult> {
         disputeHatchWarm,
         ukraineHatchWarm,
         briefingStats,
+        dailyRanks,
       },
     });
 
@@ -300,6 +319,10 @@ const ALLOWED_TRACK_EVENTS = new Set([
   "share_view_success",
   "friction_card_share_click",
   "friction_card_share_success",
+  "daily_rank_card_share_click",
+  "daily_rank_card_share_success",
+  "daily_predict_submit",
+  "daily_predict_change",
   "mobile_home_view_toggle",
 ]);
 
@@ -349,6 +372,12 @@ const worker = {
           adsb: "GET /adsb?mode=mil|civ&west&south&east&north&max=400",
           briefingStats:
             "GET /briefing-stats?key=daily-YYYY-MM-DD|weekly-YYYY-Www|monthly-YYYY-MM or ?tier=daily|weekly|monthly",
+          dailyRanks:
+            "GET /daily-ranks?date=YYYY-MM-DD&kind=theater|chokepoint&limit=5",
+          dailyPredictionStats:
+            "GET /daily-prediction-stats?date=YYYY-MM-DD&kind=theater",
+          dailyPredict:
+            "POST /daily-predict (Bearer INGEST_CRON_SECRET; body targetDate,kind,deviceId,pickEntityId)",
           track: "POST /track (Bearer INGEST_CRON_SECRET, D1-less hosts like Vercel forward here)",
         },
       });
@@ -422,8 +451,192 @@ const worker = {
           fetchedAt: new Date().toISOString(),
           source: "d1-cron",
           stats: null,
-          error: error instanceof Error ? error.message : "briefing-stats read failed",
+          error: error instanceof Error ? error.message : "briefing-stats failed",
         });
+      }
+    }
+
+    if (url.pathname === "/daily-ranks") {
+      const date = (url.searchParams.get("date") || "").trim() || undefined;
+      const kindRaw = (url.searchParams.get("kind") || "").trim();
+      const kind =
+        kindRaw === "theater" || kindRaw === "chokepoint" ? kindRaw : undefined;
+      const limit = Number(url.searchParams.get("limit") || "5");
+      try {
+        const ranks = await readDailyRanks(env.DB, {
+          date,
+          kind,
+          limit: Number.isFinite(limit) ? limit : 5,
+        });
+        let yesterdayCorrectPct: number | null = null;
+        try {
+          const { readPredictionStats } = await import("./dailyPredictions");
+          const { prevUtcRankDate } = await import("./dailyRanks");
+          const stats = await readPredictionStats(env.DB, {
+            date: prevUtcRankDate(),
+            kind: "theater",
+          });
+          if (stats && Number(stats.total) > 0) {
+            yesterdayCorrectPct = Number(stats.correct_pct);
+          }
+        } catch {
+          // optional attach
+        }
+        let worldTension: Awaited<ReturnType<typeof readWorldTension>> = null;
+        try {
+          worldTension = await readWorldTension(env.DB, date);
+        } catch {
+          worldTension = null;
+        }
+        return jsonPublic({
+          fetchedAt: new Date().toISOString(),
+          source: "d1-cron",
+          date: date || null,
+          kind: kind || "all",
+          ranks,
+          worldTension,
+          yesterdayCorrectPct,
+        });
+      } catch (error) {
+        return jsonPublic({
+          fetchedAt: new Date().toISOString(),
+          source: "d1-cron",
+          ranks: [],
+          error: error instanceof Error ? error.message : "daily-ranks failed",
+        });
+      }
+    }
+
+    if (url.pathname === "/daily-prediction-stats") {
+      const date = (url.searchParams.get("date") || "").trim() || undefined;
+      const kindRaw = (url.searchParams.get("kind") || "").trim();
+      const kind =
+        kindRaw === "tension-dir" ? "tension-dir" : kindRaw === "theater" ? "theater" : "tension-dir";
+      try {
+        const { readPredictionStats } = await import("./dailyPredictions");
+        const stats = await readPredictionStats(env.DB, { date, kind });
+        return jsonPublic({
+          fetchedAt: new Date().toISOString(),
+          source: "d1-cron",
+          date: date || null,
+          kind,
+          stats: stats
+            ? {
+                targetDate: stats.target_date,
+                kind: stats.kind,
+                total: Number(stats.total) || 0,
+                correct: Number(stats.correct) || 0,
+                correctPct: Number(stats.correct_pct) || 0,
+                winnerEntityId: stats.winner_entity_id,
+                resolvedAt: stats.resolved_at,
+              }
+            : null,
+        });
+      } catch (error) {
+        return jsonPublic({
+          fetchedAt: new Date().toISOString(),
+          source: "d1-cron",
+          stats: null,
+          error:
+            error instanceof Error
+              ? error.message
+              : "daily-prediction-stats failed",
+        });
+      }
+    }
+
+    if (url.pathname === "/daily-prompt") {
+      try {
+        const dateParam = (url.searchParams.get("date") || "").trim();
+        const { nextUtcRankDate, utcRankDate } = await import("./dailyRanks");
+        const { readPrompt, upsertTomorrowPrompt } = await import("./dailyPrompts");
+        const targetDate =
+          /^\d{4}-\d{2}-\d{2}$/.test(dateParam) ? dateParam : nextUtcRankDate();
+        let prompt = await readPrompt(env.DB, targetDate);
+        if (!prompt) {
+          await upsertTomorrowPrompt(env.DB, { rankDate: utcRankDate() });
+          prompt = await readPrompt(env.DB, targetDate);
+        }
+        return Response.json({
+          ok: true,
+          prompt: prompt
+            ? {
+                targetDate: prompt.target_date,
+                subjectKind: prompt.subject_kind,
+                subjectId: prompt.subject_id,
+                labelKo: prompt.label_ko,
+                labelEn: prompt.label_en,
+                baselineScore: Number(prompt.baseline_score) || 0,
+                questionKo: prompt.question_ko,
+                questionEn: prompt.question_en,
+                createdAt: prompt.created_at,
+              }
+            : null,
+        });
+      } catch (error) {
+        return Response.json(
+          {
+            ok: false,
+            error: error instanceof Error ? error.message : "daily-prompt failed",
+          },
+          { status: 500 },
+        );
+      }
+    }
+
+    if (url.pathname === "/daily-predict" && request.method === "POST") {
+      if (!authorizeManual(request, env)) {
+        return Response.json({ error: "unauthorized" }, { status: 401 });
+      }
+      try {
+        const body = (await request.json()) as {
+          targetDate?: string;
+          kind?: string;
+          deviceId?: string;
+          pickEntityId?: string;
+        };
+        const targetDate = (body.targetDate || "").trim();
+        const deviceId = (body.deviceId || "").trim();
+        const pickEntityId = (body.pickEntityId || "").trim();
+        const kind =
+          body.kind === "tension-dir"
+            ? "tension-dir"
+            : body.kind === "theater"
+              ? "theater"
+              : null;
+        const { THEATER_ENTITY_IDS } = await import("./dailyRanks");
+        const pickOk =
+          kind === "tension-dir"
+            ? pickEntityId === "up" || pickEntityId === "down"
+            : Boolean(pickEntityId && THEATER_ENTITY_IDS.includes(pickEntityId));
+        if (
+          !/^\d{4}-\d{2}-\d{2}$/.test(targetDate) ||
+          !kind ||
+          !deviceId ||
+          deviceId.length > 80 ||
+          !pickOk
+        ) {
+          return Response.json({ error: "invalid body" }, { status: 400 });
+        }
+        const { upsertPrediction } = await import("./dailyPredictions");
+        const result = await upsertPrediction(env.DB, {
+          targetDate,
+          kind,
+          deviceId,
+          pickEntityId,
+        });
+        if (!result.ok) {
+          return Response.json({ error: result.error }, { status: 500 });
+        }
+        return Response.json({ ok: true, createdAt: result.createdAt });
+      } catch (error) {
+        return Response.json(
+          {
+            error:
+              error instanceof Error ? error.message : "daily-predict failed",
+          },
+          { status: 500 },
+        );
       }
     }
 

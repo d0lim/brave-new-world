@@ -11,6 +11,7 @@ import {
 import { BRAND_NAME } from "@/lib/brand";
 import type { LabelLanguage } from "@/lib/layerPrefs";
 import type { PeriodicBriefing } from "@/lib/news/periodicBriefing";
+import { formatWtiTitle, wtiBand, wtiBandLabel } from "@/lib/wti";
 
 type PeriodicBriefingParchmentProps = {
   briefing: PeriodicBriefing;
@@ -205,6 +206,30 @@ function PhotoNewsLampParchment({
                     </>
                   ) : (
                     <>
+                      {briefing.wti ? (
+                        <div className="mb-4 rounded-sm border border-[#8b6914]/30 bg-[#f7ecd4]/70 px-3 py-3">
+                          <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#6b4a22]/7">
+                            {formatWtiTitle(lang !== "en")}
+                          </p>
+                          <div className="mt-1 flex items-end justify-between gap-2">
+                            <p className="text-[2rem] font-semibold tabular-nums leading-none tracking-tight text-[#3d2a18]">
+                              {Math.round(briefing.wti.score)}
+                            </p>
+                            <p className="pb-0.5 text-[11px] text-[#6b4a22]/8">
+                              {wtiBandLabel(wtiBand(briefing.wti.score), lang !== "en")}
+                              {briefing.wti.deltaScore != null &&
+                              Math.abs(briefing.wti.deltaScore) >= 0.05
+                                ? lang === "en"
+                                  ? ` · ${briefing.wti.deltaScore > 0 ? "+" : ""}${Math.round(briefing.wti.deltaScore * 10) / 10}`
+                                  : ` · ${briefing.wti.deltaScore > 0 ? "+" : ""}${Math.round(briefing.wti.deltaScore * 10) / 10}`
+                                : ""}
+                            </p>
+                          </div>
+                          <p className="mt-2 text-[11px] leading-relaxed text-[#5a4428]/85">
+                            {briefing.wti.lead}
+                          </p>
+                        </div>
+                      ) : null}
                       <p className="mb-2 px-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-[#6b4a22]/7">
                         {lang === "en" ? "Theaters in frame" : "담긴 전장"}
                       </p>

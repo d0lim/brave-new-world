@@ -33,6 +33,10 @@ export const GUEST_LOCAL_PREF_KEYS = [
   "geowatch-view-config-v1",
   "geowatch-watch-symbols-v1",
   "geowatch-interest-v1",
+  /** 게스트 예측 deviceId — 로그인 시 계정 연동 후보 */
+  "geowatch-predict-device-v1",
+  /** 로컬 스트릭·오늘 픽 캐시 */
+  "geowatch-predict-prefs-v1",
   "cv-intel-dock-collapsed",
   // 등불·온보딩은 prefix 매칭으로 수집
 ] as const;

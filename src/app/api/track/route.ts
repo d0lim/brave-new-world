@@ -13,6 +13,10 @@ const ALLOWED_EVENTS = new Set([
   "share_view_success",
   "friction_card_share_click",
   "friction_card_share_success",
+  "daily_rank_card_share_click",
+  "daily_rank_card_share_success",
+  "daily_predict_submit",
+  "daily_predict_change",
   "mobile_home_view_toggle",
 ]);
 

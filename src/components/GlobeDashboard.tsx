@@ -692,6 +692,9 @@ import { Metric } from "@/components/globe/Metric";
 
 export type { GlobeDashboardProps } from "@/components/globe/types";
 
+/** 좌하단 일일 랭킹·WTI·예측 패널 접기 선호 (텔레그램 패널 가림 방지) */
+const DAILY_RANK_PANEL_KEY = "cv-daily-rank-panel-open";
+
 export function GlobeDashboard({
   viinaMeta = null,
   initialViewConfig = null,
@@ -808,6 +811,12 @@ export function GlobeDashboard({
   const [showTrustPanel, setShowTrustPanel] = useState(false);
   /** 모바일 전용 — 지구본을 가리지 않는 속보+반응 바텀시트 (지구본과 동시에 볼 수 있음) */
   const [showMobileAlertFeed, setShowMobileAlertFeed] = useState(false);
+  /**
+   * 일일 랭킹·WTI·UP/DOWN 패널 접기 — 좌하단에서 텔레그램 OSINT 패널을 가리는 문제 때문에
+   * 유저가 직접 여닫을 수 있어야 한다. SSR 불일치를 피하려고 초기값은 항상 true,
+   * 저장된 선호는 마운트 후 useEffect에서 반영.
+   */
+  const [showDailyRankPanel, setShowDailyRankPanel] = useState(true);
   const [showLocalAlertPanel, setShowLocalAlertPanel] = useState(false);
   const [showGdeltAlertPanel, setShowGdeltAlertPanel] = useState(false);
   const [showDisputeLegendPanel, setShowDisputeLegendPanel] = useState(false);
@@ -960,6 +969,26 @@ export function GlobeDashboard({
       applyLayerPrefs(applyUltraLiteToLayerPrefs(loadLayerPrefs()));
     }
   }, [applyLayerPrefs]);
+
+  /** 일일 패널 접기 상태 복원 — 마운트 후 1회 (SSR 하이드레이션 불일치 방지) */
+  useEffect(() => {
+    try {
+      if (localStorage.getItem(DAILY_RANK_PANEL_KEY) === "0") {
+        setShowDailyRankPanel(false);
+      }
+    } catch {
+      /* localStorage 차단 환경 — 기본값(열림) 유지 */
+    }
+  }, []);
+
+  const toggleDailyRankPanel = useCallback((next: boolean) => {
+    setShowDailyRankPanel(next);
+    try {
+      localStorage.setItem(DAILY_RANK_PANEL_KEY, next ? "1" : "0");
+    } catch {
+      /* 저장 실패는 무시 — 이번 세션에만 적용 */
+    }
+  }, []);
 
   const handleUltraLiteToggle = useCallback(
     (on: boolean) => {
@@ -9838,8 +9867,31 @@ export function GlobeDashboard({
       !showModePicker &&
       !periodicBriefing &&
       !tomorrowTensionPrompt ? (
-        <div className="cv-desktop-only pointer-events-auto absolute bottom-24 left-3 z-[28] w-[min(420px,calc(100vw-1.5rem))]">
-          <DailyRankSharePanel lang={labelLanguage} />
+        <div
+          className={`cv-desktop-only pointer-events-auto absolute bottom-24 left-3 z-[28] ${
+            // 접었을 때 420px 폭을 유지하면 보이지 않는 영역이 지도 클릭을 막는다
+            showDailyRankPanel ? "w-[min(420px,calc(100vw-1.5rem))]" : "w-fit"
+          }`}
+        >
+          {showDailyRankPanel ? (
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => toggleDailyRankPanel(false)}
+                aria-label={labelLanguage === "en" ? "Collapse daily panel" : "일일 패널 접기"}
+                title={labelLanguage === "en" ? "Collapse" : "접기"}
+                className="absolute -top-2.5 right-0 z-10 flex h-6 w-6 items-center justify-center rounded-full border border-slate-600/60 bg-slate-950/90 text-[11px] text-slate-300 shadow-lg backdrop-blur-md transition hover:border-slate-400 hover:text-slate-100"
+              >
+                ✕
+              </button>
+              <DailyRankSharePanel lang={labelLanguage} />
+            </div>
+          ) : (
+            <LegendReopenButton
+              label={labelLanguage === "en" ? "Daily · WTI" : "오늘의 지수 · 예측"}
+              onClick={() => toggleDailyRankPanel(true)}
+            />
+          )}
         </div>
       ) : null}
 

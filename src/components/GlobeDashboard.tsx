@@ -186,12 +186,15 @@ import { runWhenIdle } from "@/lib/deferIdle";
 import { isClientApiStubMode } from "@/lib/apiStubMode";
 import {
   firmsLiveFetchMax,
+  liveAisDisplayMax,
   liveAisFetchMax,
   liveAisPollMs,
   liveFirmsPollMs,
   liveGdeltPollMs,
+  liveMilDisplayMax,
   liveMilFetchMax,
   liveMilPollMs,
+  liveAirTrafficDisplayMax,
   liveAirTrafficFetchMax,
   liveAirTrafficPollMs,
   airTrafficDistNm,
@@ -2778,7 +2781,7 @@ export function GlobeDashboard({
             .filter((aircraft) =>
               isCenterInView(aircraft, layerViewState, VIEWPORT_RADIUS_BY_TIER[globeLod.tier] + 4),
             )
-            .slice(0, liveMilFetchMax())
+            .slice(0, liveMilDisplayMax(globeLod.tier))
             .map((aircraft) => ({
               ...aircraft,
               markerId: `mil-${aircraft.hex || aircraft.id}`,
@@ -2805,7 +2808,7 @@ export function GlobeDashboard({
             .filter((aircraft) =>
               isCenterInView(aircraft, layerViewState, VIEWPORT_RADIUS_BY_TIER[globeLod.tier] + 4),
             )
-            .slice(0, liveAirTrafficFetchMax())
+            .slice(0, liveAirTrafficDisplayMax(globeLod.tier))
         : [],
     [civAircraft, globeLod.tier, layerViewState, showAirTraffic],
   );
@@ -2827,7 +2830,7 @@ export function GlobeDashboard({
           .filter((vessel) =>
             isCenterInView(vessel, layerViewState, VIEWPORT_RADIUS_BY_TIER[globeLod.tier] + 6),
           )
-          .slice(0, liveAisFetchMax())
+          .slice(0, liveAisDisplayMax(globeLod.tier))
       : [];
     const disguised = showDisguisedVessels
       ? disguisedVessels.filter((vessel) =>

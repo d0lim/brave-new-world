@@ -2,6 +2,31 @@ import type { GlobeLodTier } from "@/lib/globeLod";
 import { FIRMS_FIRE_MAX_BY_TIER } from "@/lib/viewportCull";
 import { isClientApiStubMode } from "@/lib/runtimeConfig.client";
 
+/** 줌아웃일수록 HTML 마커(ADS-B/AIS) DOM 비용을 강하게 컷 */
+const MIL_HTML_DISPLAY_BY_TIER: Record<GlobeLodTier, number> = {
+  global: 28,
+  continent: 48,
+  regional: 72,
+  near: 110,
+  village: 150,
+};
+
+const AIS_HTML_DISPLAY_BY_TIER: Record<GlobeLodTier, number> = {
+  global: 32,
+  continent: 48,
+  regional: 72,
+  near: 100,
+  village: 120,
+};
+
+const AIR_HTML_DISPLAY_BY_TIER: Record<GlobeLodTier, number> = {
+  global: 36,
+  continent: 64,
+  regional: 110,
+  near: 180,
+  village: 280,
+};
+
 /**
  * Live(API_STUB_MODE=false) 렌더·폴링 안전장치. **삭제·완화 금지** (렉 기둥).
  * stub ON: 기존(또는 약간 빠른) 간격 · stub OFF: 보수적 간격·상한.
@@ -66,6 +91,11 @@ export function liveAisFetchMax(): number {
   return isClientApiStubMode() ? 250 : 120;
 }
 
+/** 화면 HTML 마커 상한 (fetch 상한과 별도 — 줌아웃 렉 완화) */
+export function liveAisDisplayMax(tier: GlobeLodTier): number {
+  return Math.min(liveAisFetchMax(), AIS_HTML_DISPLAY_BY_TIER[tier]);
+}
+
 /** ADS-B 군용기 */
 export function liveMilPollMs(): number {
   return isClientApiStubMode() ? 45_000 : 75_000;
@@ -75,6 +105,10 @@ export function liveMilFetchMax(): number {
   return isClientApiStubMode() ? 400 : 150;
 }
 
+export function liveMilDisplayMax(tier: GlobeLodTier): number {
+  return Math.min(liveMilFetchMax(), MIL_HTML_DISPLAY_BY_TIER[tier]);
+}
+
 /** 민간 항적 (지경학) */
 export function liveAirTrafficPollMs(): number {
   return isClientApiStubMode() ? 40_000 : 55_000;
@@ -82,6 +116,10 @@ export function liveAirTrafficPollMs(): number {
 
 export function liveAirTrafficFetchMax(): number {
   return isClientApiStubMode() ? 350 : 280;
+}
+
+export function liveAirTrafficDisplayMax(tier: GlobeLodTier): number {
+  return Math.min(liveAirTrafficFetchMax(), AIR_HTML_DISPLAY_BY_TIER[tier]);
 }
 
 /** 고도 → ADS-B 조회 반경(NM) */

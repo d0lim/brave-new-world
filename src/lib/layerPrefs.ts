@@ -113,7 +113,7 @@ export type LayerPrefs = {
 export type MobileHomeView = "alerts" | "globe";
 
 /** v29: 위장선박 (AIS_Tracker) */
-export const LAYER_PREFS_KEY = "geowatch-layers-v29";
+export const LAYER_PREFS_KEY = "geowatch-layers-v30";
 
 /** 토글 가능 레이어는 기본 OFF. 활성 전장(이란·우크라) 전쟁구역만 기본 ON */
 export const DEFAULT_LAYER_PREFS: LayerPrefs = {
@@ -194,6 +194,7 @@ export const DEFAULT_LAYER_PREFS: LayerPrefs = {
 };
 
 const LEGACY_LAYER_KEYS = [
+  "geowatch-layers-v29",
   "geowatch-layers-v28",
   "geowatch-layers-v27",
   "geowatch-layers-v26",
